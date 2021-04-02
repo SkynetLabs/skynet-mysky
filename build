@@ -1,0 +1,9 @@
+npx rimraf dist &&
+cp -R html dist &&
+cp -R assets dist/assets &&
+npx webpack &&
+npx webpack --config webpack.config.router.js &&
+node minify-src.js dist/*.html &&
+find dist -name "*.js" -type f -delete &&
+find dist -name "*.css" -type f -delete
+

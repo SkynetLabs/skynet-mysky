@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Identity Test Router</title>
+    <link rel="stylesheet" href="assets/style.css" />
+  </head>
+
+  <body>
+    <!-- For deactivating the container -->
+    <div id="darkLayer" class="darkClass" style="display: none"></div>
+
+    <form id="provider-form" onsubmit="window.submitProvider(); return false;">
+      <!-- More providers will get inserted here from the providers query string -->
+
+      <div>
+        <input type="radio" name="provider-form-radio" value="" />
+        Other: <input type="text" id="other-text" name="other-text" />
+      </div>
+
+      <div>
+        <input type="submit" value="OK" class="btn" />
+      </div>
+      <!-- TODO: Cancel button -->
+    </form>
+
+    <script async src="router.js"></script>
+  </body>
+</html>
