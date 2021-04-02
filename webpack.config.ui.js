@@ -1,7 +1,7 @@
 const path = require("path");
 
 module.exports = {
-  entry: "./scripts/router.ts",
+  entry: "./scripts/ui.ts",
   mode: "production",
 
   module: {
@@ -10,7 +10,7 @@ module.exports = {
         test: /\.tsx?$/,
         loader: "ts-loader",
         options: { configFile: "tsconfig.scripts.json" },
-        include: [path.resolve(__dirname, "scripts/router.ts")],
+        include: [path.resolve(__dirname, "scripts/ui.ts")],
       },
     ],
   },
@@ -19,7 +19,7 @@ module.exports = {
     symlinks: false,
   },
   output: {
-    filename: "router.js",
+    filename: "ui.js",
     path: path.resolve(__dirname, "dist"),
   },
 };

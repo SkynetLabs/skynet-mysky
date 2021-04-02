@@ -3,6 +3,7 @@ import type { Connection } from "post-me";
 import { PermCategory, Permission, PermType } from "skynet-interface-utils";
 import { genKeyPairFromSeed, RegistryEntry, SkynetClient } from "skynet-js";
 
+const referrer = document.referrer;
 const seedStorageKey = "seed";
 
 export class MySky {
@@ -34,7 +35,6 @@ export class MySky {
       remoteWindow: window.parent,
       remoteOrigin: "*",
     });
-    // NOTE: We set the methods in the constructor since we don't have 'this' here.
     const parentConnection = await ChildHandshake(messenger);
 
     // Initialize the Skynet client.
@@ -71,11 +71,10 @@ export class MySky {
     // Permissions provider should have been loaded by now.
     // TODO: Should this be async?
     if (!this.permissionsProvider) {
-      return false;
+      throw new Error("Permissions provider not loaded");
     }
 
     // Check given permissions with the permissions provider.
-    // TODO: Pass requesting skapp + dac domains?
     return this.permissionsProvider.remoteHandle().call("checkPermissions", perms);
   }
 
@@ -93,10 +92,9 @@ export class MySky {
 
     // Check with the permissions provider that we have permission for this request.
 
-    const requestor = document.referrer;
     // TODO: Support for signing hidden files.
-    const permission = new Permission(requestor, path, PermCategory.Discoverable, PermType.Write);
-    const granted = this.permissionsProvider.remoteHandle().call("checkPermissions", [permission]);
+    const perm = new Permission(referrer, path, PermCategory.Discoverable, PermType.Write);
+    const granted = this.permissionsProvider.remoteHandle().call("checkPermissions", [perm]);
     if (!granted) {
       throw new Error("Permission was not granted");
     }
@@ -135,22 +133,6 @@ export class MySky {
   // Internal Methods
   // ================
 
-  // TODO
-  protected async loadPermissionsProvider(seed: string): Promise<void> {
-    // Derive the user.
-    const { publicKey } = genKeyPairFromSeed(seed);
-
-    // Check the user's saved preferences.
-
-    // If no saved preference, use the default permissions provider.
-
-    // Load the worker.
-
-    const worker = new Worker(workerJsUrl);
-    const messenger = new WorkerMessenger({ worker });
-    // TODO: Pass custom handshake options.
-    this.permissionsProvider = await ParentHandshake(messenger);
-  }
 
   // ==============
   // Helper Methods
