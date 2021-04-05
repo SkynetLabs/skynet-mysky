@@ -2,6 +2,7 @@ import { ChildHandshake, WindowMessenger } from "post-me";
 import type { Connection } from "post-me";
 import { PermCategory, Permission, PermType } from "skynet-interface-utils";
 import { genKeyPairFromSeed, RegistryEntry, SkynetClient } from "skynet-js";
+import { loadPermissionsProvider } from "./provider";
 
 const referrer = document.referrer;
 const seedStorageKey = "seed";
@@ -51,7 +52,7 @@ export class MySky {
 
     // If seed was found, load the user's permission provider.
     if (seed) {
-      await mySky.loadPermissionsProvider(seed);
+       mySky.permissionsProvider = await loadPermissionsProvider(seed);
     }
 
     return mySky;
@@ -97,8 +98,8 @@ export class MySky {
 
     // TODO: Support for signing hidden files.
     const perm = new Permission(referrer, path, PermCategory.Discoverable, PermType.Write);
-    const granted = this.permissionsProvider.remoteHandle().call("checkPermissions", [perm]);
-    if (!granted) {
+    const failedPermissions: Permission[] = await this.permissionsProvider.remoteHandle().call("checkPermissions", [perm]);
+    if (failedPermissions.length > 0) {
       throw new Error("Permission was not granted");
     }
 

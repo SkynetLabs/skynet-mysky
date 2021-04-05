@@ -1,13 +1,13 @@
-import { ChildHandshake, Connection, WindowMessenger } from "post-me";
-import { Permission } from "skynet-interface-utils";
+import { ChildHandshake, Connection, ParentHandshake, WindowMessenger } from "post-me";
+import { createFullScreenIframe, defaultHandshakeAttemptsInterval, defaultHandshakeMaxAttempts, ErrorHolder, errorWindowClosed, monitorWindowError, Permission } from "skynet-interface-utils";
 import { SkynetClient } from "skynet-js";
-import urljoin from "url-join";
 
 import { defaultSeedDisplayProvider, loadPermissionsProvider } from "../src/provider";
 
 const seedKey = "seed";
 
 let submitted = false;
+const errorHolder = new ErrorHolder();
 let parentConnection: Connection | null = null;
 
 // ======
@@ -17,23 +17,27 @@ let parentConnection: Connection | null = null;
 // Event that is triggered when the window is closed by the user.
 window.onbeforeunload = () => {
   if (!submitted) {
-    // Send value to signify that the router was closed.
-    parentConnection.localHandle().emit("error", "closed");
+    if (parentConnection) {
+      // Send value to signify that the router was closed.
+      parentConnection.remoteHandle().call("catchError", errorWindowClosed);
+    }
   }
 
   return null;
 };
 
 window.onerror = function (error) {
-  if (typeof error === "string") {
-    parentConnection.localHandle().emit("error", error);
-  } else {
-    parentConnection.localHandle().emit("error", error.type);
+  if (parentConnection) {
+    if (typeof error === "string") {
+      parentConnection.remoteHandle().call("catchError", error);
+    } else {
+      parentConnection.remoteHandle().call("catchError", error.type);
+    }
   }
-  window.close();
 };
 
 // TODO: Wrap in a try-catch block? Does onerror handler catch thrown errors?
+// Code that runs on page load.
 window.onload = async () => {
   init();
 };
@@ -43,8 +47,6 @@ window.onload = async () => {
 // ==========
 
 async function init() {
-  const client = new SkynetClient();
-
   // Establish handshake with parent skapp.
 
   const messenger = new WindowMessenger({
@@ -89,6 +91,97 @@ async function requestLoginAccess(permissions: Permission[]): Promise<Permission
   // Return remaining failed permissions to skapp.
 
   return failedPermissions;
+}
+
+async function runSeedProviderDisplay(seedProviderUrl: string): Promise<string> {
+  // Add error listener.
+
+  const { promise: promiseError, controller: controllerError } = monitorWindowError(errorHolder);
+
+  let seedFrame: HTMLIFrameElement;
+  let seedConnection: Connection;
+  let seed: string;
+  const promise: Promise<void> = new Promise(async (resolve, reject) => {
+    // Make this promise run in the background and reject on window close or any errors.
+    promiseError.catch((err: string) => {
+      if (err === errorWindowClosed) {
+        // Resolve without updating the pending permissions.
+        resolve();
+        return;
+      }
+
+      reject(err);
+    });
+
+    try {
+      // Launch the full-screen iframe and connection.
+
+      [seedFrame, seedConnection] = await launchSeedProvider(seedProviderUrl);
+
+      // Call deriveRootSeed.
+
+      // TODO: This should be a dual-promise that also calls ping() on an interval and rejects if no response was found in a given amount of time.
+      seed = await seedConnection.remoteHandle().call("deriveRootSeed");
+
+      // Close the iframe.
+
+      seedFrame.parentNode!.removeChild(seedFrame);
+    } catch (err) {
+      reject(err);
+    }
+  });
+
+  await promise
+    .catch((err) => {
+      throw err;
+    })
+    .finally(() => {
+      // Close the iframe.
+      if (seedFrame) {
+        seedFrame.parentNode!.removeChild(seedFrame);
+      }
+
+      // Close the connection.
+      if (seedConnection) {
+        seedConnection.close();
+      }
+
+      // Clean up the event listeners and promises.
+      controllerError.cleanup();
+    });
+
+  return seed;
+}
+
+async function launchSeedProvider(seedProviderUrl: string): Promise<[HTMLIFrameElement, Connection]> {
+  // Create the iframe. FULL SCREEN!
+
+  const childFrame = createFullScreenIframe(seedProviderUrl, seedProviderUrl);
+  const childWindow = childFrame.contentWindow!;
+
+  // Complete handshake with Seed Provider Display window.
+
+  const messenger = new WindowMessenger({
+    localWindow: window,
+    remoteWindow: childWindow,
+    remoteOrigin: "*",
+  });
+  const methods = {
+    catchError,
+  };
+  // TODO: Get handshake values from optional fields.
+  const connection = await ParentHandshake(
+    messenger,
+    methods,
+    defaultHandshakeMaxAttempts,
+    defaultHandshakeAttemptsInterval
+  );
+
+  return [childFrame, connection];
+}
+
+async function catchError(errorMsg: string) {
+  errorHolder.error = errorMsg;
 }
 
 // ================

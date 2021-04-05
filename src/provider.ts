@@ -1,11 +1,10 @@
 import { Connection, ParentHandshake, WorkerMessenger } from "post-me";
 import { genKeyPairFromSeed } from "skynet-js";
 
-const defaultPermissionsProvider = ""; // Skylink for now
+const defaultPermissionsProvider = "permissions.js";
 const permissionsProviderPreferencePath = "skynet-mysky.hns/permissions-provider.json";
-export const defaultSeedDisplayProvider = ""; // Skylink for now
+export const defaultSeedDisplayProvider = "seed.html";
 
-// TODO
 export async function loadPermissionsProvider(seed: string): Promise<Connection> {
   // Derive the user.
   const { publicKey } = genKeyPairFromSeed(seed);

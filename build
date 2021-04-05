@@ -3,6 +3,8 @@ cp -R html dist &&
 cp -R assets dist/assets &&
 npx webpack &&
 npx webpack --config webpack.config.ui.js &&
+npx webpack --config webpack.config.permissions.js &&
+npx webpack --config webpack.config.seed.js &&
 node minify-src.js dist/*.html &&
 find dist -name "*.js" -type f -delete &&
 find dist -name "*.css" -type f -delete

@@ -1,6 +1,6 @@
 const path = require("path");
 
-const name = "ui";
+const name = "permissions";
 
 module.exports = {
   entry: `./scripts/${name}.ts`,

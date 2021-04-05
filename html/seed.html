@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Default Seed Provider</title>
+    <link rel="stylesheet" href="assets/style.css">
+  </head>
+
+  <body>
+    <div class="wrapper">
+      <!-- For deactivating the container -->
+      <div id="darkLayer" class="darkClass" style="display:none"></div>
+
+      <div id="seed-logged-out" class="seed-screen center">
+        <h1>Logged Out</h1>
+        <div>
+          <b>Sign in</b> with your passphrase, or <b>sign up</b> for a new account.
+        </div>
+        <button id="button-logged-out-sign-in" class="btn" onclick="window.goToSignIn()">
+          Sign in
+        </button>
+        <button id="button-logged-out-sign-up" class="btn" onclick="window.goToSignUp()">
+          Sign up
+        </button>
+      </div>
+
+      <div id="seed-sign-in" class="seed-screen center">
+        <h1>Sign In</h1>
+        <div>
+          Enter your passphrase:
+        </div>
+        <div>
+          <input type="text" id="signin-passphrase-text" name="passphrase-text" width+"100%"/>
+        </div>
+        <button id="button-back" class="btn" onclick="window.goToLoggedOut()">
+          Back
+        </button>
+        <button id="button-sign-in" class="btn" onclick="window.signIn()">
+          Sign In
+        </button>
+      </div>
+
+      <div id="seed-sign-up" class="seed-screen center">
+        <h1>Sign Up</h1>
+        <div>
+          Passphrase:
+        </div>
+        <div>
+          <input type="text" id="signup-passphrase-text" name="passphrase-text" width+"100%"/>
+        </div>
+        <button id="button-back" class="btn" onclick="window.goToLoggedOut()">
+          Back
+        </button>
+        <button id="button-sign-up" class="btn" onclick="window.signUp()">
+          Sign Up
+        </button>
+      </div>
+
+    </div>
+
+    <script async src="seed.js"> </script>
+  </body>
+</html>
