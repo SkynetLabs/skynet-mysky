@@ -1,4 +1,4 @@
-import { ChildHandshake, ParentHandshake, WindowMessenger, WorkerMessenger } from "post-me";
+import { ChildHandshake, WindowMessenger } from "post-me";
 import type { Connection } from "post-me";
 import { PermCategory, Permission, PermType } from "skynet-interface-utils";
 import { genKeyPairFromSeed, RegistryEntry, SkynetClient } from "skynet-js";
@@ -61,11 +61,12 @@ export class MySky {
   // Public API
   // ==========
 
-  async checkLogin(perms: Permission[]): Promise<boolean> {
+  async checkLogin(perms: Permission[]): Promise<Permission[]> {
     // Check for stored seed in localstorage.
     const seed = MySky.checkStoredSeed();
     if (!seed) {
-      return false;
+      // Return all requested permissions. If perms is non-empty, this is a failure case.
+      return perms;
     }
 
     // Permissions provider should have been loaded by now.
@@ -75,7 +76,9 @@ export class MySky {
     }
 
     // Check given permissions with the permissions provider.
-    return this.permissionsProvider.remoteHandle().call("checkPermissions", perms);
+    const failedPermissions = this.permissionsProvider.remoteHandle().call("checkPermissions", perms);
+
+    return failedPermissions;
   }
 
   /**

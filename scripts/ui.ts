@@ -1,6 +1,5 @@
 import { ChildHandshake, Connection, WindowMessenger } from "post-me";
-import {
-} from "skynet-interface-utils";
+import { Permission } from "skynet-interface-utils";
 import { SkynetClient } from "skynet-js";
 import urljoin from "url-join";
 
@@ -19,10 +18,9 @@ let parentConnection: Connection | null = null;
 window.onbeforeunload = () => {
   if (!submitted) {
     // Send value to signify that the router was closed.
-    parentConnection.localHandle().emit("closed", "");
+    parentConnection.localHandle().emit("error", "closed");
   }
 
-  window.close();
   return null;
 };
 
@@ -37,6 +35,14 @@ window.onerror = function (error) {
 
 // TODO: Wrap in a try-catch block? Does onerror handler catch thrown errors?
 window.onload = async () => {
+  init();
+};
+
+// ==========
+// Core logic
+// ==========
+
+async function init() {
   const client = new SkynetClient();
 
   // Establish handshake with parent skapp.
@@ -46,10 +52,13 @@ window.onload = async () => {
     remoteWindow: window.parent,
     remoteOrigin: "*",
   });
-  parentConnection = await ChildHandshake(messenger);
+  const methods = {
+    requestLoginAccess,
+  };
+  parentConnection = await ChildHandshake(messenger, methods);
+}
 
-  // Wait until we receive requested permissions.
-
+async function requestLoginAccess(permissions: Permission[]): Promise<Permission[]> {
   // If we don't have a seed, show seed provider chooser.
 
   // TODO: We just use the default seed provider for now.
@@ -79,9 +88,8 @@ window.onload = async () => {
 
   // Return remaining failed permissions to skapp.
 
-  parentConnection.localHandle().emit("finished", failedPermissions);
-  window.close();
-};
+  return failedPermissions;
+}
 
 // ================
 // Helper Functions
