@@ -26,7 +26,7 @@ window.onbeforeunload = () => {
   return null;
 };
 
-window.onerror = function (error) {
+window.onerror = function (error: any) {
   if (parentConnection) {
     if (typeof error === "string") {
       parentConnection.remoteHandle().call("catchError", error);

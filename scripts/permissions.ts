@@ -1,3 +1,5 @@
+declare const self: DedicatedWorkerGlobalScope;
+
 import { ChildHandshake, WorkerMessenger } from 'post-me';
 import { Permission } from "skynet-interface-utils";
 

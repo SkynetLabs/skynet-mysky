@@ -26,7 +26,7 @@ window.onbeforeunload = () => {
   return null;
 };
 
-window.onerror = function (error) {
+window.onerror = function (error: any) {
   if (parentConnection) {
     if (typeof error === "string") {
       parentConnection.remoteHandle().call("catchError", error);
@@ -100,7 +100,8 @@ async function runSeedProviderDisplay(seedProviderUrl: string): Promise<string> 
 
   let seedFrame: HTMLIFrameElement;
   let seedConnection: Connection;
-  let seed: string;
+  let seed: string = "";
+
   const promise: Promise<void> = new Promise(async (resolve, reject) => {
     // Make this promise run in the background and reject on window close or any errors.
     promiseError.catch((err: string) => {
@@ -150,6 +151,9 @@ async function runSeedProviderDisplay(seedProviderUrl: string): Promise<string> 
       controllerError.cleanup();
     });
 
+  if (!seed) {
+    throw new Error("Seed was not set");
+  }
   return seed;
 }
 

@@ -12,7 +12,10 @@ module.exports = {
         test: /\.tsx?$/,
         loader: "ts-loader",
         options: { configFile: "tsconfig.scripts.json" },
-        include: [path.resolve(__dirname, `scripts/${name}.ts`)],
+        include: [
+          path.resolve(__dirname, "src"),
+          path.resolve(__dirname, `scripts/${name}.ts`)
+        ],
       },
     ],
   },

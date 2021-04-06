@@ -17,6 +17,7 @@ export async function loadPermissionsProvider(seed: string): Promise<Connection>
 
   // If no saved preference, use the default permissions provider.
 
+  // NOTE: This URL must obey the same-origin policy. If not the default permissions provider, it can be a base64 skylink on the current origin.
   let workerJsUrl;
   if (!preference) {
     workerJsUrl = defaultPermissionsProvider;
