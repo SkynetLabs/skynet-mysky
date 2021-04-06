@@ -1,18 +1,22 @@
+// Make Typescript happy, requires "lib": ["webworker"].
 declare const self: DedicatedWorkerGlobalScope;
 
 import { ChildHandshake, WorkerMessenger } from 'post-me';
-import { Permission } from "skynet-interface-utils";
+import { CheckPermissionsResponse, Permission } from "skynet-mysky-utils";
 
-async function checkPermissions(perms: Permission[]): Promise<Permission[]> {
+async function checkPermissions(perms: Permission[]): Promise<CheckPermissionsResponse> {
+  const grantedPermissions = [];
   const failedPermissions = [];
 
   for (let perm of perms) {
-    if (perm.requestor !== perm.path.split("/")[0]) {
+    if (perm.requestor === perm.path.split("/")[0]) {
+      grantedPermissions.push(perm);
+    } else {
       failedPermissions.push(perm);
     }
   }
 
-  return failedPermissions;
+  return { grantedPermissions, failedPermissions};
 }
 
 const methods = {

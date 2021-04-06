@@ -1,5 +1,5 @@
 import { ChildHandshake, Connection, ParentHandshake, WindowMessenger } from "post-me";
-import { createFullScreenIframe, defaultHandshakeAttemptsInterval, defaultHandshakeMaxAttempts, ErrorHolder, errorWindowClosed, monitorWindowError, Permission } from "skynet-interface-utils";
+import { CheckPermissionsResponse, createFullScreenIframe, defaultHandshakeAttemptsInterval, defaultHandshakeMaxAttempts, ErrorHolder, errorWindowClosed, monitorWindowError, Permission } from "skynet-mysky-utils";
 import { SkynetClient } from "skynet-js";
 
 import { defaultSeedDisplayProvider, loadPermissionsProvider } from "../src/provider";
@@ -60,7 +60,7 @@ async function init() {
   parentConnection = await ChildHandshake(messenger, methods);
 }
 
-async function requestLoginAccess(permissions: Permission[]): Promise<Permission[]> {
+async function requestLoginAccess(permissions: Permission[]): Promise<CheckPermissionsResponse> {
   // If we don't have a seed, show seed provider chooser.
 
   // TODO: We just use the default seed provider for now.
@@ -80,7 +80,7 @@ async function requestLoginAccess(permissions: Permission[]): Promise<Permission
 
   // Pass it the requested permissions.
 
-  const failedPermissions = await permissionsProvider.remoteHandle().call("checkPermissions", permissions);
+  const permissionsResponse: CheckPermissionsResponse = await permissionsProvider.remoteHandle().call("checkPermissions", permissions);
 
   // TODO: If failed permissions, open the permissions provider display.
 
@@ -90,7 +90,7 @@ async function requestLoginAccess(permissions: Permission[]): Promise<Permission
 
   // Return remaining failed permissions to skapp.
 
-  return failedPermissions;
+  return permissionsResponse;
 }
 
 async function runSeedProviderDisplay(seedProviderUrl: string): Promise<string> {
@@ -141,12 +141,10 @@ async function runSeedProviderDisplay(seedProviderUrl: string): Promise<string> 
       if (seedFrame) {
         seedFrame.parentNode!.removeChild(seedFrame);
       }
-
       // Close the connection.
       if (seedConnection) {
         seedConnection.close();
       }
-
       // Clean up the event listeners and promises.
       controllerError.cleanup();
     });

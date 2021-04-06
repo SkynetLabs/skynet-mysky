@@ -1,6 +1,6 @@
 import { ChildHandshake, Connection, WindowMessenger } from "post-me";
 import { SkynetClient } from "skynet-js";
-import { errorWindowClosed } from "skynet-interface-utils";
+import { errorWindowClosed } from "skynet-mysky-utils";
 
 const uiSeedLoggedOut = document.getElementById("seed-logged-out")!;
 const uiSeedSignIn = document.getElementById("seed-sign-in")!;
