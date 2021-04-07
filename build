@@ -6,6 +6,6 @@ npx webpack --config webpack.config.ui.js &&
 npx webpack --config webpack.config.permissions.js &&
 npx webpack --config webpack.config.seed.js &&
 node minify-src.js dist/*.html &&
-find dist -name "*.js" -type f -delete &&
+rm dist/main.js dist/seed.js dist/ui.js &&
 find dist -name "*.css" -type f -delete
 
