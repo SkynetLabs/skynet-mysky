@@ -48,11 +48,11 @@ export class MySky {
 
     // Check for stored seed in localstorage.
 
-    const seed = MySky.checkStoredSeed();
+    const seed = checkStoredSeed();
 
     // If seed was found, load the user's permission provider.
     if (seed) {
-       mySky.permissionsProvider = await loadPermissionsProvider(seed);
+      mySky.permissionsProvider = await loadPermissionsProvider(seed);
     }
 
     return mySky;
@@ -62,12 +62,12 @@ export class MySky {
   // Public API
   // ==========
 
-  async checkLogin(perms: Permission[]): Promise<CheckPermissionsResponse> {
+  async checkLogin(perms: Permission[]): Promise<[boolean, CheckPermissionsResponse]> {
     // Check for stored seed in localstorage.
-    const seed = MySky.checkStoredSeed();
+    const seed = checkStoredSeed();
     if (!seed) {
-      // Return all requested permissions. If perms is non-empty, this is a failure case.
-      return { grantedPermissions: [], failedPermissions: perms };
+      const permissionsResponse = { grantedPermissions: [], failedPermissions: perms };
+      return [false, permissionsResponse];
     }
 
     // Permissions provider should have been loaded by now.
@@ -79,7 +79,7 @@ export class MySky {
     // Check given permissions with the permissions provider.
     const permissionsResponse: CheckPermissionsResponse = await this.permissionsProvider.remoteHandle().call("checkPermissions", perms);
 
-    return permissionsResponse;
+    return [true, permissionsResponse];
   }
 
   /**
@@ -105,7 +105,7 @@ export class MySky {
 
     // Get the seed.
 
-    const seed = MySky.checkStoredSeed();
+    const seed = checkStoredSeed();
     if (!seed) {
       throw new Error("User seed not found");
     }
@@ -123,7 +123,7 @@ export class MySky {
   async userID(): Promise<string> {
     // Get the seed.
 
-    const seed = MySky.checkStoredSeed();
+    const seed = checkStoredSeed();
     if (!seed) {
       throw new Error("User seed not found");
     }
@@ -142,18 +142,32 @@ export class MySky {
   // ==============
   // Helper Methods
   // ==============
+}
 
-  /**
-   * Checks for seed stored in local storage from previous sessions.
-   *
-   * @returns - The seed, or null if not found.
-   */
-  static checkStoredSeed(): string | null {
-    if (!localStorage) {
-      console.log("WARNING: localStorage disabled");
-      return null;
-    }
-
-    return localStorage.getItem(seedStorageKey);
+/**
+ * Checks for seed stored in local storage from previous sessions.
+ *
+ * @returns - The seed, or null if not found.
+ */
+export function checkStoredSeed(): string | null {
+  if (!localStorage) {
+    console.log("WARNING: localStorage disabled");
+    return null;
   }
+
+  return localStorage.getItem(seedStorageKey);
+}
+
+/**
+ * Stores the root seed in local storage.
+ *
+ * @param seed - The root seed.
+ */
+export function saveSeed(seed: string): void {
+  if (!localStorage) {
+    console.log("WARNING: localStorage disabled, seed not stored");
+    return;
+  }
+
+  localStorage.setItem(seedStorageKey, seed);
 }

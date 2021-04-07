@@ -2,9 +2,9 @@ import { ChildHandshake, Connection, ParentHandshake, WindowMessenger } from "po
 import { CheckPermissionsResponse, createFullScreenIframe, defaultHandshakeAttemptsInterval, defaultHandshakeMaxAttempts, ErrorHolder, errorWindowClosed, monitorWindowError, Permission } from "skynet-mysky-utils";
 import { SkynetClient } from "skynet-js";
 
+import { checkStoredSeed, saveSeed } from "../src/mysky";
 import { defaultSeedDisplayProvider, loadPermissionsProvider } from "../src/provider";
-
-const seedKey = "seed";
+import { genKeyPairFromSeed } from "skynet-js";
 
 let submitted = false;
 const errorHolder = new ErrorHolder();
@@ -39,7 +39,7 @@ window.onerror = function (error: any) {
 // TODO: Wrap in a try-catch block? Does onerror handler catch thrown errors?
 // Code that runs on page load.
 window.onload = async () => {
-  init();
+  await init();
 };
 
 // ==========
@@ -56,11 +56,12 @@ async function init() {
   });
   const methods = {
     requestLoginAccess,
+    userID,
   };
   parentConnection = await ChildHandshake(messenger, methods);
 }
 
-async function requestLoginAccess(permissions: Permission[]): Promise<CheckPermissionsResponse> {
+async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, CheckPermissionsResponse]> {
   // If we don't have a seed, show seed provider chooser.
 
   // TODO: We just use the default seed provider for now.
@@ -90,7 +91,7 @@ async function requestLoginAccess(permissions: Permission[]): Promise<CheckPermi
 
   // Return remaining failed permissions to skapp.
 
-  return permissionsResponse;
+  return [true, permissionsResponse];
 }
 
 async function runSeedProviderDisplay(seedProviderUrl: string): Promise<string> {
@@ -182,6 +183,16 @@ async function launchSeedProvider(seedProviderUrl: string): Promise<[HTMLIFrameE
   return [childFrame, connection];
 }
 
+async function userID(): Promise<string> {
+  const seed = checkStoredSeed();
+  if (!seed) {
+    throw new Error("Seed not found");
+  }
+
+  const { publicKey } = genKeyPairFromSeed(seed);
+  return publicKey;
+}
+
 async function catchError(errorMsg: string) {
   errorHolder.error = errorMsg;
 }
@@ -189,17 +200,3 @@ async function catchError(errorMsg: string) {
 // ================
 // Helper Functions
 // ================
-
-/**
- * Stores the root seed in local storage.
- *
- * @param seed - The root seed.
- */
-function saveSeed(seed: string): void {
-  if (!localStorage) {
-    console.log("WARNING: localStorage disabled, seed not stored");
-    return;
-  }
-
-  localStorage.setItem(seedKey, seed);
-}
