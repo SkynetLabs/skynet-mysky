@@ -23,16 +23,20 @@ let parentConnection: Connection | null = null;
 // ======
 
 // Event that is triggered when the window is closed by the user.
-window.onbeforeunload = () => {
+window.addEventListener("beforeunload", async function(event) {
+  // Cancel the event
+  event.preventDefault();
+
   if (!submitted) {
     if (parentConnection) {
       // Send value to signify that the router was closed.
-      parentConnection.remoteHandle().call("catchError", errorWindowClosed);
+      await parentConnection.remoteHandle().call("catchError", errorWindowClosed);
     }
   }
 
+  window.close();
   return null;
-};
+});
 
 window.onerror = function (error: any) {
   console.log(error);
