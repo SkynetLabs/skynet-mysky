@@ -22,6 +22,7 @@ export class MySky {
     const methods = {
       checkLogin: this.checkLogin.bind(this),
       logout: this.logout.bind(this),
+      signRegistryEntry: this.signRegistryEntry.bind(this),
       userID: this.userID.bind(this),
     };
     this.parentConnection.localHandle().setMethods(methods);
