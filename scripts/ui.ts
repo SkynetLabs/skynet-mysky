@@ -11,9 +11,8 @@ import {
 } from "skynet-mysky-utils";
 import { SkynetClient } from "skynet-js";
 
-import { checkStoredSeed, saveSeed } from "../src/mysky";
+import { saveSeed } from "../src/mysky";
 import { defaultSeedDisplayProvider, loadPermissionsProvider } from "../src/provider";
-import { genKeyPairFromSeed } from "skynet-js";
 
 let submitted = false;
 const errorHolder = new ErrorHolder();
@@ -65,7 +64,6 @@ async function init() {
   });
   const methods = {
     requestLoginAccess,
-    userID,
   };
   parentConnection = await ChildHandshake(messenger, methods);
 }
@@ -192,16 +190,6 @@ async function launchSeedProvider(seedProviderUrl: string): Promise<[HTMLIFrameE
   );
 
   return [childFrame, connection];
-}
-
-async function userID(): Promise<string> {
-  const seed = checkStoredSeed();
-  if (!seed) {
-    throw new Error("Seed not found");
-  }
-
-  const { publicKey } = genKeyPairFromSeed(seed);
-  return publicKey;
 }
 
 async function catchError(errorMsg: string) {
