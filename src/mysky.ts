@@ -1,8 +1,8 @@
 import { ChildHandshake, WindowMessenger } from "post-me";
 import type { Connection } from "post-me";
 import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
-import { genKeyPairFromSeed, RegistryEntry, SkynetClient } from "skynet-js";
-import { loadPermissionsProvider } from "./provider";
+import { genKeyPairFromSeed, RegistryEntry, signEntry, SkynetClient } from "skynet-js";
+import { launchPermissionsProvider } from "./provider";
 
 export const mySkyDomain = "skynet-mysky.hns/";
 
@@ -41,8 +41,8 @@ export class MySky {
 
     // If seed was found, load the user's permission provider.
     if (seed) {
-      console.log("Seed found, calling loadPermissionsProvider");
-      permissionsProvider = loadPermissionsProvider(seed);
+      console.log("Seed found, calling launchPermissionsProvider");
+      permissionsProvider = launchPermissionsProvider(seed);
     }
 
     // Enable communication with connector in parent skapp.
@@ -131,7 +131,7 @@ export class MySky {
 
     // Sign the entry.
 
-    const signature = await this.client.registry.signEntry(privateKey, entry);
+    const signature = await signEntry(privateKey, entry);
     return signature;
   }
 

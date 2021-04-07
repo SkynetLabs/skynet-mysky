@@ -5,7 +5,7 @@ const defaultPermissionsProvider = "permissions.js";
 const permissionsProviderPreferencePath = "permissions-provider.json";
 export const defaultSeedDisplayProvider = "seed.html";
 
-export async function loadPermissionsProvider(seed: string): Promise<Connection> {
+export async function launchPermissionsProvider(seed: string): Promise<Connection> {
   // Derive the user.
   const { publicKey } = genKeyPairFromSeed(seed);
 
@@ -27,6 +27,7 @@ export async function loadPermissionsProvider(seed: string): Promise<Connection>
 
   // Load the worker.
 
+  // TODO: Return the worker and terminate it when not needed?
   const worker = new Worker(workerJsUrl);
   const messenger = new WorkerMessenger({ worker });
   // TODO: Pass custom handshake options?

@@ -4,7 +4,7 @@ import {
   createFullScreenIframe,
   defaultHandshakeAttemptsInterval,
   defaultHandshakeMaxAttempts,
-  ErrorHolder,
+  dispatchedErrorEvent,
   errorWindowClosed,
   monitorWindowError,
   Permission,
@@ -12,10 +12,9 @@ import {
 import { SkynetClient } from "skynet-js";
 
 import { saveSeed } from "../src/mysky";
-import { defaultSeedDisplayProvider, loadPermissionsProvider } from "../src/provider";
+import { defaultSeedDisplayProvider, launchPermissionsProvider } from "../src/provider";
 
 let submitted = false;
-const errorHolder = new ErrorHolder();
 let parentConnection: Connection | null = null;
 
 // ======
@@ -38,13 +37,13 @@ window.addEventListener("beforeunload", async function(event) {
   return null;
 });
 
-window.onerror = function (error: any) {
+window.onerror = async function (error: any) {
   console.log(error);
   if (parentConnection) {
     if (typeof error === "string") {
-      parentConnection.remoteHandle().call("catchError", error);
+      await parentConnection.remoteHandle().call("catchError", error);
     } else {
-      parentConnection.remoteHandle().call("catchError", error.type);
+      await parentConnection.remoteHandle().call("catchError", error.type);
     }
   }
 };
@@ -91,8 +90,9 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
 
   // Open the permissions provider.
 
-  console.log("Calling loadPermissionsProvider");
-  const permissionsProvider = await loadPermissionsProvider(seed);
+  // TODO: Call terminate() on the returned permissions worker.
+  console.log("Calling launchPermissionsProvider");
+  const permissionsProvider = await launchPermissionsProvider(seed);
 
   // Pass it the requested permissions.
 
@@ -116,7 +116,7 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
 async function runSeedProviderDisplay(seedProviderUrl: string): Promise<string> {
   // Add error listener.
 
-  const { promise: promiseError, controller: controllerError } = monitorWindowError(errorHolder);
+  const { promise: promiseError, controller: controllerError } = monitorWindowError();
 
   let seedFrame: HTMLIFrameElement;
   let seedConnection: Connection;
@@ -130,7 +130,8 @@ async function runSeedProviderDisplay(seedProviderUrl: string): Promise<string> 
     try {
       // Launch the full-screen iframe and connection.
 
-      [seedFrame, seedConnection] = await launchSeedProvider(seedProviderUrl);
+      seedFrame = await launchSeedProvider(seedProviderUrl);
+      seedConnection = await connectSeedProvider(seedFrame);
 
       // Call deriveRootSeed.
 
@@ -161,10 +162,14 @@ async function runSeedProviderDisplay(seedProviderUrl: string): Promise<string> 
     });
 }
 
-async function launchSeedProvider(seedProviderUrl: string): Promise<[HTMLIFrameElement, Connection]> {
+async function launchSeedProvider(seedProviderUrl: string): Promise<HTMLIFrameElement> {
   // Create the iframe. FULL SCREEN!
 
   const childFrame = createFullScreenIframe(seedProviderUrl, seedProviderUrl);
+  return childFrame;
+}
+
+async function connectSeedProvider(childFrame: HTMLIFrameElement): Promise<Connection> {
   const childWindow = childFrame.contentWindow!;
 
   // Complete handshake with Seed Provider Display window.
@@ -185,11 +190,12 @@ async function launchSeedProvider(seedProviderUrl: string): Promise<[HTMLIFrameE
     defaultHandshakeAttemptsInterval
   );
 
-  return [childFrame, connection];
+  return connection;
 }
 
 async function catchError(errorMsg: string) {
-  errorHolder.error = errorMsg;
+  const event = new CustomEvent(dispatchedErrorEvent, { detail: errorMsg });
+  window.dispatchEvent(event);
 }
 
 // ================
