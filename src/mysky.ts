@@ -4,12 +4,14 @@ import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "sk
 import { genKeyPairFromSeed, RegistryEntry, SkynetClient } from "skynet-js";
 import { loadPermissionsProvider } from "./provider";
 
+export const mySkyDomain = "skynet-mysky.hns/";
+
 const referrer = document.referrer;
 const seedStorageKey = "seed";
 
-export class MySky {
-  protected permissionsProvider?: Connection;
+let permissionsProvider: Promise<Connection> | null = null;
 
+export class MySky {
   // ============
   // Constructors
   // ============
@@ -26,12 +28,25 @@ export class MySky {
   }
 
   static async initialize(): Promise<MySky> {
+    console.log("Initializing...");
     if (typeof Storage == "undefined") {
       throw new Error("Browser does not support web storage");
     }
 
+    // Check for stored seed in localstorage.
+
+    console.log("Calling checkStoredSeed");
+    const seed = checkStoredSeed();
+
+    // If seed was found, load the user's permission provider.
+    if (seed) {
+      console.log("Seed found, calling loadPermissionsProvider");
+      permissionsProvider = loadPermissionsProvider(seed);
+    }
+
     // Enable communication with connector in parent skapp.
 
+    console.log("Making handshake");
     const messenger = new WindowMessenger({
       localWindow: window,
       remoteWindow: window.parent,
@@ -45,16 +60,8 @@ export class MySky {
 
     // Create MySky object.
 
+    console.log("Calling new MySky");
     const mySky = new MySky(client, parentConnection);
-
-    // Check for stored seed in localstorage.
-
-    const seed = checkStoredSeed();
-
-    // If seed was found, load the user's permission provider.
-    if (seed) {
-      mySky.permissionsProvider = await loadPermissionsProvider(seed);
-    }
 
     return mySky;
   }
@@ -73,12 +80,13 @@ export class MySky {
 
     // Permissions provider should have been loaded by now.
     // TODO: Should this be async?
-    if (!this.permissionsProvider) {
+    if (!permissionsProvider) {
       throw new Error("Permissions provider not loaded");
     }
 
     // Check given permissions with the permissions provider.
-    const permissionsResponse: CheckPermissionsResponse = await this.permissionsProvider
+    const connection = await permissionsProvider;
+    const permissionsResponse: CheckPermissionsResponse = await connection
       .remoteHandle()
       .call("checkPermissions", perms);
 
@@ -93,7 +101,7 @@ export class MySky {
   }
 
   async signRegistryEntry(entry: RegistryEntry, path: string): Promise<Uint8Array> {
-    if (!this.permissionsProvider) {
+    if (!permissionsProvider) {
       throw new Error("Permissions provider not loaded");
     }
 
@@ -101,7 +109,8 @@ export class MySky {
 
     // TODO: Support for signing hidden files.
     const perm = new Permission(referrer, path, PermCategory.Discoverable, PermType.Write);
-    const failedPermissions: Permission[] = await this.permissionsProvider
+    const connection = await permissionsProvider;
+    const failedPermissions: Permission[] = await connection
       .remoteHandle()
       .call("checkPermissions", [perm]);
     if (failedPermissions.length > 0) {

@@ -2,7 +2,7 @@ import { Connection, ParentHandshake, WorkerMessenger } from "post-me";
 import { genKeyPairFromSeed } from "skynet-js";
 
 const defaultPermissionsProvider = "permissions.js";
-const permissionsProviderPreferencePath = "skynet-mysky.hns/permissions-provider.json";
+const permissionsProviderPreferencePath = "permissions-provider.json";
 export const defaultSeedDisplayProvider = "seed.html";
 
 export async function loadPermissionsProvider(seed: string): Promise<Connection> {

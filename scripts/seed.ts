@@ -1,32 +1,19 @@
 import { ChildHandshake, Connection, WindowMessenger } from "post-me";
 import { SkynetClient } from "skynet-js";
-import { errorWindowClosed } from "skynet-mysky-utils";
 
 const uiSeedLoggedOut = document.getElementById("seed-logged-out")!;
 const uiSeedSignIn = document.getElementById("seed-sign-in")!;
 const uiSeedSignUp = document.getElementById("seed-sign-up")!;
 
 let readySeed = "";
-let submitted = false;
 let parentConnection: Connection | null = null;
 
 // ======
 // Events
 // ======
 
-// Event that is triggered when the window is closed.
-window.onbeforeunload = () => {
-  if (!submitted) {
-    if (parentConnection) {
-      // Send value to signify that the router was closed.
-      parentConnection.remoteHandle().call("catchError", errorWindowClosed);
-    }
-  }
-
-  return null;
-};
-
 window.onerror = function (error: any) {
+  console.log(error);
   if (parentConnection) {
     if (typeof error === "string") {
       parentConnection.remoteHandle().call("catchError", error);
@@ -64,13 +51,13 @@ window.onload = async () => {
   uiSeedSignUp.style.display = "block";
 };
 
-(window as any).signIn = async () => {
+(window as any).signIn = () => {
   const seedValue = (<HTMLInputElement>document.getElementById("signin-passphrase-text")).value;
 
   handleSeed(seedValue);
 };
 
-(window as any).signUp = async () => {
+(window as any).signUp = () => {
   const seedValue = (<HTMLInputElement>document.getElementById("signup-passphrase-text")).value;
 
   handleSeed(seedValue);

@@ -35,6 +35,7 @@ window.onbeforeunload = () => {
 };
 
 window.onerror = function (error: any) {
+  console.log(error);
   if (parentConnection) {
     if (typeof error === "string") {
       parentConnection.remoteHandle().call("catchError", error);
@@ -46,8 +47,8 @@ window.onerror = function (error: any) {
 
 // TODO: Wrap in a try-catch block? Does onerror handler catch thrown errors?
 // Code that runs on page load.
-window.onload = async () => {
-  await init();
+window.onload = () => {
+  init();
 };
 
 // ==========
@@ -59,7 +60,7 @@ async function init() {
 
   const messenger = new WindowMessenger({
     localWindow: window,
-    remoteWindow: window.parent,
+    remoteWindow: window.opener,
     remoteOrigin: "*",
   });
   const methods = {
@@ -72,22 +73,26 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
   // If we don't have a seed, show seed provider chooser.
 
   // TODO: We just use the default seed provider for now.
-  const seedProviderUrl = defaultSeedDisplayProvider;
+  const seedProviderUrl = `${window.location.hostname}/${defaultSeedDisplayProvider}`;
 
   // User has chosen seed provider, open seed provider display.
 
+  console.log("Calling runSeedProviderDisplay");
   const seed = await runSeedProviderDisplay(seedProviderUrl);
 
   // Save the seed in local storage.
 
+  console.log("Calling saveSeed");
   saveSeed(seed);
 
   // Open the permissions provider.
 
+  console.log("Calling loadPermissionsProvider");
   const permissionsProvider = await loadPermissionsProvider(seed);
 
   // Pass it the requested permissions.
 
+  console.log("Calling checkPermissions on permissions provider");
   const permissionsResponse: CheckPermissionsResponse = await permissionsProvider
     .remoteHandle()
     .call("checkPermissions", permissions);
@@ -100,6 +105,7 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
 
   // Return remaining failed permissions to skapp.
 
+  console.log("Returning permissions response");
   return [true, permissionsResponse];
 }
 
@@ -110,17 +116,10 @@ async function runSeedProviderDisplay(seedProviderUrl: string): Promise<string> 
 
   let seedFrame: HTMLIFrameElement;
   let seedConnection: Connection;
-  let seed: string = "";
 
-  const promise: Promise<void> = new Promise(async (resolve, reject) => {
+  const promise: Promise<string> = new Promise(async (resolve, reject) => {
     // Make this promise run in the background and reject on window close or any errors.
     promiseError.catch((err: string) => {
-      if (err === errorWindowClosed) {
-        // Resolve without updating the pending permissions.
-        resolve();
-        return;
-      }
-
       reject(err);
     });
 
@@ -132,17 +131,15 @@ async function runSeedProviderDisplay(seedProviderUrl: string): Promise<string> 
       // Call deriveRootSeed.
 
       // TODO: This should be a dual-promise that also calls ping() on an interval and rejects if no response was found in a given amount of time.
-      seed = await seedConnection.remoteHandle().call("deriveRootSeed");
+      const seed = await seedConnection.remoteHandle().call("getRootSeed");
 
-      // Close the iframe.
-
-      seedFrame.parentNode!.removeChild(seedFrame);
+      resolve(seed);
     } catch (err) {
       reject(err);
     }
   });
 
-  await promise
+  return await promise
     .catch((err) => {
       throw err;
     })
@@ -158,11 +155,6 @@ async function runSeedProviderDisplay(seedProviderUrl: string): Promise<string> 
       // Clean up the event listeners and promises.
       controllerError.cleanup();
     });
-
-  if (!seed) {
-    throw new Error("Seed was not set");
-  }
-  return seed;
 }
 
 async function launchSeedProvider(seedProviderUrl: string): Promise<[HTMLIFrameElement, Connection]> {
