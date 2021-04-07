@@ -1,7 +1,7 @@
 // Make Typescript happy, requires "lib": ["webworker"].
 declare const self: DedicatedWorkerGlobalScope;
 
-import { ChildHandshake, WorkerMessenger } from 'post-me';
+import { ChildHandshake, WorkerMessenger } from "post-me";
 import { CheckPermissionsResponse, Permission } from "skynet-mysky-utils";
 
 async function checkPermissions(perms: Permission[]): Promise<CheckPermissionsResponse> {
@@ -16,12 +16,12 @@ async function checkPermissions(perms: Permission[]): Promise<CheckPermissionsRe
     }
   }
 
-  return { grantedPermissions, failedPermissions};
+  return { grantedPermissions, failedPermissions };
 }
 
 const methods = {
   checkPermissions,
-}
+};
 
-const messenger = new WorkerMessenger({worker: self});
+const messenger = new WorkerMessenger({ worker: self });
 ChildHandshake(messenger, methods);

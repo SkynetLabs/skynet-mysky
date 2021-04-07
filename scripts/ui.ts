@@ -1,5 +1,14 @@
 import { ChildHandshake, Connection, ParentHandshake, WindowMessenger } from "post-me";
-import { CheckPermissionsResponse, createFullScreenIframe, defaultHandshakeAttemptsInterval, defaultHandshakeMaxAttempts, ErrorHolder, errorWindowClosed, monitorWindowError, Permission } from "skynet-mysky-utils";
+import {
+  CheckPermissionsResponse,
+  createFullScreenIframe,
+  defaultHandshakeAttemptsInterval,
+  defaultHandshakeMaxAttempts,
+  ErrorHolder,
+  errorWindowClosed,
+  monitorWindowError,
+  Permission,
+} from "skynet-mysky-utils";
 import { SkynetClient } from "skynet-js";
 
 import { checkStoredSeed, saveSeed } from "../src/mysky";
@@ -81,7 +90,9 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
 
   // Pass it the requested permissions.
 
-  const permissionsResponse: CheckPermissionsResponse = await permissionsProvider.remoteHandle().call("checkPermissions", permissions);
+  const permissionsResponse: CheckPermissionsResponse = await permissionsProvider
+    .remoteHandle()
+    .call("checkPermissions", permissions);
 
   // TODO: If failed permissions, open the permissions provider display.
 

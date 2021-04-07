@@ -77,7 +77,9 @@ export class MySky {
     }
 
     // Check given permissions with the permissions provider.
-    const permissionsResponse: CheckPermissionsResponse = await this.permissionsProvider.remoteHandle().call("checkPermissions", perms);
+    const permissionsResponse: CheckPermissionsResponse = await this.permissionsProvider
+      .remoteHandle()
+      .call("checkPermissions", perms);
 
     return [true, permissionsResponse];
   }
@@ -98,7 +100,9 @@ export class MySky {
 
     // TODO: Support for signing hidden files.
     const perm = new Permission(referrer, path, PermCategory.Discoverable, PermType.Write);
-    const failedPermissions: Permission[] = await this.permissionsProvider.remoteHandle().call("checkPermissions", [perm]);
+    const failedPermissions: Permission[] = await this.permissionsProvider
+      .remoteHandle()
+      .call("checkPermissions", [perm]);
     if (failedPermissions.length > 0) {
       throw new Error("Permission was not granted");
     }
@@ -137,7 +141,6 @@ export class MySky {
   // ================
   // Internal Methods
   // ================
-
 
   // ==============
   // Helper Methods
