@@ -2,6 +2,11 @@ const path = require("path");
 
 const name = "permissions";
 
+// define preprocessor variables
+const opts = {
+   ENV: process.env.SKYNET_MYSKY_ENV || 'production',
+};
+
 module.exports = {
   entry: `./scripts/${name}.ts`,
   mode: "production",
@@ -10,8 +15,11 @@ module.exports = {
     rules: [
       {
         test: /\.tsx?$/,
-        loader: "ts-loader",
-        options: { configFile: "tsconfig.scripts.json" },
+        exclude: /node_modules/,
+        use: [
+          { loader: "ifdef-loader", options: opts },
+          { loader: "ts-loader", options: { configFile: "tsconfig.scripts.json" } },
+        ],
         include: [path.resolve(__dirname, `scripts/${name}.ts`)],
       },
     ],

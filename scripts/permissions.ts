@@ -15,6 +15,10 @@ async function checkPermissions(perms: Permission[]): Promise<CheckPermissionsRe
   const grantedPermissions = [];
   const failedPermissions = [];
 
+  // If in dev mode, allow all permissions.
+  /// #if ENV == 'dev'
+  grantedPermissions.push(...perms);
+  /// #else
   for (let perm of perms) {
     if (perm.requestor === perm.path.split("/")[0]) {
       grantedPermissions.push(perm);
@@ -22,6 +26,7 @@ async function checkPermissions(perms: Permission[]): Promise<CheckPermissionsRe
       failedPermissions.push(perm);
     }
   }
+  /// #endif
 
   return { grantedPermissions, failedPermissions };
 }

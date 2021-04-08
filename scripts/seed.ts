@@ -1,9 +1,13 @@
 import { ChildHandshake, Connection, WindowMessenger } from "post-me";
 import { SkynetClient } from "skynet-js";
 
+import { dictionary } from "../src/dictionary";
+
 const uiSeedLoggedOut = document.getElementById("seed-logged-out")!;
 const uiSeedSignIn = document.getElementById("seed-sign-in")!;
 const uiSeedSignUp = document.getElementById("seed-sign-up")!;
+
+const SEED_LENGTH = 14;
 
 let readySeed = "";
 let parentConnection: Connection | null = null;
@@ -48,6 +52,10 @@ window.onload = async () => {
 
 (window as any).goToSignUp = () => {
   setAllSeedContainersInvisible();
+
+  const generatedSeed = generateSeed(SEED_LENGTH);
+  (<HTMLInputElement>document.getElementById("signup-passphrase-text")).value = generatedSeed;
+
   uiSeedSignUp.style.display = "block";
 };
 
@@ -100,6 +108,19 @@ async function getRootSeed(): Promise<string> {
 
 function handleSeed(seed: string) {
   readySeed = seed;
+}
+
+function generateSeed(length: number): string {
+  const array = new Uint32Array(length);
+  window.crypto.getRandomValues(array);
+
+  const words = new Array(length);
+  for (let i = 0; i < array.length; i++) {
+    const wordIndex = array[i] % dictionary.length;
+    words[i] = dictionary[wordIndex];
+  }
+
+  return words.join(" ");
 }
 
 // ================
