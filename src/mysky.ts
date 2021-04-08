@@ -94,11 +94,14 @@ export class MySky {
     return [true, permissionsResponse];
   }
 
+  // TODO
   /**
    * Logs out of MySky.
    */
   async logout(): Promise<void> {
-    // TODO
+    // Clear the stored seed.
+
+    clearStoredSeed();
   }
 
   async signRegistryEntry(entry: RegistryEntry, path: string): Promise<Uint8Array> {
@@ -170,6 +173,15 @@ export function checkStoredSeed(): string | null {
   }
 
   return localStorage.getItem(seedStorageKey);
+}
+
+export function clearStoredSeed(): void {
+  if (!localStorage) {
+    console.log("WARNING: localStorage disabled");
+    return;
+  }
+
+  localStorage.removeItem(seedStorageKey);
 }
 
 /**

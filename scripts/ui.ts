@@ -22,14 +22,14 @@ let parentConnection: Connection | null = null;
 // ======
 
 // Event that is triggered when the window is closed by the user.
-window.addEventListener("beforeunload", async function(event) {
+window.addEventListener("beforeunload", function(event) {
   // Cancel the event
   event.preventDefault();
 
   if (!submitted) {
     if (parentConnection) {
       // Send value to signify that the router was closed.
-      await parentConnection.remoteHandle().call("catchError", errorWindowClosed);
+      parentConnection.remoteHandle().call("catchError", errorWindowClosed);
     }
   }
 
@@ -37,13 +37,13 @@ window.addEventListener("beforeunload", async function(event) {
   return null;
 });
 
-window.onerror = async function (error: any) {
+window.onerror = function (error: any) {
   console.log(error);
   if (parentConnection) {
     if (typeof error === "string") {
-      await parentConnection.remoteHandle().call("catchError", error);
+      parentConnection.remoteHandle().call("catchError", error);
     } else {
-      await parentConnection.remoteHandle().call("catchError", error.type);
+      parentConnection.remoteHandle().call("catchError", error.type);
     }
   }
 };

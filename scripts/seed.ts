@@ -12,13 +12,13 @@ let parentConnection: Connection | null = null;
 // Events
 // ======
 
-window.onerror = async function (error: any) {
+window.onerror = function (error: any) {
   console.log(error);
   if (parentConnection) {
     if (typeof error === "string") {
-      await parentConnection.remoteHandle().call("catchError", error);
+      parentConnection.remoteHandle().call("catchError", error);
     } else {
-      await parentConnection.remoteHandle().call("catchError", error.type);
+      parentConnection.remoteHandle().call("catchError", error.type);
     }
   }
 };

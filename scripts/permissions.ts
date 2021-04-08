@@ -2,7 +2,10 @@
 declare const self: DedicatedWorkerGlobalScope;
 
 import { ChildHandshake, WorkerMessenger } from "post-me";
+import type { Connection } from "post-me";
 import { CheckPermissionsResponse, Permission } from "skynet-mysky-utils";
+
+let parentConnection: Connection | null = null;
 
 // ==========
 // Core Logic
@@ -31,21 +34,22 @@ const methods = {
   checkPermissions,
 };
 
-const messenger = new WorkerMessenger({ worker: self });
-const parentConnection = ChildHandshake(messenger, methods);
+(async () => {
+  const messenger = new WorkerMessenger({ worker: self });
+  parentConnection = await ChildHandshake(messenger, methods);
+})();
 
 // ======
 // Events
 // ======
 
-self.onerror = async function (error: any) {
+self.onerror = function (error: any) {
   console.log(error);
   if (parentConnection) {
-    const connection = await parentConnection;
     if (typeof error === "string") {
-      await connection.remoteHandle().call("catchError", error);
+      parentConnection.remoteHandle().call("catchError", error);
     } else {
-      await connection.remoteHandle().call("catchError", error.type);
+      parentConnection.remoteHandle().call("catchError", error.type);
     }
   }
 };
