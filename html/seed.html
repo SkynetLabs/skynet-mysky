@@ -13,23 +13,31 @@
 
       <div id="seed-logged-out" class="seed-screen center">
         <h1>Logged Out</h1>
+        <br>
         <div><b>Sign in</b> with your passphrase, or <b>sign up</b> for a new account.</div>
+        <br>
         <button id="button-logged-out-sign-in" class="btn" onclick="window.goToSignIn()">Sign in</button>
         <button id="button-logged-out-sign-up" class="btn" onclick="window.goToSignUp()">Sign up</button>
       </div>
 
       <div id="seed-sign-in" class="seed-screen center">
         <h1>Sign In</h1>
+        <br>
         <div>Enter your passphrase:</div>
         <div><input type="text" id="signin-passphrase-text" name="passphrase-text" width+"100%"/></div>
+        <br>
         <button id="button-back" class="btn" onclick="window.goToLoggedOut()">Back</button>
         <button id="button-sign-in" class="btn" onclick="window.signIn()">Sign In</button>
       </div>
 
       <div id="seed-sign-up" class="seed-screen center">
         <h1>Sign Up</h1>
+        <br>
         <div>Passphrase:</div>
         <div><input type="text" id="signup-passphrase-text" name="passphrase-text" width+"100%" readonly/></div>
+        <br>
+        <div>Please keep your passphrase secret. You cannot retrieve your account if you lose it.</div>
+        <br>
         <button id="button-back" class="btn" onclick="window.goToLoggedOut()">Back</button>
         <button id="button-sign-up" class="btn" onclick="window.signUp()">Sign Up</button>
       </div>

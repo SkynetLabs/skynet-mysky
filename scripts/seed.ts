@@ -62,6 +62,10 @@ window.onload = async () => {
 (window as any).signIn = () => {
   const seedValue = (<HTMLInputElement>document.getElementById("signin-passphrase-text")).value;
 
+  if (seedValue === "") {
+    return;
+  }
+
   handleSeed(seedValue);
 };
 

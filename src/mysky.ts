@@ -11,6 +11,21 @@ const seedStorageKey = "seed";
 
 let permissionsProvider: Promise<Connection> | null = null;
 
+// Set up a listener for the storage event. If the seed is set in the UI, it should trigger a load of the permissions provider.
+window.addEventListener("storage", ({ key, newValue }: StorageEvent) => {
+  if (!key || key !== seedStorageKey) {
+    return;
+  }
+  if (!newValue) {
+    // Seed was removed.
+    // TODO: Unload the permissions provider.
+  }
+
+  if (!permissionsProvider) {
+    permissionsProvider = launchPermissionsProvider(key);
+  }
+});
+
 export class MySky {
   // ============
   // Constructors
@@ -105,6 +120,15 @@ export class MySky {
   }
 
   async signRegistryEntry(entry: RegistryEntry, path: string): Promise<Uint8Array> {
+    // Get the seed.
+
+    const seed = checkStoredSeed();
+    if (!seed) {
+      throw new Error("User seed not found");
+    }
+
+    // Check for the permissions provider.
+
     if (!permissionsProvider) {
       throw new Error("Permissions provider not loaded");
     }
@@ -119,13 +143,6 @@ export class MySky {
       .call("checkPermissions", [perm]);
     if (failedPermissions.length > 0) {
       throw new Error("Permission was not granted");
-    }
-
-    // Get the seed.
-
-    const seed = checkStoredSeed();
-    if (!seed) {
-      throw new Error("User seed not found");
     }
 
     // Get the private key.
