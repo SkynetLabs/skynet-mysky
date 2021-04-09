@@ -13,6 +13,7 @@ import { SkynetClient } from "skynet-js";
 
 import { saveSeed } from "../src/mysky";
 import { defaultSeedDisplayProvider, launchPermissionsProvider } from "../src/provider";
+import { log } from "../src/util";
 
 let submitted = false;
 let parentConnection: Connection | null = null;
@@ -80,23 +81,23 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
 
   // User has chosen seed provider, open seed provider display.
 
-  console.log("Calling runSeedProviderDisplay");
+  log("Calling runSeedProviderDisplay");
   const seed = await runSeedProviderDisplay(seedProviderUrl);
 
   // Save the seed in local storage.
 
-  console.log("Calling saveSeed");
+  log("Calling saveSeed");
   saveSeed(seed);
 
   // Open the permissions provider.
 
   // TODO: Call terminate() on the returned permissions worker.
-  console.log("Calling launchPermissionsProvider");
+  log("Calling launchPermissionsProvider");
   const permissionsProvider = await launchPermissionsProvider(seed);
 
   // Pass it the requested permissions.
 
-  console.log("Calling checkPermissions on permissions provider");
+  log("Calling checkPermissions on permissions provider");
   const permissionsResponse: CheckPermissionsResponse = await permissionsProvider
     .remoteHandle()
     .call("checkPermissions", permissions);
@@ -109,7 +110,7 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
 
   // Return remaining failed permissions to skapp.
 
-  console.log("Returning permissions response");
+  log("Returning permissions response");
   return [true, permissionsResponse];
 }
 

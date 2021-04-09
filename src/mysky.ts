@@ -3,6 +3,7 @@ import type { Connection } from "post-me";
 import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
 import { genKeyPairFromSeed, RegistryEntry, signEntry, SkynetClient } from "skynet-js";
 import { launchPermissionsProvider } from "./provider";
+import { log } from "./util";
 
 export const mySkyDomain = "skynet-mysky.hns/";
 
@@ -44,25 +45,25 @@ export class MySky {
   }
 
   static async initialize(): Promise<MySky> {
-    console.log("Initializing...");
+    log("Initializing...");
     if (typeof Storage == "undefined") {
       throw new Error("Browser does not support web storage");
     }
 
     // Check for stored seed in localstorage.
 
-    console.log("Calling checkStoredSeed");
+    log("Calling checkStoredSeed");
     const seed = checkStoredSeed();
 
     // If seed was found, load the user's permission provider.
     if (seed) {
-      console.log("Seed found, calling launchPermissionsProvider");
+      log("Seed found, calling launchPermissionsProvider");
       permissionsProvider = launchPermissionsProvider(seed);
     }
 
     // Enable communication with connector in parent skapp.
 
-    console.log("Making handshake");
+    log("Making handshake");
     const messenger = new WindowMessenger({
       localWindow: window,
       remoteWindow: window.parent,
@@ -76,7 +77,7 @@ export class MySky {
 
     // Create MySky object.
 
-    console.log("Calling new MySky");
+    log("Calling new MySky");
     const mySky = new MySky(client, parentConnection);
 
     return mySky;
