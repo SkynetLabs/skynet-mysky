@@ -4,7 +4,7 @@ const name = "permissions";
 
 // define preprocessor variables
 const opts = {
-   ENV: process.env.SKYNET_MYSKY_ENV || 'production',
+  ENV: process.env.SKYNET_MYSKY_ENV || "production",
 };
 
 module.exports = {

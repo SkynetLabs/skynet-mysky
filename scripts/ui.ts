@@ -23,7 +23,7 @@ let parentConnection: Connection | null = null;
 // ======
 
 // Event that is triggered when the window is closed by the user.
-window.addEventListener("beforeunload", function(event) {
+window.addEventListener("beforeunload", function (event) {
   // Cancel the event
   event.preventDefault();
 

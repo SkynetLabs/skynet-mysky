@@ -15,6 +15,6 @@ import { log } from "./util";
   } catch (err) {
     console.log(err);
   }
-})().catch(err => {
+})().catch((err) => {
   console.log(err);
-})
+});

@@ -139,9 +139,7 @@ export class MySky {
     // TODO: Support for signing hidden files.
     const perm = new Permission(referrer, path, PermCategory.Discoverable, PermType.Write);
     const connection = await permissionsProvider;
-    const failedPermissions: Permission[] = await connection
-      .remoteHandle()
-      .call("checkPermissions", [perm]);
+    const failedPermissions: Permission[] = await connection.remoteHandle().call("checkPermissions", [perm]);
     if (failedPermissions.length > 0) {
       throw new Error("Permission was not granted");
     }

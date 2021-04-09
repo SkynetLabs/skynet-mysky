@@ -1,5 +1,6 @@
 import { Connection, ParentHandshake, WorkerMessenger } from "post-me";
 import { genKeyPairFromSeed } from "skynet-js";
+import { defaultHandshakeAttemptsInterval, defaultHandshakeMaxAttempts } from "skynet-mysky-utils";
 
 const defaultPermissionsProvider = "permissions.js";
 const permissionsProviderPreferencePath = "permissions-provider.json";
@@ -31,5 +32,5 @@ export async function launchPermissionsProvider(seed: string): Promise<Connectio
   const worker = new Worker(workerJsUrl);
   const messenger = new WorkerMessenger({ worker });
   // TODO: Pass custom handshake options?
-  return await ParentHandshake(messenger);
+  return await ParentHandshake(messenger, {}, defaultHandshakeMaxAttempts, defaultHandshakeAttemptsInterval);
 }
