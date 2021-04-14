@@ -79,6 +79,9 @@ window.onload = async () => {
 // Core Logic
 // ==========
 
+/**
+ *
+ */
 async function init() {
   // Establish handshake with parent skapp.
 
@@ -94,7 +97,7 @@ async function init() {
 }
 
 /**
- * Checks for the ready seed at an interval.
+ * Called by MySky UI. Checks for the ready seed at an interval.
  */
 async function getRootSeed(): Promise<string> {
   const checkInterval = 100;
@@ -110,10 +113,16 @@ async function getRootSeed(): Promise<string> {
   });
 }
 
+/**
+ * @param seed
+ */
 function handleSeed(seed: string) {
   readySeed = seed;
 }
 
+/**
+ * @param length
+ */
 function generateSeed(length: number): string {
   const array = new Uint32Array(length);
   window.crypto.getRandomValues(array);

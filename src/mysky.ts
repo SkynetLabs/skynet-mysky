@@ -150,7 +150,7 @@ export class MySky {
 
     // Sign the entry.
 
-    const signature = await signEntry(privateKey, entry);
+    const signature = await signEntry(privateKey, entry, true);
     return signature;
   }
 
@@ -191,6 +191,9 @@ export function checkStoredSeed(): string | null {
   return localStorage.getItem(seedStorageKey);
 }
 
+/**
+ *
+ */
 export function clearStoredSeed(): void {
   if (!localStorage) {
     console.log("WARNING: localStorage disabled");
