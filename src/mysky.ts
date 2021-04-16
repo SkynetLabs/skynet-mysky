@@ -9,6 +9,7 @@ export const mySkyDomain = "skynet-mysky.hns/";
 
 const referrer = document.referrer;
 const seedStorageKey = "seed";
+const MYSKY_SEED_SALT = ":mysky-dev-derivation-831597";
 
 let permissionsProvider: Promise<Connection> | null = null;
 
@@ -188,7 +189,18 @@ export function checkStoredSeed(): string | null {
     return null;
   }
 
-  return localStorage.getItem(seedStorageKey);
+  let seed = localStorage.getItem(seedStorageKey);
+
+  // If in dev mode, make sure the seed is salted.
+  /// #if ENV == 'dev'
+  if (seed && !seed.endsWith(MYSKY_SEED_SALT)) {
+    // Found a legacy unsalted seed in dev mode, re-save it so that it is salted.
+    saveSeed(seed);
+    seed = saltSeed(seed);
+  }
+  /// #endif
+
+  return seed;
 }
 
 /**
@@ -204,7 +216,8 @@ export function clearStoredSeed(): void {
 }
 
 /**
- * Stores the root seed in local storage.
+ * Stores the root seed in local storage. The seed should only ever be used by retrieving it from storage.
+ * NOTE: If ENV == 'dev' the seed is salted before storage.
  *
  * @param seed - The root seed.
  */
@@ -214,5 +227,17 @@ export function saveSeed(seed: string): void {
     return;
   }
 
+  // If in dev mode, salt the seed.
+  /// #if ENV == 'dev'
+  seed = saltSeed(seed);
+  /// #endif
+
   localStorage.setItem(seedStorageKey, seed);
+}
+
+/**
+ * @param seed
+ */
+function saltSeed(seed: string): string {
+  return seed + MYSKY_SEED_SALT;
 }
