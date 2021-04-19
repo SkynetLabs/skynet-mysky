@@ -1,5 +1,10 @@
 const path = require("path");
 
+// define preprocessor variables
+const opts = {
+  ENV: process.env.SKYNET_MYSKY_ENV || "production",
+};
+
 module.exports = {
   entry: "./src/index.ts",
   mode: "production",
@@ -9,8 +14,11 @@ module.exports = {
     rules: [
       {
         test: /\.tsx?$/,
-        use: "ts-loader",
         exclude: /node_modules/,
+        use: [
+          { loader: "ifdef-loader", options: opts },
+          { loader: "ts-loader" },
+        ],
       },
     ],
   },

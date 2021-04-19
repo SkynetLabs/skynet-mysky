@@ -10,7 +10,7 @@
   "scripts": {
     "build": "./build",
     "build-dev": "SKYNET_MYSKY_ENV=dev ./build",
-    "lint:eslint": "eslint --ext .ts src",
+    "lint:eslint": "eslint --ext .ts src scripts test",
     "lint:tsc": "tsc --noemit && tsc --project tsconfig.scripts.json --noemit",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
