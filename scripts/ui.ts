@@ -18,6 +18,11 @@ import { log } from "../src/util";
 let submitted = false;
 let parentConnection: Connection | null = null;
 
+let dev = false;
+/// #if ENV == 'dev'
+dev = true;
+/// #endif
+
 // ======
 // Events
 // ======
@@ -100,7 +105,7 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
   log("Calling checkPermissions on permissions provider");
   const permissionsResponse: CheckPermissionsResponse = await permissionsProvider
     .remoteHandle()
-    .call("checkPermissions", permissions);
+    .call("checkPermissions", permissions, dev);
 
   // TODO: If failed permissions, open the permissions provider display.
 
@@ -122,6 +127,7 @@ async function runSeedProviderDisplay(seedProviderUrl: string): Promise<string> 
   let seedFrame: HTMLIFrameElement;
   let seedConnection: Connection;
 
+  // eslint-disable-next-line no-async-promise-executor
   const promise: Promise<string> = new Promise(async (resolve, reject) => {
     // Make this promise run in the background and reject on window close or any errors.
     promiseError.catch((err: string) => {
