@@ -88,6 +88,7 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
 
   log("Calling runSeedProviderDisplay");
   const seed = await runSeedProviderDisplay(seedProviderUrl);
+  const seedFound = true;
 
   // Save the seed in local storage.
 
@@ -116,7 +117,7 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
   // Return remaining failed permissions to skapp.
 
   log("Returning permissions response");
-  return [true, permissionsResponse];
+  return [seedFound, permissionsResponse];
 }
 
 async function runSeedProviderDisplay(seedProviderUrl: string): Promise<string> {
@@ -140,7 +141,7 @@ async function runSeedProviderDisplay(seedProviderUrl: string): Promise<string> 
       seedFrame = await launchSeedProvider(seedProviderUrl);
       seedConnection = await connectSeedProvider(seedFrame);
 
-      // Call deriveRootSeed.
+      // Call getRootSeed.
 
       // TODO: This should be a dual-promise that also calls ping() on an interval and rejects if no response was found in a given amount of time.
       const seed = await seedConnection.remoteHandle().call("getRootSeed");

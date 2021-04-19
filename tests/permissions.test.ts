@@ -2,7 +2,7 @@ import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "sk
 import { checkPermissions } from "../scripts/permissions";
 
 describe("default checkPermissions", () => {
-  const perm1 = new Permission("app.hns", "app.hns", PermCategory.Discoverable, PermType.Read);
+  const perm1 = new Permission("app.hns/", "app.hns", PermCategory.Discoverable, PermType.Read);
   const perm2 = new Permission("app.hns", "app.hns/path", PermCategory.Discoverable, PermType.Read);
   const perm3 = new Permission("app.hns", "dac.hns", PermCategory.Discoverable, PermType.Read);
   const perms = [

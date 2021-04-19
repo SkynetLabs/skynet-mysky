@@ -138,10 +138,12 @@ export class MySky {
     // Check with the permissions provider that we have permission for this request.
 
     // TODO: Support for signing hidden files.
-    const perm = new Permission(referrer, path, PermCategory.Discoverable, PermType.Write);
+    const referrerDomain = await this.client.extractDomain(referrer);
+    const perm = new Permission(referrerDomain, path, PermCategory.Discoverable, PermType.Write);
+    log(`Requesting permission: ${JSON.stringify(perm)}`);
     const connection = await permissionsProvider;
-    const failedPermissions: Permission[] = await connection.remoteHandle().call("checkPermissions", [perm]);
-    if (failedPermissions.length > 0) {
+    const resp: CheckPermissionsResponse = await connection.remoteHandle().call("checkPermissions", [perm]);
+    if (resp.failedPermissions.length > 0) {
       throw new Error("Permission was not granted");
     }
 

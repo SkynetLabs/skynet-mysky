@@ -20,7 +20,9 @@ export async function checkPermissions(perms: Permission[], dev = false): Promis
     grantedPermissions.push(...perms);
   } else {
     for (let perm of perms) {
-      if (perm.requestor === perm.path.split("/")[0]) {
+      const requestor = trimSuffix(perm.requestor, "/");
+      const path = perm.path.split("/")[0];
+      if (requestor === path) {
         grantedPermissions.push(perm);
       } else {
         failedPermissions.push(perm);
@@ -58,3 +60,28 @@ self.onerror = function (error: any) {
     }
   }
 };
+
+// =======
+// Helpers
+// =======
+
+/**
+ * Removes a suffix from the end of the string.
+ *
+ * @param str - The string to process.
+ * @param suffix - The suffix to remove.
+ * @param [limit] - Maximum amount of times to trim. No limit by default.
+ * @returns - The processed string.
+ */
+export function trimSuffix(str: string, suffix: string, limit?: number): string {
+  while (str.endsWith(suffix)) {
+    if (limit !== undefined && limit <= 0) {
+      break;
+    }
+    str = str.substring(0, str.length - suffix.length);
+    if (limit) {
+      limit -= 1;
+    }
+  }
+  return str;
+}
