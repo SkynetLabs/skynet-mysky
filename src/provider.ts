@@ -1,12 +1,17 @@
 import { Connection, ParentHandshake, WorkerMessenger } from "post-me";
 import { genKeyPairFromSeed } from "skynet-js";
-import { defaultHandshakeAttemptsInterval, defaultHandshakeMaxAttempts } from "skynet-mysky-utils";
+import { defaultHandshakeAttemptsInterval, defaultHandshakeMaxAttempts, ensureUrl } from "skynet-mysky-utils";
 
-const defaultPermissionsProvider = "permissions.js";
+export const relativePermissionsWorkerUrl = "permissions.js";
+export const relativePermissionsDisplayUrl = "permissions-display.html";
+export const defaultSeedDisplayProvider = "seed-display.html";
+
 const permissionsProviderPreferencePath = "permissions-provider.json";
-export const defaultSeedDisplayProvider = "seed.html";
 
-export async function launchPermissionsProvider(seed: string): Promise<Connection> {
+/**
+ * Tries to get the saved permissions provider preference, returning the default provider if not found.
+ */
+export async function getPermissionsProviderUrl(seed: string): Promise<string> {
   // Derive the user.
   const { publicKey } = genKeyPairFromSeed(seed);
 
@@ -16,15 +21,16 @@ export async function launchPermissionsProvider(seed: string): Promise<Connectio
   const preference: string | null = null;
   // const { preference } = this.getJSONHidden(permissionsProviderPreferencePath);
 
-  // If no saved preference, use the default permissions provider.
+  return ensureUrl(window.location.hostname);
+}
+
+export async function launchPermissionsProvider(seed: string): Promise<Connection> {
+  console.log("Entered launchPermissionsProvider");
+
+  const permissionsProviderUrl = await getPermissionsProviderUrl(seed);
 
   // NOTE: This URL must obey the same-origin policy. If not the default permissions provider, it can be a base64 skylink on the current origin.
-  let workerJsUrl;
-  if (!preference) {
-    workerJsUrl = defaultPermissionsProvider;
-  } else {
-    workerJsUrl = preference;
-  }
+  const workerJsUrl = `${permissionsProviderUrl}/${relativePermissionsWorkerUrl}`;
 
   // Load the worker.
 

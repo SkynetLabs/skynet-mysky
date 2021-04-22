@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Default Permissions Provider</title>
+    <link rel="stylesheet" href="assets/style.css" />
+  </head>
+
+  <body>
+    <div class="wrapper">
+      <h1>Permissions Requested</h1>
+      The application is requesting the following permissions which could not be automatically granted:
+      <br />
+
+      <div id="permissions-checkboxes">
+        <!-- <input type="checkbox" name="permissions-checkbox" value="1">Domain [domain] can Read Discoverable files at [data path]<br/> -->
+        <!-- <input type="checkbox" name="permissions-checkbox" value="1">Domain [domain] can Write Discoverable files at [data path]<br/> -->
+      </div>
+
+      <button id="button-permissions-uncheck-all" class="btn" onclick="window.uncheckAll()">Uncheck All</button>
+      <button id="button-permissions-check-all" class="btn" onclick="window.checkAll()">Check All</button>
+      <br />
+
+      <button id="button-permissions-submit" class="btn" onclick="window.submit()">Submit</button>
+    </div>
+
+    <script async src="permissions-display.js"></script>
+  </body>
+</html>

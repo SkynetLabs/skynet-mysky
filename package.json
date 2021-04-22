@@ -10,7 +10,7 @@
   "scripts": {
     "build": "./build",
     "build-dev": "SKYNET_MYSKY_ENV=dev ./build",
-    "lint:eslint": "eslint --ext .ts src scripts test",
+    "lint:eslint": "eslint --ext .ts src scripts tests",
     "lint:tsc": "tsc --noemit && tsc --project tsconfig.scripts.json --noemit",
     "test": "jest"
   },
@@ -40,6 +40,7 @@
     ]
   },
   "dependencies": {
+    "idb-keyval": "^5.0.5",
     "post-me": "^0.4.5",
     "skynet-js": "^4.0.2-beta",
     "skynet-mysky-utils": "^0.1.2",

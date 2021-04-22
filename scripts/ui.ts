@@ -12,16 +12,18 @@ import {
 import { SkynetClient } from "skynet-js";
 
 import { saveSeed } from "../src/mysky";
-import { defaultSeedDisplayProvider, launchPermissionsProvider } from "../src/provider";
+import {
+  getPermissionsProviderUrl,
+  relativePermissionsDisplayUrl,
+  defaultSeedDisplayProvider,
+  launchPermissionsProvider,
+} from "../src/provider";
 import { log } from "../src/util";
 
-let submitted = false;
 let parentConnection: Connection | null = null;
 
+// Set value of dev on load.
 let dev = false;
-/// #if ENV == 'dev'
-dev = true;
-/// #endif
 
 // ======
 // Events
@@ -32,11 +34,9 @@ window.addEventListener("beforeunload", function (event) {
   // Cancel the event
   event.preventDefault();
 
-  if (!submitted) {
-    if (parentConnection) {
-      // Send value to signify that the router was closed.
-      parentConnection.remoteHandle().call("catchError", errorWindowClosed);
-    }
+  if (parentConnection) {
+    // Send value to signify that the router was closed.
+    parentConnection.remoteHandle().call("catchError", errorWindowClosed);
   }
 
   window.close();
@@ -57,12 +57,16 @@ window.onerror = function (error: any) {
 // TODO: Wrap in a try-catch block? Does onerror handler catch thrown errors?
 // Code that runs on page load.
 window.onload = () => {
+  /// #if ENV == 'dev'
+  dev = true;
+  /// #endif
+
   init();
 };
 
-// ==========
-// Core logic
-// ==========
+// ==============
+// Initialization
+// ==============
 
 async function init() {
   // Establish handshake with parent skapp.
@@ -78,16 +82,19 @@ async function init() {
   parentConnection = await ChildHandshake(messenger, methods);
 }
 
+// ==========
+// Public API
+// ==========
+
 async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, CheckPermissionsResponse]> {
   // If we don't have a seed, show seed provider chooser.
 
-  // TODO: We just use the default seed provider for now.
-  const seedProviderUrl = `${window.location.hostname}/${defaultSeedDisplayProvider}`;
+  const seedProviderDisplayUrl = await getSeedProviderDisplayUrl();
 
   // User has chosen seed provider, open seed provider display.
 
   log("Calling runSeedProviderDisplay");
-  const seed = await runSeedProviderDisplay(seedProviderUrl);
+  const seed = await runSeedProviderDisplay(seedProviderDisplayUrl);
   const seedFound = true;
 
   // Save the seed in local storage.
@@ -104,15 +111,19 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
   // Pass it the requested permissions.
 
   log("Calling checkPermissions on permissions provider");
-  const permissionsResponse: CheckPermissionsResponse = await permissionsProvider
+  let permissionsResponse: CheckPermissionsResponse = await permissionsProvider
     .remoteHandle()
     .call("checkPermissions", permissions, dev);
 
-  // TODO: If failed permissions, open the permissions provider display.
+  if (permissionsResponse.failedPermissions.length > 0) {
+    // If failed permissions, open the permissions provider display.
 
-  // const { acceptedPermissions, rejectedPermissions } = await runPermissionProviderDisplay(permissionsProviderUrl);
+    permissionsResponse = await runPermissionsProviderDisplay(seed, permissionsResponse.failedPermissions);
 
-  // TODO: Send the permissions provider worker the new and failed permissions.
+    // Send the permissions provider worker the new and failed permissions.
+
+    await permissionsProvider.remoteHandle().call("setPermissions", permissionsResponse.grantedPermissions);
+  }
 
   // Return remaining failed permissions to skapp.
 
@@ -120,7 +131,71 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
   return [seedFound, permissionsResponse];
 }
 
-async function runSeedProviderDisplay(seedProviderUrl: string): Promise<string> {
+// ==========
+// Core Logic
+// ==========
+
+async function getSeedProviderDisplayUrl(): Promise<string> {
+  // TODO: We just use the default seed provider for now.
+  return `${window.location.hostname}/${defaultSeedDisplayProvider}`;
+}
+
+async function runPermissionsProviderDisplay(
+  seed: string,
+  pendingPermissions: Permission[]
+): Promise<CheckPermissionsResponse> {
+  const permissionsProviderUrl = await getPermissionsProviderUrl(seed);
+  const permissionsProviderDisplayUrl = `${permissionsProviderUrl}/${relativePermissionsDisplayUrl}`;
+  // Add error listener.
+
+  const { promise: promiseError, controller: controllerError } = monitorWindowError();
+
+  let permissionsFrame: HTMLIFrameElement;
+  let permissionsConnection: Connection;
+
+  // eslint-disable-next-line no-async-promise-executor
+  const promise: Promise<CheckPermissionsResponse> = new Promise(async (resolve, reject) => {
+    // Make this promise run in the background and reject on window close or any errors.
+    promiseError.catch((err: string) => {
+      reject(err);
+    });
+
+    try {
+      // Launch the full-screen iframe and connection.
+
+      permissionsFrame = await launchPermissionsProviderDisplay(permissionsProviderDisplayUrl);
+      permissionsConnection = await connectProvider(permissionsFrame);
+
+      // Get the response.
+
+      // TODO: This should be a dual-promise that also calls ping() on an interval and rejects if no response was found in a given amount of time.
+      const permissionsResponse = await permissionsConnection.remoteHandle().call("getPermissions", pendingPermissions);
+
+      resolve(permissionsResponse);
+    } catch (err) {
+      reject(err);
+    }
+  });
+
+  return await promise
+    .catch((err) => {
+      throw err;
+    })
+    .finally(() => {
+      // Close the iframe.
+      if (permissionsFrame) {
+        permissionsFrame.parentNode!.removeChild(permissionsFrame);
+      }
+      // Close the connection.
+      if (permissionsConnection) {
+        permissionsConnection.close();
+      }
+      // Clean up the event listeners and promises.
+      controllerError.cleanup();
+    });
+}
+
+async function runSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<string> {
   // Add error listener.
 
   const { promise: promiseError, controller: controllerError } = monitorWindowError();
@@ -138,10 +213,10 @@ async function runSeedProviderDisplay(seedProviderUrl: string): Promise<string> 
     try {
       // Launch the full-screen iframe and connection.
 
-      seedFrame = await launchSeedProvider(seedProviderUrl);
-      seedConnection = await connectSeedProvider(seedFrame);
+      seedFrame = await launchSeedProviderDisplay(seedProviderDisplayUrl);
+      seedConnection = await connectProvider(seedFrame);
 
-      // Call getRootSeed.
+      // Get the response.
 
       // TODO: This should be a dual-promise that also calls ping() on an interval and rejects if no response was found in a given amount of time.
       const seed = await seedConnection.remoteHandle().call("getRootSeed");
@@ -170,17 +245,24 @@ async function runSeedProviderDisplay(seedProviderUrl: string): Promise<string> 
     });
 }
 
-async function launchSeedProvider(seedProviderUrl: string): Promise<HTMLIFrameElement> {
+async function launchPermissionsProviderDisplay(permissionsProviderDisplayUrl: string): Promise<HTMLIFrameElement> {
   // Create the iframe. FULL SCREEN!
 
-  const childFrame = createFullScreenIframe(seedProviderUrl, seedProviderUrl);
+  const childFrame = createFullScreenIframe(permissionsProviderDisplayUrl, permissionsProviderDisplayUrl);
   return childFrame;
 }
 
-async function connectSeedProvider(childFrame: HTMLIFrameElement): Promise<Connection> {
+async function launchSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<HTMLIFrameElement> {
+  // Create the iframe. FULL SCREEN!
+
+  const childFrame = createFullScreenIframe(seedProviderDisplayUrl, seedProviderDisplayUrl);
+  return childFrame;
+}
+
+async function connectProvider(childFrame: HTMLIFrameElement): Promise<Connection> {
   const childWindow = childFrame.contentWindow!;
 
-  // Complete handshake with Seed Provider Display window.
+  // Complete handshake with Provider Display window.
 
   const messenger = new WindowMessenger({
     localWindow: window,

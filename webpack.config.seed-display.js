@@ -1,25 +1,26 @@
 const path = require("path");
 
+const name = "seed-display";
+
 // define preprocessor variables
 const opts = {
   ENV: process.env.SKYNET_MYSKY_ENV || "production",
 };
 
 module.exports = {
-  entry: "./src/index.ts",
+  entry: `./scripts/${name}.ts`,
   mode: "production",
 
-  devtool: "inline-source-map",
   module: {
     rules: [
       {
         test: /\.tsx?$/,
         exclude: /node_modules/,
-        // prettier-ignore
         use: [
           { loader: "ifdef-loader", options: opts },
-          { loader: "ts-loader" },
+          { loader: "ts-loader", options: { configFile: "tsconfig.scripts.json" } },
         ],
+        include: [path.resolve(__dirname, `scripts/${name}.ts`)],
       },
     ],
   },
@@ -28,7 +29,7 @@ module.exports = {
     symlinks: false,
   },
   output: {
-    filename: "main.js",
+    filename: `${name}.js`,
     path: path.resolve(__dirname, "dist"),
   },
 };

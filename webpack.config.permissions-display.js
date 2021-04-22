@@ -1,6 +1,6 @@
 const path = require("path");
 
-const name = "seed";
+const name = "permissions-display";
 
 // define preprocessor variables
 const opts = {

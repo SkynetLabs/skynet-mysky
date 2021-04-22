@@ -80,10 +80,10 @@ window.onload = async () => {
 // ==========
 
 /**
- *
+ * Initialize the communication with the UI.
  */
 async function init() {
-  // Establish handshake with parent skapp.
+  // Establish handshake with parent window.
 
   const messenger = new WindowMessenger({
     localWindow: window,
@@ -139,20 +139,6 @@ function generateSeed(length: number): string {
 // ================
 // Helper Functions
 // ================
-
-/**
- *
- */
-export function activateUI() {
-  document.getElementById("darkLayer")!.style.display = "none";
-}
-
-/**
- *
- */
-export function deactivateUI() {
-  document.getElementById("darkLayer")!.style.display = "";
-}
 
 /**
  *

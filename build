@@ -4,8 +4,9 @@ cp -R assets dist/assets &&
 npx webpack &&
 npx webpack --config webpack.config.ui.js &&
 npx webpack --config webpack.config.permissions.js &&
-npx webpack --config webpack.config.seed.js &&
+npx webpack --config webpack.config.permissions-display.js &&
+npx webpack --config webpack.config.seed-display.js &&
 node minify-src.js dist/*.html &&
-rm dist/main.js dist/seed.js dist/ui.js &&
+rm dist/main.js dist/seed-display.js dist/permissions-display.js dist/ui.js &&
 find dist -name "*.css" -type f -delete
 

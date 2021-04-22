@@ -13,6 +13,11 @@ const MYSKY_SEED_SALT = ":mysky-dev-derivation-831597";
 
 let permissionsProvider: Promise<Connection> | null = null;
 
+let dev = false;
+/// #if ENV == 'dev'
+dev = true;
+/// #endif
+
 // Set up a listener for the storage event. If the seed is set in the UI, it should trigger a load of the permissions provider.
 window.addEventListener("storage", ({ key, newValue }: StorageEvent) => {
   if (!key || key !== seedStorageKey) {
@@ -47,18 +52,19 @@ export class MySky {
 
   static async initialize(): Promise<MySky> {
     log("Initializing...");
+
     if (typeof Storage == "undefined") {
       throw new Error("Browser does not support web storage");
     }
 
     // Check for stored seed in localstorage.
 
-    log("Calling checkStoredSeed");
     const seed = checkStoredSeed();
 
     // If seed was found, load the user's permission provider.
+
     if (seed) {
-      log("Seed found, calling launchPermissionsProvider");
+      log("Seed found.");
       permissionsProvider = launchPermissionsProvider(seed);
     }
 
@@ -78,7 +84,7 @@ export class MySky {
 
     // Create MySky object.
 
-    log("Calling new MySky");
+    log("Calling new MySky()");
     const mySky = new MySky(client, parentConnection);
 
     return mySky;
@@ -89,6 +95,8 @@ export class MySky {
   // ==========
 
   async checkLogin(perms: Permission[]): Promise<[boolean, CheckPermissionsResponse]> {
+    log("Entered checkLogin");
+
     // Check for stored seed in localstorage.
     const seed = checkStoredSeed();
     if (!seed) {
@@ -106,7 +114,7 @@ export class MySky {
     const connection = await permissionsProvider;
     const permissionsResponse: CheckPermissionsResponse = await connection
       .remoteHandle()
-      .call("checkPermissions", perms);
+      .call("checkPermissions", perms, dev);
 
     return [true, permissionsResponse];
   }
@@ -122,6 +130,8 @@ export class MySky {
   }
 
   async signRegistryEntry(entry: RegistryEntry, path: string): Promise<Uint8Array> {
+    log("Entered signRegistryEntry");
+
     // Get the seed.
 
     const seed = checkStoredSeed();
@@ -142,7 +152,7 @@ export class MySky {
     const perm = new Permission(referrerDomain, path, PermCategory.Discoverable, PermType.Write);
     log(`Requesting permission: ${JSON.stringify(perm)}`);
     const connection = await permissionsProvider;
-    const resp: CheckPermissionsResponse = await connection.remoteHandle().call("checkPermissions", [perm]);
+    const resp: CheckPermissionsResponse = await connection.remoteHandle().call("checkPermissions", [perm], dev);
     if (resp.failedPermissions.length > 0) {
       throw new Error("Permission was not granted");
     }
