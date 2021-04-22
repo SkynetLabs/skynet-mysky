@@ -1,5 +1,5 @@
 import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
-import { checkPermissions, getParentPath, getPathDomain, sanitizePath } from "../scripts/permissions";
+import { checkPermissions, createPermissionKey } from "../scripts/permissions";
 
 describe("default checkPermissions", () => {
   const perm1 = new Permission("app.hns/", "app.hns", PermCategory.Discoverable, PermType.Read);
@@ -15,41 +15,13 @@ describe("default checkPermissions", () => {
   });
 });
 
-describe("getPathDomain", () => {
-  const paths = [
-    ["path.hns/path", "path.hns"],
-    ["path.hns//path/path/", "path.hns"],
+describe("createPermissionsKey", () => {
+  const perms = [
+    ["app.hns/", "skapp.hns//path/file/", "[app.hns],[skapp.hns/path/file]"],
   ];
 
-  it.each(paths)("domain for path %s should be %s", (path, pathDomain) => {
-    const receivedDomain = getPathDomain(path);
-    expect(receivedDomain).toEqual(pathDomain);
-  });
-});
-
-describe("parentPath", () => {
-  const paths = [
-    ["app.hns/path/file.json", "app.hns/path"],
-    ["app.hns///path///file.json", "app.hns/path"],
-    ["app.hns//path", "app.hns"],
-    ["app.hns/path/", "app.hns"],
-    ["app.hns//", null],
-  ];
-
-  it.each(paths)("parent path for %s should be %s", (path, parentPath) => {
-    const receivedPath = getParentPath(path);
-    expect(receivedPath).toEqual(parentPath);
-  });
-});
-
-describe("sanitizePath", () => {
-  const paths = [
-    ["test.hns", "test.hns"],
-    ["path.hns", "path.hns"],
-  ];
-
-  it.each(paths)("path %s should be sanitized to %s", (path, sanitizedPath) => {
-    const receivedPath = sanitizePath(path);
-    expect(receivedPath).toEqual(sanitizedPath);
+  it.each(perms)("storage key for requestor %s and path %s should be %s", (requestor, path, key) => {
+    const receivedKey = createPermissionKey(requestor, path);
+    expect(receivedKey).toEqual(key);
   });
 });

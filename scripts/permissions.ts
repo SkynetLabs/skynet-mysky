@@ -4,7 +4,7 @@ declare const self: DedicatedWorkerGlobalScope;
 import { get, update } from "idb-keyval";
 import { ChildHandshake, WorkerMessenger } from "post-me";
 import type { Connection } from "post-me";
-import { CheckPermissionsResponse, Permission } from "skynet-mysky-utils";
+import { CheckPermissionsResponse, getParentPath, getPathDomain, Permission, sanitizePath, trimSuffix } from "skynet-mysky-utils";
 
 let parentConnection: Connection | null = null;
 
@@ -21,6 +21,21 @@ const methods = {
   const messenger = new WorkerMessenger({ worker: self });
   parentConnection = await ChildHandshake(messenger, methods);
 })();
+
+// ======
+// Events
+// ======
+
+self.onerror = function (error: any) {
+  console.log(error);
+  if (parentConnection) {
+    if (typeof error === "string") {
+      parentConnection.remoteHandle().call("catchError", error);
+    } else {
+      parentConnection.remoteHandle().call("catchError", error.type);
+    }
+  }
+};
 
 // ==========
 // Public API
@@ -60,21 +75,6 @@ export async function setPermissions(grantedPermissions: Permission[]): Promise<
   return;
 }
 
-// ======
-// Events
-// ======
-
-self.onerror = function (error: any) {
-  console.log(error);
-  if (parentConnection) {
-    if (typeof error === "string") {
-      parentConnection.remoteHandle().call("catchError", error);
-    } else {
-      parentConnection.remoteHandle().call("catchError", error.type);
-    }
-  }
-};
-
 // ==========
 // Core Logic
 // ==========
@@ -93,7 +93,7 @@ async function checkPermission(perm: Permission): Promise<boolean> {
   // Iterate over the path and all parents of the path.
   let path: string | null = sanitizePath(perm.path);
   while (path) {
-    // TODO: Check top-level domains first, as those are most likely to be set.
+    // TODO: Check top-level domains first, as those are most likely to be set?
 
     // If permission was granted to the path or a parent, return true.
     const permToCheck = new Permission(perm.requestor, path, perm.category, perm.permType);
@@ -125,7 +125,7 @@ async function savePermission(perm: Permission): Promise<void> {
   await update(key, (storedBitfield: number | undefined) => (storedBitfield || 0) | bitfieldToAdd);
 }
 
-function createPermissionKey(requestor: string, path: string): string {
+export function createPermissionKey(requestor: string, path: string): string {
   requestor = trimSuffix(requestor, "/");
   path = sanitizePath(path);
   return `[${requestor}],[${path}]`;
@@ -134,62 +134,3 @@ function createPermissionKey(requestor: string, path: string): string {
 // =======
 // Helpers
 // =======
-
-// TODO: Move to mysky-utils
-export function getPathDomain(path: string): string {
-  return path.split("/")[0];
-}
-
-// TODO: Move to mysky-utils
-export function getParentPath(path: string): string | null {
-  path = sanitizePath(path);
-  const pathArray = path.split("/");
-
-  if (pathArray.length <= 1) {
-    return null;
-  }
-
-  pathArray.pop();
-  path = pathArray.join("/");
-  return path;
-}
-
-// TODO: Move to mysky-utils
-export function sanitizePath(path: string): string {
-  // Remove trailing slashes.
-  path = trimSuffix(path, "/");
-
-  // Remove duplicate adjacent slashes.
-  const pathArray = Array.from(path);
-  for (let i = 0; i < pathArray.length - 1; ) {
-    if (pathArray[i] === "/" && pathArray[i + 1] === "/") {
-      pathArray.splice(i, 1);
-    } else {
-      i++;
-    }
-  }
-  path = pathArray.join("");
-
-  return path;
-}
-
-/**
- * Removes a suffix from the end of the string.
- *
- * @param str - The string to process.
- * @param suffix - The suffix to remove.
- * @param [limit] - Maximum amount of times to trim. No limit by default.
- * @returns - The processed string.
- */
-export function trimSuffix(str: string, suffix: string, limit?: number): string {
-  while (str.endsWith(suffix)) {
-    if (limit !== undefined && limit <= 0) {
-      break;
-    }
-    str = str.substring(0, str.length - suffix.length);
-    if (limit) {
-      limit -= 1;
-    }
-  }
-  return str;
-}
