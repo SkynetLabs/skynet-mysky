@@ -95,6 +95,8 @@ async function init() {
 
 /**
  * Called by MySky UI. Checks for the ready permissions at an interval.
+ *
+ * @param pendingPermissions
  */
 async function getPermissions(pendingPermissions: Permission[]): Promise<CheckPermissionsResponse> {
   // Initialize the permissions checkboxes.
@@ -110,6 +112,7 @@ async function getPermissions(pendingPermissions: Permission[]): Promise<CheckPe
 `;
 
     const checkboxDiv = document.createElement("div")!;
+    checkboxDiv.classList.add("checkbox-element");
     checkboxDiv.innerHTML = checkboxHtml;
 
     // Add div to container.
@@ -141,11 +144,14 @@ async function getPermissions(pendingPermissions: Permission[]): Promise<CheckPe
 // ================
 
 // TODO: Move to mysky-utils?
+/**
+ * @param perm
+ */
 function readablePermission(perm: Permission): string {
   const category = permCategoryToString(perm.category);
   const permType = permTypeToString(perm.permType);
 
-  return `Domain '${perm.requestor}' can ${permType} ${category} files at '${perm.path}'`;
+  return `<b>${perm.requestor}</b> can <b>${permType}</b> <b>${category}</b> files at <b>${perm.path}</b>`;
 }
 
 /**
