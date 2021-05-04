@@ -44,7 +44,7 @@
     "idb-keyval": "^5.0.5",
     "post-me": "^0.4.5",
     "skynet-js": "^4.0.2-beta",
-    "skynet-mysky-utils": "^0.2.0",
+    "skynet-mysky-utils": "^0.2.2",
     "url-join": "^4.0.1"
   },
   "devDependencies": {

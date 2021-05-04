@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Seed Provider Selection</title>
+    <link rel="stylesheet" href="assets/style.css" />
+  </head>
+
+  <body>
+    <div class="wrapper">
+      <div class="center">
+        <br />
+        <br />
+        <br />
+        <h1>Choose a Seed Provider</h1>
+
+        <br />
+
+        <div style="">You'll only need to do this once for this browser.</div>
+
+        <br />
+
+        <div id="seed-selection-radio">
+          <input type="radio" id="seed-selection-default" name="seed-selection-radio-input" value="default" checked />
+          <label for="seed-selection-default">Default</label>
+
+          <input type="radio" id="seed-selection-mysky" name="seed-selection-radio-input" value="sky-id.hns/seed-provider.html" />
+          <label for="seed-selection-mysky">SkyID</label>
+        </div>
+
+        <br />
+
+        <button id="seed-selection-submit" class="btn" onclick="window.submit()">Submit</button>
+      </div>
+    </div>
+
+    <script async src="seed-selection.js"></script>
+  </body>
+</html>

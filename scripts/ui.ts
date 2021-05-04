@@ -20,6 +20,9 @@ import {
 } from "../src/provider";
 import { log } from "../src/util";
 
+const RELATIVE_SEED_SELECTION_DISPLAY_URL = "seed-selection.html";
+
+const client = new SkynetClient();
 let parentConnection: Connection | null = null;
 
 // Set value of dev on load.
@@ -136,8 +139,15 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
 // ==========
 
 async function getSeedProviderDisplayUrl(): Promise<string> {
-  // TODO: We just use the default seed provider for now.
+  // Run the seed selection display.
+  const seedProvider = await runSeedSelectionDisplay();
+
+  if (seedProvider === "default") {
+    // Return the default seed provider.
   return `${window.location.hostname}/${defaultSeedDisplayProvider}`;
+  }
+
+  return await client.getFullDomainUrl(seedProvider);
 }
 
 async function runPermissionsProviderDisplay(
@@ -146,6 +156,7 @@ async function runPermissionsProviderDisplay(
 ): Promise<CheckPermissionsResponse> {
   const permissionsProviderUrl = await getPermissionsProviderUrl(seed);
   const permissionsProviderDisplayUrl = `${permissionsProviderUrl}/${relativePermissionsDisplayUrl}`;
+
   // Add error listener.
 
   const { promise: promiseError, controller: controllerError } = monitorWindowError();
@@ -163,7 +174,7 @@ async function runPermissionsProviderDisplay(
     try {
       // Launch the full-screen iframe and connection.
 
-      permissionsFrame = await launchPermissionsProviderDisplay(permissionsProviderDisplayUrl);
+      permissionsFrame = await launchDisplay(permissionsProviderDisplayUrl);
       permissionsConnection = await connectProvider(permissionsFrame);
 
       // Get the response.
@@ -213,7 +224,7 @@ async function runSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<s
     try {
       // Launch the full-screen iframe and connection.
 
-      seedFrame = await launchSeedProviderDisplay(seedProviderDisplayUrl);
+      seedFrame = await launchDisplay(seedProviderDisplayUrl);
       seedConnection = await connectProvider(seedFrame);
 
       // Get the response.
@@ -245,17 +256,64 @@ async function runSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<s
     });
 }
 
-async function launchPermissionsProviderDisplay(permissionsProviderDisplayUrl: string): Promise<HTMLIFrameElement> {
-  // Create the iframe. FULL SCREEN!
+async function runSeedSelectionDisplay(): Promise<string> {
+  // Get the display URL.
 
-  const childFrame = createFullScreenIframe(permissionsProviderDisplayUrl, permissionsProviderDisplayUrl);
-  return childFrame;
+  const seedSelectionDisplayUrl = `${window.location.hostname}/${RELATIVE_SEED_SELECTION_DISPLAY_URL}`;
+
+  // Add error listener.
+
+  const { promise: promiseError, controller: controllerError } = monitorWindowError();
+
+  let seedFrame: HTMLIFrameElement;
+  let seedConnection: Connection;
+
+  // eslint-disable-next-line no-async-promise-executor
+  const promise: Promise<string> = new Promise(async (resolve, reject) => {
+    // Make this promise run in the background and reject on window close or any errors.
+    promiseError.catch((err: string) => {
+      reject(err);
+    });
+
+    try {
+      // Launch the full-screen iframe and connection.
+
+      seedFrame = await launchDisplay(seedSelectionDisplayUrl);
+      seedConnection = await connectProvider(seedFrame);
+
+      // Get the response.
+
+      // TODO: This should be a dual-promise that also calls ping() on an interval and rejects if no response was found in a given amount of time.
+      const seed = await seedConnection.remoteHandle().call("getSeedProvider");
+
+      resolve(seed);
+    } catch (err) {
+      reject(err);
+    }
+  });
+
+  return await promise
+    .catch((err) => {
+      throw err;
+    })
+    .finally(() => {
+      // Close the iframe.
+      if (seedFrame) {
+        seedFrame.parentNode!.removeChild(seedFrame);
+      }
+      // Close the connection.
+      if (seedConnection) {
+        seedConnection.close();
+      }
+      // Clean up the event listeners and promises.
+      controllerError.cleanup();
+    });
 }
 
-async function launchSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<HTMLIFrameElement> {
+async function launchDisplay(displayUrl: string): Promise<HTMLIFrameElement> {
   // Create the iframe. FULL SCREEN!
 
-  const childFrame = createFullScreenIframe(seedProviderDisplayUrl, seedProviderDisplayUrl);
+  const childFrame = createFullScreenIframe(displayUrl, displayUrl);
   return childFrame;
 }
 

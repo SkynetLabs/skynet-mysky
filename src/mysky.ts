@@ -1,7 +1,7 @@
 import { ChildHandshake, WindowMessenger } from "post-me";
 import type { Connection } from "post-me";
-import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
-import { genKeyPairFromSeed, RegistryEntry, signEntry, SkynetClient } from "skynet-js";
+import { CheckPermissionsResponse, CustomUserIDOptions, PermCategory, Permission, PermType } from "skynet-mysky-utils";
+import { deriveChildSeed, genKeyPairFromSeed, RegistryEntry, signEntry, SkynetClient } from "skynet-js";
 import { launchPermissionsProvider } from "./provider";
 import { log } from "./util";
 
@@ -167,12 +167,20 @@ export class MySky {
     return signature;
   }
 
-  async userID(): Promise<string> {
+  async userID(opts?: CustomUserIDOptions): Promise<string> {
     // Get the seed.
 
     const seed = checkStoredSeed();
     if (!seed) {
       throw new Error("User seed not found");
+    }
+
+    // If legacy app ID passed in, get the app-specific public key.
+
+    if (opts && opts.legacyAppID) {
+      const appSeed = deriveChildSeed(seed, opts.legacyAppID);
+      const { publicKey } = genKeyPairFromSeed(appSeed);
+      return publicKey;
     }
 
     // Get the public key.
