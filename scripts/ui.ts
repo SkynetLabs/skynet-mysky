@@ -144,7 +144,7 @@ async function getSeedProviderDisplayUrl(): Promise<string> {
 
   if (seedProvider === "default") {
     // Return the default seed provider.
-  return `${window.location.hostname}/${defaultSeedDisplayProvider}`;
+    return `${window.location.hostname}/${defaultSeedDisplayProvider}`;
   }
 
   return await client.getFullDomainUrl(seedProvider);

@@ -27,7 +27,10 @@
         <h1>Sign In</h1>
         <br />
         <div>Enter your passphrase:</div>
-        <div><input type="text" id="signin-passphrase-text" name="passphrase-text" width+"100%"/></div>
+        <div>
+          <input type="text" id="signin-passphrase-text" name="passphrase-text" width+"100%" placeholder="word1 word2
+          word3 ..."/>
+        </div>
         <br />
         <button id="button-back" class="btn" onclick="window.goToLoggedOut()">Back</button>
         <button id="button-sign-in" class="btn" onclick="window.signIn()">Sign In</button>
@@ -47,7 +50,7 @@
         <br />
         <div>
           <input type="text" id="signup-passphrase-text" name="passphrase-text" width+"100%" style="color: #DCDAD1;"
-                 readonly/>
+          readonly/>
         </div>
         <br />
         <div>Please keep your passphrase secret. You cannot retrieve your account if you lose it.</div>

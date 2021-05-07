@@ -4,7 +4,14 @@ declare const self: DedicatedWorkerGlobalScope;
 import { get, update } from "idb-keyval";
 import { ChildHandshake, WorkerMessenger } from "post-me";
 import type { Connection } from "post-me";
-import { CheckPermissionsResponse, getParentPath, getPathDomain, Permission, sanitizePath, trimSuffix } from "skynet-mysky-utils";
+import {
+  CheckPermissionsResponse,
+  getParentPath,
+  getPathDomain,
+  Permission,
+  sanitizePath,
+  trimSuffix,
+} from "skynet-mysky-utils";
 
 let parentConnection: Connection | null = null;
 
