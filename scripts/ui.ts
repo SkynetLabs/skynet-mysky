@@ -71,6 +71,9 @@ window.onload = () => {
 // Initialization
 // ==============
 
+/**
+ *
+ */
 async function init() {
   // Establish handshake with parent skapp.
 
@@ -89,6 +92,9 @@ async function init() {
 // Public API
 // ==========
 
+/**
+ * @param permissions
+ */
 async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, CheckPermissionsResponse]> {
   // If we don't have a seed, show seed provider chooser.
 
@@ -138,6 +144,9 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
 // Core Logic
 // ==========
 
+/**
+ *
+ */
 async function getSeedProviderDisplayUrl(): Promise<string> {
   // Run the seed selection display.
   const seedProvider = await runSeedSelectionDisplay();
@@ -150,8 +159,12 @@ async function getSeedProviderDisplayUrl(): Promise<string> {
   return await client.getFullDomainUrl(seedProvider);
 }
 
+/**
+ * @param seed
+ * @param pendingPermissions
+ */
 async function runPermissionsProviderDisplay(
-  seed: string,
+  seed: Uint8Array,
   pendingPermissions: Permission[]
 ): Promise<CheckPermissionsResponse> {
   const permissionsProviderUrl = await getPermissionsProviderUrl(seed);
@@ -206,7 +219,10 @@ async function runPermissionsProviderDisplay(
     });
 }
 
-async function runSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<string> {
+/**
+ * @param seedProviderDisplayUrl
+ */
+async function runSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<Uint8Array> {
   // Add error listener.
 
   const { promise: promiseError, controller: controllerError } = monitorWindowError();
@@ -215,7 +231,7 @@ async function runSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<s
   let seedConnection: Connection;
 
   // eslint-disable-next-line no-async-promise-executor
-  const promise: Promise<string> = new Promise(async (resolve, reject) => {
+  const promise: Promise<Uint8Array> = new Promise(async (resolve, reject) => {
     // Make this promise run in the background and reject on window close or any errors.
     promiseError.catch((err: string) => {
       reject(err);
@@ -256,6 +272,9 @@ async function runSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<s
     });
 }
 
+/**
+ *
+ */
 async function runSeedSelectionDisplay(): Promise<string> {
   // Get the display URL.
 
@@ -310,6 +329,9 @@ async function runSeedSelectionDisplay(): Promise<string> {
     });
 }
 
+/**
+ * @param displayUrl
+ */
 async function launchDisplay(displayUrl: string): Promise<HTMLIFrameElement> {
   // Create the iframe. FULL SCREEN!
 
@@ -317,6 +339,9 @@ async function launchDisplay(displayUrl: string): Promise<HTMLIFrameElement> {
   return childFrame;
 }
 
+/**
+ * @param childFrame
+ */
 async function connectProvider(childFrame: HTMLIFrameElement): Promise<Connection> {
   const childWindow = childFrame.contentWindow!;
 
@@ -341,6 +366,9 @@ async function connectProvider(childFrame: HTMLIFrameElement): Promise<Connectio
   return connection;
 }
 
+/**
+ * @param errorMsg
+ */
 async function catchError(errorMsg: string) {
   const event = new CustomEvent(dispatchedErrorEvent, { detail: errorMsg });
   window.dispatchEvent(event);

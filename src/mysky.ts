@@ -1,15 +1,16 @@
 import { ChildHandshake, WindowMessenger } from "post-me";
 import type { Connection } from "post-me";
 import { CheckPermissionsResponse, CustomUserIDOptions, PermCategory, Permission, PermType } from "skynet-mysky-utils";
-import { deriveChildSeed, genKeyPairFromSeed, RegistryEntry, signEntry, SkynetClient } from "skynet-js";
+import { RegistryEntry, signEntry, SkynetClient } from "skynet-js";
+
 import { launchPermissionsProvider } from "./provider";
-import { log } from "./util";
+import { genKeyPairFromSeed, log, stringToUint8ArrayUtf8 } from "./util";
+import { hash } from "tweetnacl";
 
 export const mySkyDomain = "skynet-mysky.hns/";
 
 const referrer = document.referrer;
 const seedStorageKey = "seed";
-const MYSKY_SEED_SALT = ":mysky-dev-derivation-831597";
 
 let permissionsProvider: Promise<Connection> | null = null;
 
@@ -28,8 +29,10 @@ window.addEventListener("storage", ({ key, newValue }: StorageEvent) => {
     // TODO: Unload the permissions provider.
   }
 
+  const seed = new Uint8Array(JSON.parse(key));
+
   if (!permissionsProvider) {
-    permissionsProvider = launchPermissionsProvider(key);
+    permissionsProvider = launchPermissionsProvider(seed);
   }
 });
 
@@ -167,20 +170,12 @@ export class MySky {
     return signature;
   }
 
-  async userID(opts?: CustomUserIDOptions): Promise<string> {
+  async userID(_opts?: CustomUserIDOptions): Promise<string> {
     // Get the seed.
 
     const seed = checkStoredSeed();
     if (!seed) {
       throw new Error("User seed not found");
-    }
-
-    // If legacy app ID passed in, get the app-specific public key.
-
-    if (opts && opts.legacyAppID) {
-      const appSeed = deriveChildSeed(seed, opts.legacyAppID);
-      const { publicKey } = genKeyPairFromSeed(appSeed);
-      return publicKey;
     }
 
     // Get the public key.
@@ -203,22 +198,17 @@ export class MySky {
  *
  * @returns - The seed, or null if not found.
  */
-export function checkStoredSeed(): string | null {
+export function checkStoredSeed(): Uint8Array | null {
   if (!localStorage) {
     console.log("WARNING: localStorage disabled");
     return null;
   }
 
-  let seed = localStorage.getItem(seedStorageKey);
-
-  // If in dev mode, make sure the seed is salted.
-  /// #if ENV == 'dev'
-  if (seed && !seed.endsWith(MYSKY_SEED_SALT)) {
-    // Found a legacy unsalted seed in dev mode, re-save it so that it is salted.
-    saveSeed(seed);
-    seed = saltSeed(seed);
+  const seedStr = localStorage.getItem(seedStorageKey);
+  if (!seedStr) {
+    return null;
   }
-  /// #endif
+  const seed = new Uint8Array(JSON.parse(seedStr));
 
   return seed;
 }
@@ -241,7 +231,7 @@ export function clearStoredSeed(): void {
  *
  * @param seed - The root seed.
  */
-export function saveSeed(seed: string): void {
+export function saveSeed(seed: Uint8Array): void {
   if (!localStorage) {
     console.log("WARNING: localStorage disabled, seed not stored");
     return;
@@ -252,12 +242,12 @@ export function saveSeed(seed: string): void {
   seed = saltSeed(seed);
   /// #endif
 
-  localStorage.setItem(seedStorageKey, seed);
+  localStorage.setItem(seedStorageKey, JSON.stringify(Array.from(seed)));
 }
 
 /**
  * @param seed
  */
-function saltSeed(seed: string): string {
-  return seed + MYSKY_SEED_SALT;
+function saltSeed(seed: Uint8Array): Uint8Array {
+  return hash(hash(stringToUint8ArrayUtf8("developer mode")) || hash(seed));
 }

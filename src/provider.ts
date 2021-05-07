@@ -1,6 +1,6 @@
 import { Connection, ParentHandshake, WorkerMessenger } from "post-me";
-import { genKeyPairFromSeed } from "skynet-js";
 import { defaultHandshakeAttemptsInterval, defaultHandshakeMaxAttempts, ensureUrl } from "skynet-mysky-utils";
+import { genKeyPairFromSeed } from "./util";
 
 export const relativePermissionsWorkerUrl = "permissions.js";
 export const relativePermissionsDisplayUrl = "permissions-display.html";
@@ -10,8 +10,10 @@ const permissionsProviderPreferencePath = "permissions-provider.json";
 
 /**
  * Tries to get the saved permissions provider preference, returning the default provider if not found.
+ *
+ * @param seed
  */
-export async function getPermissionsProviderUrl(seed: string): Promise<string> {
+export async function getPermissionsProviderUrl(seed: Uint8Array): Promise<string> {
   // Derive the user.
   const { publicKey } = genKeyPairFromSeed(seed);
 
@@ -24,7 +26,10 @@ export async function getPermissionsProviderUrl(seed: string): Promise<string> {
   return ensureUrl(window.location.hostname);
 }
 
-export async function launchPermissionsProvider(seed: string): Promise<Connection> {
+/**
+ * @param seed
+ */
+export async function launchPermissionsProvider(seed: Uint8Array): Promise<Connection> {
   console.log("Entered launchPermissionsProvider");
 
   const permissionsProviderUrl = await getPermissionsProviderUrl(seed);
