@@ -149,14 +149,14 @@ export function generatePhrase(): string {
   }
 
   // Generate checksum from hash of the seed.
-  const checksum = generateChecksumFromSeedWords(seedWords);
+  const checksumWords = generateChecksumWordsFromSeedWords(seedWords);
 
   const phraseWords: string[] = new Array(PHRASE_LENGTH);
   for (let i = 0; i < SEED_LENGTH; i++) {
     phraseWords[i] = dictionary[seedWords[i]];
   }
   for (let i = 0; i < CHECKSUM_LENGTH; i++) {
-    phraseWords[i + SEED_LENGTH] = dictionary[checksum[i]];
+    phraseWords[i + SEED_LENGTH] = dictionary[checksumWords[i]];
   }
 
   return phraseWords.join(" ");
@@ -215,9 +215,9 @@ export function validatePhrase(phrase: string): [boolean, string, Uint8Array | n
   }
 
   // Validate checksum.
-  const checksum = generateChecksumFromSeedWords(seedWords);
+  const checksumWords = generateChecksumWordsFromSeedWords(seedWords);
   for (let i = 0; i < CHECKSUM_LENGTH; i++) {
-    const prefix = dictionary[checksum[i]].slice(0, 3);
+    const prefix = dictionary[checksumWords[i]].slice(0, 3);
     if (phraseWords[i + SEED_LENGTH].slice(0, 3) !== prefix) {
       return [false, `Word "${phraseWords[i + SEED_LENGTH]}" is not a valid checksum for the seed`, null];
     }
@@ -242,57 +242,36 @@ function setAllSeedContainersInvisible() {
 /**
  * @param seedWords
  */
-function generateChecksumFromSeedWords(seedWords: Uint16Array): Uint16Array {
+function generateChecksumWordsFromSeedWords(seedWords: Uint16Array): Uint16Array {
   if (seedWords.length != SEED_LENGTH) {
     throw new Error(`Input seed was not of length ${SEED_LENGTH}`);
   }
 
   const seed = seedWordsToSeed(seedWords);
   const h = hash(seed);
-  const checksum = hashToChecksum(h);
+  const checksumWords = hashToChecksumWords(h);
 
-  return checksum;
+  return checksumWords;
 }
 
 /**
  * @param h
  */
-function hashToChecksum(h: Uint8Array): Uint16Array {
-  // We are getting 20 bits of checksum, stored in 2 words.
-  const bytes = new Uint16Array(2);
-  let curByte = 0;
-  let curBit = 0;
-
-  // Iterate over 20 bits of the hash.
-  let numBits = 0;
-  for (let i = 0; numBits < 20; i++) {
-    const hashByte = h[i];
-
-    // Iterate over the bits of the 8-bit hash byte.
-    for (let j = 0; j < 8; j++) {
-      const bitSet = (hashByte & (1 << (8 - j - 1))) > 0;
-
-      if (bitSet) {
-        bytes[curByte] |= 1 << (10 - curBit - 1);
-      }
-
-      curBit += 1;
-      if (curBit >= 10) {
-        curByte += 1;
-        curBit = 0;
-      }
-      numBits++;
-      if (numBits >= 20) break;
-    }
-  }
-
-  return bytes;
+export function hashToChecksumWords(h: Uint8Array): Uint16Array {
+  let word1 = h[0] << 8;
+  word1 += h[1];
+  word1 >>= 6;
+  let word2 = h[1] << 10;
+  word2 &= 0xffff;
+  word2 += h[2] << 2;
+  word2 >>= 6;
+  return new Uint16Array([word1, word2]);
 }
 
 /**
  * @param seedWords
  */
-function seedWordsToSeed(seedWords: Uint16Array): Uint8Array {
+export function seedWordsToSeed(seedWords: Uint16Array): Uint8Array {
   if (seedWords.length != SEED_LENGTH) {
     throw new Error(`Input seed was not of length ${SEED_LENGTH}`);
   }

@@ -1,4 +1,28 @@
-import { generatePhrase, validatePhrase } from "../scripts/seed-display";
+import { generatePhrase, hashToChecksumWords, seedWordsToSeed, validatePhrase } from "../scripts/seed-display";
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace jest {
+    interface Matchers<R> {
+      toEqualUint8Array(argument: Uint8Array): R;
+    }
+  }
+}
+
+expect.extend({
+  // source https://stackoverflow.com/a/60818105/6085242
+  toEqualUint8Array(received: Uint8Array, argument: Uint8Array) {
+    if (received.length !== argument.length) {
+      return { pass: false, message: () => `expected ${received} to equal ${argument}` };
+    }
+    for (let i = 0; i < received.length; i++) {
+      if (received[i] !== argument[i]) {
+        return { pass: false, message: () => `expected ${received} to equal ${argument}` };
+      }
+    }
+    return { pass: true, message: () => `expected ${received} not to equal ${argument}` };
+  },
+});
 
 describe("generateSeed", () => {
   const seeds = new Array(100).map(() => generatePhrase());
@@ -53,5 +77,66 @@ describe("validateSeed", () => {
     const [valid, error] = validatePhrase(seed);
     expect(valid).toBeFalsy();
     expect(error).toEqual(expectedError);
+  });
+});
+
+describe("hashToChecksumWords", () => {
+  it("should convert completely filled hash bytes to checksum words", () => {
+    const hashBytes = new Uint8Array(64).fill(0xff);
+    const checksumWords = hashToChecksumWords(hashBytes);
+    expect(checksumWords[0]).toEqual(1023);
+    expect(checksumWords[1]).toEqual(1023);
+  });
+
+  it("should convert custom bytes to checksum words", () => {
+    const hashBytes = new Uint8Array([0b01011100, 0b00110011, 0b01010101]);
+    const checksumWords = hashToChecksumWords(hashBytes);
+    expect(checksumWords[0]).toEqual(0b0101110000);
+    expect(checksumWords[1]).toEqual(0b1100110101);
+  });
+});
+
+describe("seedWordsToSeed", () => {
+  it("should convert completely filled seed words to an array of seed bytes", () => {
+    const seedWords = new Uint16Array(13).fill(1023);
+    const seed = seedWordsToSeed(seedWords);
+    expect(seed).toEqualUint8Array(new Uint8Array(16).fill(0xff));
+  });
+
+  it("should convert custom seed words to an array of seed bytes", () => {
+    const seedWords = new Uint16Array([
+      0b0101110001,
+      0b1000110011,
+      0b1001010101,
+      0b0101110010,
+      0b0100010100,
+      0b1101111111,
+      0b0000000001,
+      0b1111111110,
+      0b0001111000,
+      0b1111000001,
+      0b0111001100,
+      0b0110100111,
+      0b11100101,
+    ]);
+    const seed = seedWordsToSeed(seedWords);
+
+    expect(seed[0]).toEqual(0b01011100);
+    expect(seed[1]).toEqual(0b01100011);
+    expect(seed[2]).toEqual(0b00111001);
+    expect(seed[3]).toEqual(0b01010101);
+    expect(seed[4]).toEqual(0b01110010);
+    expect(seed[5]).toEqual(0b01000101);
+    expect(seed[6]).toEqual(0b00110111);
+    expect(seed[7]).toEqual(0b11110000);
+
+    expect(seed[8]).toEqual(0b00000111);
+    expect(seed[9]).toEqual(0b11111110);
+    expect(seed[10]).toEqual(0b00011110);
+    expect(seed[11]).toEqual(0b00111100);
+    expect(seed[12]).toEqual(0b00010111);
+    expect(seed[13]).toEqual(0b00110001);
+    expect(seed[14]).toEqual(0b10100111);
+    expect(seed[15]).toEqual(0b11100101);
   });
 });
