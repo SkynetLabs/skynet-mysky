@@ -312,7 +312,7 @@ export function seedWordsToSeed(seedWords: Uint16Array): Uint8Array {
  */
 function sanitizePhrase(phrase: string): string {
   // Remove duplicate adjacent spaces.
-  return removeAdjacentChars(phrase.trim(), " ");
+  return removeAdjacentChars(phrase.trim().toLowerCase(), " ");
 }
 
 /**
