@@ -41,6 +41,7 @@
     ]
   },
   "dependencies": {
+    "buffer": "^6.0.3",
     "idb-keyval": "^5.0.5",
     "post-me": "^0.4.5",
     "skynet-js": "^4.0.2-beta",

@@ -149,7 +149,9 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
  */
 async function getSeedProviderDisplayUrl(): Promise<string> {
   // Run the seed selection display.
-  const seedProvider = await runSeedSelectionDisplay();
+
+  // const seedProvider = await runSeedSelectionDisplay();
+  const seedProvider = "default";
 
   if (seedProvider === "default") {
     // Return the default seed provider.

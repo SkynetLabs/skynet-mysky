@@ -70,19 +70,19 @@ window.onload = async () => {
     alert("Please enter a phrase!");
     return;
   }
-  const [valid, error] = validatePhrase(phraseValue);
-  if (!valid) {
+  const [valid, error, seed] = validatePhrase(phraseValue);
+  if (!valid || !seed) {
     alert(error);
     return;
   }
 
-  handlePhrase(phraseValue);
+  handleSeed(seed);
 };
 
 (window as any).signUp = () => {
   const phraseValue = (<HTMLInputElement>document.getElementById("signup-passphrase-text")).value;
 
-  handlePhrase(phraseValue);
+  handleSeed(phraseToSeed(phraseValue));
 };
 
 // ==========
@@ -127,8 +127,8 @@ async function getRootSeed(): Promise<Uint8Array> {
  * @param seed
  * @param phrase
  */
-function handlePhrase(phrase: string) {
-  readySeed = phraseToSeed(phrase);
+function handleSeed(seed: Uint8Array) {
+  readySeed = seed;
 }
 
 /**
@@ -169,7 +169,7 @@ export function generatePhrase(): string {
  * @param phrase
  * @returns - A boolean indicating whether the seed is valid, and a string explaining the error if it's not.
  */
-export function validatePhrase(phrase: string): [boolean, string, Uint16Array] {
+export function validatePhrase(phrase: string): [boolean, string, Uint8Array | null] {
   phrase = sanitizePhrase(phrase);
   const phraseWords = phrase.split(" ");
   if (phraseWords.length !== PHRASE_LENGTH) {
@@ -223,7 +223,7 @@ export function validatePhrase(phrase: string): [boolean, string, Uint16Array] {
     }
   }
 
-  return [true, "", seedWords];
+  return [true, "", seedWordsToSeed(seedWords)];
 }
 
 // ================
@@ -258,7 +258,7 @@ function generateChecksumFromSeedWords(seedWords: Uint16Array): Uint16Array {
  * @param h
  */
 function hashToChecksum(h: Uint8Array): Uint16Array {
-  // We are getting 20 bits of checksum, stored in 2 numbers.
+  // We are getting 20 bits of checksum, stored in 2 words.
   const bytes = new Uint16Array(2);
   let curByte = 0;
   let curBit = 0;
@@ -342,9 +342,9 @@ function sanitizePhrase(phrase: string): string {
 function phraseToSeed(phrase: string): Uint8Array {
   phrase = sanitizePhrase(phrase);
   const [valid, error, seed] = validatePhrase(phrase);
-  if (!valid) {
+  if (!valid || !seed) {
     throw new Error(error);
   }
 
-  return seedWordsToSeed(seed);
+  return seed;
 }

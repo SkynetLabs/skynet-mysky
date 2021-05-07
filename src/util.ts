@@ -1,3 +1,4 @@
+import { Buffer } from "buffer";
 import { KeyPair } from "skynet-js/dist/crypto";
 import { hash, sign } from "tweetnacl";
 
@@ -19,7 +20,7 @@ export function log(message: string, ...optionalContext: any[]) {
  * @param seed
  */
 export function genKeyPairFromSeed(seed: Uint8Array): KeyPair {
-  const bytes = hash(hash(stringToUint8ArrayUtf8("root discoverable key")) || hash(seed));
+  const bytes = hash(hash(stringToUint8ArrayUtf8("root discoverable key")) || hash(seed)).slice(0, 32);
 
   const { publicKey, secretKey } = sign.keyPair.fromSeed(bytes);
 

@@ -27,9 +27,10 @@ window.addEventListener("storage", ({ key, newValue }: StorageEvent) => {
   if (!newValue) {
     // Seed was removed.
     // TODO: Unload the permissions provider.
+    return;
   }
 
-  const seed = new Uint8Array(JSON.parse(key));
+  const seed = new Uint8Array(JSON.parse(newValue));
 
   if (!permissionsProvider) {
     permissionsProvider = launchPermissionsProvider(seed);
@@ -249,5 +250,5 @@ export function saveSeed(seed: Uint8Array): void {
  * @param seed
  */
 function saltSeed(seed: Uint8Array): Uint8Array {
-  return hash(hash(stringToUint8ArrayUtf8("developer mode")) || hash(seed));
+  return hash(hash(stringToUint8ArrayUtf8("developer mode")) || hash(seed)).slice(0, 16);
 }
