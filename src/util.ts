@@ -17,10 +17,21 @@ export function log(message: string, ...optionalContext: any[]) {
 }
 
 /**
+ * @param array1
+ * @param array2
+ */
+export function concatUint8Arrays(array1: Uint8Array, array2: Uint8Array): Uint8Array {
+  const result = new Uint8Array(array1.length + array2.length);
+  result.set(array1);
+  result.set(array2, array1.length);
+  return result;
+}
+
+/**
  * @param seed
  */
 export function genKeyPairFromSeed(seed: Uint8Array): KeyPair {
-  const bytes = hash(hash(stringToUint8ArrayUtf8("root discoverable key")) || hash(seed)).slice(0, 32);
+  const bytes = hash(concatUint8Arrays(hash(stringToUint8ArrayUtf8("root discoverable key")), hash(seed))).slice(0, 32);
 
   const { publicKey, secretKey } = sign.keyPair.fromSeed(bytes);
 

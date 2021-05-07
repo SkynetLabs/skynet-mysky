@@ -4,7 +4,7 @@ import { CheckPermissionsResponse, CustomUserIDOptions, PermCategory, Permission
 import { RegistryEntry, signEntry, SkynetClient } from "skynet-js";
 
 import { launchPermissionsProvider } from "./provider";
-import { genKeyPairFromSeed, log, stringToUint8ArrayUtf8 } from "./util";
+import { concatUint8Arrays, genKeyPairFromSeed, log, stringToUint8ArrayUtf8 } from "./util";
 import { hash } from "tweetnacl";
 
 export const mySkyDomain = "skynet-mysky.hns/";
@@ -250,5 +250,5 @@ export function saveSeed(seed: Uint8Array): void {
  * @param seed
  */
 function saltSeed(seed: Uint8Array): Uint8Array {
-  return hash(hash(stringToUint8ArrayUtf8("developer mode")) || hash(seed)).slice(0, 16);
+  return hash(concatUint8Arrays(hash(stringToUint8ArrayUtf8("developer mode")), hash(seed))).slice(0, 16);
 }
