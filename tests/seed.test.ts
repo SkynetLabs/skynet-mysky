@@ -33,7 +33,7 @@ describe("generateSeed", () => {
   });
 });
 
-describe("validateSeed", () => {
+describe("validatePhrase", () => {
   const validSeeds = [
     // Single word
     " abbey    abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey amidst punch   ",
@@ -42,7 +42,7 @@ describe("validateSeed", () => {
     "abb about yanked yah unctuous spry mayflower malodious jabba irish gazebo bombastic eggplant acer avoidance",
   ];
 
-  it.each(validSeeds)("validateSeed should return true for phrase %s", (seed) => {
+  it.each(validSeeds)("validatePhrase should return true for phrase %s", (seed) => {
     const [valid, error] = validatePhrase(seed);
     expect(error).toEqual("");
     expect(valid).toBeTruthy();
@@ -73,7 +73,7 @@ describe("validateSeed", () => {
     ],
   ];
 
-  it.each(invalidSeeds)("validateSeed should return false for phrase %s", (seed, expectedError) => {
+  it.each(invalidSeeds)("validatePhrase should return false for phrase %s", (seed, expectedError) => {
     const [valid, error] = validatePhrase(seed);
     expect(valid).toBeFalsy();
     expect(error).toEqual(expectedError);

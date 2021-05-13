@@ -4,14 +4,11 @@ import { removeAdjacentChars } from "skynet-mysky-utils";
 import { hash } from "tweetnacl";
 
 import { dictionary } from "../src/dictionary";
+import { CHECKSUM_WORDS_LENGTH, PHRASE_LENGTH, SEED_LENGTH, SEED_WORDS_LENGTH } from "../src/seed";
 
 const uiSeedLoggedOut = document.getElementById("seed-logged-out")!;
 const uiSeedSignIn = document.getElementById("seed-sign-in")!;
 const uiSeedSignUp = document.getElementById("seed-sign-up")!;
-
-const SEED_LENGTH = 13;
-const CHECKSUM_LENGTH = 2;
-const PHRASE_LENGTH = SEED_LENGTH + CHECKSUM_LENGTH;
 
 let readySeed: Uint8Array | null = null;
 let parentConnection: Connection | null = null;
@@ -135,11 +132,11 @@ function handleSeed(seed: Uint8Array) {
  * Generates a 15-word seed phrase for 16 bytes of entropy plus 20 bits of checksum. The dictionary length is 1024 which gives 10 bits of entropy per word.
  */
 export function generatePhrase(): string {
-  const seedWords = new Uint16Array(SEED_LENGTH);
+  const seedWords = new Uint16Array(SEED_WORDS_LENGTH);
   window.crypto.getRandomValues(seedWords);
 
   // Populate the seed words from the random values.
-  for (let i = 0; i < SEED_LENGTH; i++) {
+  for (let i = 0; i < SEED_WORDS_LENGTH; i++) {
     let numBits = 10;
     // For the 13th word, only the first 256 words are considered valid.
     if (i === 12) {
@@ -152,22 +149,21 @@ export function generatePhrase(): string {
   const checksumWords = generateChecksumWordsFromSeedWords(seedWords);
 
   const phraseWords: string[] = new Array(PHRASE_LENGTH);
-  for (let i = 0; i < SEED_LENGTH; i++) {
+  for (let i = 0; i < SEED_WORDS_LENGTH; i++) {
     phraseWords[i] = dictionary[seedWords[i]];
   }
-  for (let i = 0; i < CHECKSUM_LENGTH; i++) {
-    phraseWords[i + SEED_LENGTH] = dictionary[checksumWords[i]];
+  for (let i = 0; i < CHECKSUM_WORDS_LENGTH; i++) {
+    phraseWords[i + SEED_WORDS_LENGTH] = dictionary[checksumWords[i]];
   }
 
   return phraseWords.join(" ");
 }
 
 /**
- * Validate the seed by checking that for every word, there is a dictionary word that starts with the first 3 letters of the word. For the last word of the seed phrase (the 12th word), only the first 256 words of the dictionary are considered valid.
+ * Validate the phrase by checking that for every word, there is a dictionary word that starts with the first 3 letters of the word. For the last word of the seed phrase (the 12th word), only the first 256 words of the dictionary are considered valid.
  *
- * @param seed - The seed to check.
- * @param phrase
- * @returns - A boolean indicating whether the seed is valid, and a string explaining the error if it's not.
+ * @param phrase - The phrase to check.
+ * @returns - A boolean indicating whether the phrase is valid, and a string explaining the error if it's not.
  */
 export function validatePhrase(phrase: string): [boolean, string, Uint8Array | null] {
   phrase = sanitizePhrase(phrase);
@@ -177,7 +173,7 @@ export function validatePhrase(phrase: string): [boolean, string, Uint8Array | n
   }
 
   // Build the seed from words.
-  const seedWords = new Uint16Array(SEED_LENGTH);
+  const seedWords = new Uint16Array(SEED_WORDS_LENGTH);
   let i = 0;
   for (const word of phraseWords) {
     // Check word length.
@@ -216,10 +212,10 @@ export function validatePhrase(phrase: string): [boolean, string, Uint8Array | n
 
   // Validate checksum.
   const checksumWords = generateChecksumWordsFromSeedWords(seedWords);
-  for (let i = 0; i < CHECKSUM_LENGTH; i++) {
+  for (let i = 0; i < CHECKSUM_WORDS_LENGTH; i++) {
     const prefix = dictionary[checksumWords[i]].slice(0, 3);
-    if (phraseWords[i + SEED_LENGTH].slice(0, 3) !== prefix) {
-      return [false, `Word "${phraseWords[i + SEED_LENGTH]}" is not a valid checksum for the seed`, null];
+    if (phraseWords[i + SEED_WORDS_LENGTH].slice(0, 3) !== prefix) {
+      return [false, `Word "${phraseWords[i + SEED_WORDS_LENGTH]}" is not a valid checksum for the seed`, null];
     }
   }
 
@@ -243,8 +239,8 @@ function setAllSeedContainersInvisible() {
  * @param seedWords
  */
 function generateChecksumWordsFromSeedWords(seedWords: Uint16Array): Uint16Array {
-  if (seedWords.length != SEED_LENGTH) {
-    throw new Error(`Input seed was not of length ${SEED_LENGTH}`);
+  if (seedWords.length != SEED_WORDS_LENGTH) {
+    throw new Error(`Input seed was not of length ${SEED_WORDS_LENGTH}`);
   }
 
   const seed = seedWordsToSeed(seedWords);
@@ -272,19 +268,19 @@ export function hashToChecksumWords(h: Uint8Array): Uint16Array {
  * @param seedWords
  */
 export function seedWordsToSeed(seedWords: Uint16Array): Uint8Array {
-  if (seedWords.length != SEED_LENGTH) {
-    throw new Error(`Input seed was not of length ${SEED_LENGTH}`);
+  if (seedWords.length != SEED_WORDS_LENGTH) {
+    throw new Error(`Input seed was not of length ${SEED_WORDS_LENGTH}`);
   }
 
   // We are getting 16 bytes of entropy.
-  const bytes = new Uint8Array(16);
+  const bytes = new Uint8Array(SEED_LENGTH);
   let curByte = 0;
   let curBit = 0;
 
-  for (let i = 0; i < SEED_LENGTH; i++) {
+  for (let i = 0; i < SEED_WORDS_LENGTH; i++) {
     const word = seedWords[i];
     let wordBits = 10;
-    if (i === SEED_LENGTH - 1) {
+    if (i === SEED_WORDS_LENGTH - 1) {
       wordBits = 8;
     }
 

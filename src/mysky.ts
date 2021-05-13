@@ -4,8 +4,11 @@ import { CheckPermissionsResponse, CustomUserIDOptions, PermCategory, Permission
 import { RegistryEntry, signEntry, SkynetClient } from "skynet-js";
 
 import { launchPermissionsProvider } from "./provider";
-import { concatUint8Arrays, genKeyPairFromSeed, log, stringToUint8ArrayUtf8 } from "./util";
 import { hash } from "tweetnacl";
+
+import { concatUint8Arrays, genKeyPairFromSeed, log, stringToUint8ArrayUtf8 } from "./util";
+import { SEED_WORDS_LENGTH } from "./seed";
+import { SEED_LENGTH } from "./seed";
 
 export const mySkyDomain = "skynet-mysky.hns/";
 
@@ -104,6 +107,7 @@ export class MySky {
     // Check for stored seed in localstorage.
     const seed = checkStoredSeed();
     if (!seed) {
+      log("Seed not found");
       const permissionsResponse = { grantedPermissions: [], failedPermissions: perms };
       return [false, permissionsResponse];
     }
@@ -115,6 +119,7 @@ export class MySky {
     }
 
     // Check given permissions with the permissions provider.
+    log("Calling checkPermissions");
     const connection = await permissionsProvider;
     const permissionsResponse: CheckPermissionsResponse = await connection
       .remoteHandle()
@@ -200,6 +205,8 @@ export class MySky {
  * @returns - The seed, or null if not found.
  */
 export function checkStoredSeed(): Uint8Array | null {
+  log("Entered checkStoredSeed");
+
   if (!localStorage) {
     console.log("WARNING: localStorage disabled");
     return null;
@@ -209,7 +216,19 @@ export function checkStoredSeed(): Uint8Array | null {
   if (!seedStr) {
     return null;
   }
-  const seed = new Uint8Array(JSON.parse(seedStr));
+  // If we can't make a uint8 array out of the stored value, clear it and return null.
+  let seed;
+  try {
+    const arr = JSON.parse(seedStr);
+    seed = new Uint8Array(arr);
+    if (seed.length !== SEED_LENGTH) {
+      throw new Error("Bad seed length");
+    }
+  } catch (err) {
+    log(err);
+    clearStoredSeed();
+    return null;
+  }
 
   return seed;
 }
@@ -218,6 +237,8 @@ export function checkStoredSeed(): Uint8Array | null {
  *
  */
 export function clearStoredSeed(): void {
+  log("Entered clearStoredSeed");
+
   if (!localStorage) {
     console.log("WARNING: localStorage disabled");
     return;
