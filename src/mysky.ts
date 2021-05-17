@@ -7,7 +7,6 @@ import { launchPermissionsProvider } from "./provider";
 import { hash } from "tweetnacl";
 
 import { concatUint8Arrays, genKeyPairFromSeed, log, stringToUint8ArrayUtf8 } from "./util";
-import { SEED_WORDS_LENGTH } from "./seed";
 import { SEED_LENGTH } from "./seed";
 
 export const mySkyDomain = "skynet-mysky.hns/";
@@ -225,6 +224,7 @@ export function checkStoredSeed(): Uint8Array | null {
       throw new Error("Bad seed length");
     }
   } catch (err) {
+    log(`Could not parse stored seed '${seedStr}', clearing it`);
     log(err);
     clearStoredSeed();
     return null;

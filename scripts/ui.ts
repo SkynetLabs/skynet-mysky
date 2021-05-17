@@ -113,7 +113,6 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
 
   // Open the permissions provider.
 
-  // TODO: Call terminate() on the returned permissions worker.
   log("Calling launchPermissionsProvider");
   const permissionsProvider = await launchPermissionsProvider(seed);
 

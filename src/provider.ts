@@ -1,8 +1,13 @@
-import { Connection, ParentHandshake, WorkerMessenger } from "post-me";
-import { defaultHandshakeAttemptsInterval, defaultHandshakeMaxAttempts, ensureUrl } from "skynet-mysky-utils";
+import { Connection, ParentHandshake, WindowMessenger, WorkerMessenger } from "post-me";
+import {
+  createIframe,
+  defaultHandshakeAttemptsInterval,
+  defaultHandshakeMaxAttempts,
+  ensureUrl,
+} from "skynet-mysky-utils";
 import { genKeyPairFromSeed } from "./util";
 
-export const relativePermissionsWorkerUrl = "permissions.js";
+export const relativePermissionsProviderUrl = "permissions.html";
 export const relativePermissionsDisplayUrl = "permissions-display.html";
 export const defaultSeedDisplayProvider = "seed-display.html";
 
@@ -34,14 +39,20 @@ export async function launchPermissionsProvider(seed: Uint8Array): Promise<Conne
 
   const permissionsProviderUrl = await getPermissionsProviderUrl(seed);
 
-  // NOTE: This URL must obey the same-origin policy. If not the default permissions provider, it can be a base64 skylink on the current origin.
-  const workerJsUrl = `${permissionsProviderUrl}/${relativePermissionsWorkerUrl}`;
+  const providerUrl = `${permissionsProviderUrl}/${relativePermissionsProviderUrl}`;
 
-  // Load the worker.
+  // Load the frame.
 
-  // TODO: Return the worker and terminate it when not needed?
-  const worker = new Worker(workerJsUrl);
-  const messenger = new WorkerMessenger({ worker });
+  const childFrame = createIframe(providerUrl, providerUrl);
+  const childWindow = childFrame.contentWindow!;
+
+  // Complete handshake with Provider Display window.
+
+  const messenger = new WindowMessenger({
+    localWindow: window,
+    remoteWindow: childWindow,
+    remoteOrigin: "*",
+  });
   // TODO: Pass custom handshake options?
   return await ParentHandshake(messenger, {}, defaultHandshakeMaxAttempts, defaultHandshakeAttemptsInterval);
 }

@@ -4,7 +4,6 @@
     "noImplicitAny": true,
     "strict": true,
 
-    "lib": ["dom", "esnext", "webworker"],
     "outDir": "dist",
     "types": ["node"],
     "typeRoots": ["./types", "./node_modules/@types"]

@@ -1,8 +1,4 @@
-// Make Typescript happy, requires "lib": ["webworker"].
-declare const self: DedicatedWorkerGlobalScope;
-
-import { get, update } from "idb-keyval";
-import { ChildHandshake, WorkerMessenger } from "post-me";
+import { ChildHandshake, WindowMessenger } from "post-me";
 import type { Connection } from "post-me";
 import {
   CheckPermissionsResponse,
@@ -19,15 +15,23 @@ let parentConnection: Connection | null = null;
 // Initialization
 // ==============
 
-const methods = {
-  checkPermissions,
-  setPermissions,
-};
+/**
+ *
+ */
+async function init() {
+  // Establish handshake with parent window.
 
-(async () => {
-  const messenger = new WorkerMessenger({ worker: self });
+  const messenger = new WindowMessenger({
+    localWindow: window,
+    remoteWindow: window.parent,
+    remoteOrigin: "*",
+  });
+  const methods = {
+    checkPermissions,
+    setPermissions,
+  };
   parentConnection = await ChildHandshake(messenger, methods);
-})();
+}
 
 // ======
 // Events
@@ -44,10 +48,19 @@ self.onerror = function (error: any) {
   }
 };
 
+// Code that runs on page load.
+window.onload = async () => {
+  await init();
+};
+
 // ==========
 // Public API
 // ==========
 
+/**
+ * @param perms
+ * @param dev
+ */
 export async function checkPermissions(perms: Permission[], dev = false): Promise<CheckPermissionsResponse> {
   const grantedPermissions: Permission[] = [];
   const failedPermissions: Permission[] = [];
@@ -71,6 +84,9 @@ export async function checkPermissions(perms: Permission[], dev = false): Promis
   return { grantedPermissions, failedPermissions };
 }
 
+/**
+ * @param grantedPermissions
+ */
 export async function setPermissions(grantedPermissions: Permission[]): Promise<void> {
   // TODO: Optimization: do a first-pass to combine permissions into bitfields.
 
@@ -86,6 +102,9 @@ export async function setPermissions(grantedPermissions: Permission[]): Promise<
 // Core Logic
 // ==========
 
+/**
+ * @param perm
+ */
 async function checkPermission(perm: Permission): Promise<boolean> {
   const requestor = trimSuffix(perm.requestor, "/");
   const pathDomain = getPathDomain(perm.path);
@@ -116,28 +135,58 @@ async function checkPermission(perm: Permission): Promise<boolean> {
   return false;
 }
 
+/**
+ * @param perm
+ */
 async function fetchPermission(perm: Permission): Promise<boolean> {
   const key = createPermissionKey(perm.requestor, perm.path);
-  const storedBitfield = await get(key);
+  const storedBitfield = await getStorage(key);
   if (!storedBitfield) {
     return false;
   }
   const bitfieldToCheck = (1 << perm.category) | (1 << perm.permType);
-  return (storedBitfield & bitfieldToCheck) > 0;
+  return (JSON.parse(storedBitfield) & bitfieldToCheck) > 0;
 }
 
+/**
+ * @param perm
+ */
 async function savePermission(perm: Permission): Promise<void> {
   const key = createPermissionKey(perm.requestor, perm.path);
   const bitfieldToAdd = (1 << perm.category) | (1 << perm.permType);
-  await update(key, (storedBitfield: number | undefined) => (storedBitfield || 0) | bitfieldToAdd);
+  await updateStorage(
+    key,
+    (storedBitfield: string | null) => ((storedBitfield && JSON.parse(storedBitfield)) || 0) | bitfieldToAdd
+  );
 }
 
+/**
+ * @param requestor
+ * @param path
+ */
 export function createPermissionKey(requestor: string, path: string): string {
   requestor = trimSuffix(requestor, "/");
   path = sanitizePath(path);
-  return `[${requestor}],[${path}]`;
+  return `perm-[${requestor}],[${path}]`;
 }
 
 // =======
 // Helpers
 // =======
+
+/**
+ * @param key
+ */
+async function getStorage(key: string): Promise<string | null> {
+  return localStorage.getItem(key);
+}
+
+/**
+ * @param key
+ * @param updateFn
+ */
+async function updateStorage(key: string, updateFn: (storedValue: string | null) => unknown): Promise<void> {
+  const storedValue = localStorage.getItem(key);
+  const newValue = updateFn(storedValue);
+  localStorage.setItem(key, JSON.stringify(newValue));
+}
