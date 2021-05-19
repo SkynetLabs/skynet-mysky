@@ -1,5 +1,5 @@
 import { Buffer } from "buffer";
-import { KeyPair } from "skynet-js/dist/crypto";
+import { KeyPair } from "skynet-js/dist/mjs/crypto";
 import { hash, sign } from "tweetnacl";
 
 const urlParams = new URLSearchParams(window.location.search);

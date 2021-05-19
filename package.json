@@ -44,7 +44,7 @@
     "buffer": "^6.0.3",
     "idb-keyval": "^5.0.5",
     "post-me": "^0.4.5",
-    "skynet-js": "^4.0.2-beta",
+    "skynet-js": "^4.0.7-beta",
     "skynet-mysky-utils": "^0.2.3",
     "tweetnacl": "^1.0.3",
     "url-join": "^4.0.1"
