@@ -143,9 +143,11 @@ async function getPermissions(pendingPermissions: Permission[]): Promise<CheckPe
 // Helper Functions
 // ================
 
-// TODO: Move to mysky-utils?
 /**
- * @param perm
+ * Constructs a human-readable HTML version of the permission.
+ *
+ * @param perm - The given permission.
+ * @returns - The HTML string.
  */
 function readablePermission(perm: Permission): string {
   const category = permCategoryToString(perm.category);
