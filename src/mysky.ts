@@ -8,6 +8,7 @@ import { hash } from "tweetnacl";
 
 import { genKeyPairFromSeed, log, readablePermission, sha512, stringToUint8ArrayUtf8, toHexString } from "./util";
 import { SEED_LENGTH } from "./seed";
+import { ENCRYPTION_PATH_SEED_LENGTH } from "../../skynet-js/dist/cjs";
 
 export const mySkyDomain = "skynet-mysky.hns/";
 
@@ -146,7 +147,7 @@ export class MySky {
     // Compute the root path seed.
 
     const bytes = new Uint8Array([...sha512("encrypted filesystem path seed"), ...sha512(seed)]);
-    const rootPathSeed = toHexString(sha512(bytes));
+    const rootPathSeed = toHexString(sha512(bytes).slice(0, ENCRYPTION_PATH_SEED_LENGTH));
 
     // Compute the child path seed.
 
