@@ -21,7 +21,7 @@ export function log(message: string, ...optionalContext: any[]) {
  * @param seed
  */
 export function genKeyPairFromSeed(seed: Uint8Array): KeyPair {
-  const bytes = new Uint8Array([...sha512(stringToUint8ArrayUtf8("root discoverable key")), ...sha512(seed)]);
+  const bytes = new Uint8Array([...sha512("root discoverable key"), ...sha512(seed)]);
   const hashBytes = sha512(bytes).slice(0, 32);
 
   const { publicKey, secretKey } = sign.keyPair.fromSeed(hashBytes);

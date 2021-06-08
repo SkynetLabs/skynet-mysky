@@ -151,9 +151,7 @@ export class MySky {
 
     // Compute the child path seed.
 
-    const childPathSeed = deriveEncryptedFileSeed(rootPathSeed, path, isDirectory);
-
-    return childPathSeed;
+    return deriveEncryptedFileSeed(rootPathSeed, path, isDirectory);
   }
 
   // TODO
