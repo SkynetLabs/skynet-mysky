@@ -1,3 +1,5 @@
+#!/bin/bash
+
 npx rimraf dist &&
 cp -R html dist &&
 cp -R assets dist/assets &&
