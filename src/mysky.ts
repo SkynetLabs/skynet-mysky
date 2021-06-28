@@ -135,7 +135,7 @@ export class MySky {
 
     // Check with the permissions provider that we have permission for this request.
 
-    this.checkPermission(path, PermCategory.Hidden, PermType.Read);
+    await this.checkPermission(path, PermCategory.Hidden, PermType.Read);
 
     // Get the seed.
 
@@ -195,7 +195,7 @@ export class MySky {
 
     // Check with the permissions provider that we have permission for this request.
 
-    this.checkPermission(path, category, PermType.Write);
+    await this.checkPermission(path, category, PermType.Write);
 
     // Get the seed.
 
