@@ -1,5 +1,4 @@
 import { ChildHandshake, Connection, WindowMessenger } from "post-me";
-import { SkynetClient } from "skynet-js";
 import { CheckPermissionsResponse, permCategoryToString, Permission, permTypeToString } from "skynet-mysky-utils";
 
 const uiPermissionsCheckboxes = document.getElementById("permissions-checkboxes")!;
@@ -96,7 +95,7 @@ async function init() {
 /**
  * Called by MySky UI. Checks for the ready permissions at an interval.
  *
- * @param pendingPermissions
+ * @param pendingPermissions - The list of pending permissions.
  */
 async function getPermissions(pendingPermissions: Permission[]): Promise<CheckPermissionsResponse> {
   // Initialize the permissions checkboxes.

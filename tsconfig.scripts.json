@@ -4,11 +4,12 @@
     "esModuleInterop": true,
     "noImplicitAny": true,
     "strict": true,
+    "skipLibCheck": true,
 
     "lib": ["dom", "esnext", "webworker"],
     "outDir": "dist",
     "types": ["node"],
     "typeRoots": ["./types", "./node_modules/@types"]
   },
-  "include": ["scripts"]
+  "include": ["scripts/**/*.ts", "types/**/*.d.ts"]
 }
