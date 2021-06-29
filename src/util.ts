@@ -51,9 +51,8 @@ export function readablePermission(perm: Permission): string {
 export function sha512(message: Uint8Array | string): Uint8Array {
   if (typeof message === "string") {
     return hash(stringToUint8ArrayUtf8(message));
-  } else {
-    return hash(message);
   }
+  return hash(message);
 }
 
 /**

@@ -6,25 +6,24 @@ import { deriveEncryptedFileSeed, RegistryEntry, signEntry, SkynetClient } from 
 import { launchPermissionsProvider } from "./provider";
 import { hash } from "tweetnacl";
 
-import { genKeyPairFromSeed, log, readablePermission, sha512, stringToUint8ArrayUtf8, toHexString } from "./util";
+import { genKeyPairFromSeed, log, readablePermission, sha512, toHexString } from "./util";
 import { SEED_LENGTH } from "./seed";
 import { ENCRYPTION_PATH_SEED_LENGTH } from "../../skynet-js/dist/cjs";
 
-export const mySkyDomain = "skynet-mysky.hns/";
+const SEED_STORAGE_KEY = "seed";
 
-const referrer = document.referrer;
-const seedStorageKey = "seed";
+// Set `DEV_MODE` based on whether we built production or dev.
+let DEV_MODE = false;
+/// #if ENV == 'dev'
+DEV_MODE = true;
+/// #endif
 
 let permissionsProvider: Promise<Connection> | null = null;
 
-let dev = false;
-/// #if ENV == 'dev'
-dev = true;
-/// #endif
-
-// Set up a listener for the storage event. If the seed is set in the UI, it should trigger a load of the permissions provider.
+// Set up a listener for the storage event. If the seed is set in the UI, it
+// should trigger a load of the permissions provider.
 window.addEventListener("storage", ({ key, newValue }: StorageEvent) => {
-  if (!key || key !== seedStorageKey) {
+  if (!key || key !== SEED_STORAGE_KEY) {
     return;
   }
   if (!newValue) {
@@ -45,7 +44,11 @@ export class MySky {
   // Constructors
   // ============
 
-  constructor(protected client: SkynetClient, protected parentConnection: Connection) {
+  constructor(
+    protected client: SkynetClient,
+    protected parentConnection: Connection,
+    protected referrerDomain: string
+  ) {
     // Set child methods.
 
     const methods = {
@@ -94,7 +97,8 @@ export class MySky {
     // Create MySky object.
 
     log("Calling new MySky()");
-    const mySky = new MySky(client, parentConnection);
+    const referrerDomain = await client.extractDomain(document.referrer);
+    const mySky = new MySky(client, parentConnection, referrerDomain);
 
     return mySky;
   }
@@ -125,7 +129,7 @@ export class MySky {
     const connection = await permissionsProvider;
     const permissionsResponse: CheckPermissionsResponse = await connection
       .remoteHandle()
-      .call("checkPermissions", perms, dev);
+      .call("checkPermissions", perms, DEV_MODE);
 
     return [true, permissionsResponse];
   }
@@ -221,11 +225,10 @@ export class MySky {
       throw new Error("Permissions provider not loaded");
     }
 
-    const referrerDomain = await this.client.extractDomain(referrer);
-    const perm = new Permission(referrerDomain, path, category, permType);
+    const perm = new Permission(this.referrerDomain, path, category, permType);
     log(`Checking permission: ${JSON.stringify(perm)}`);
     const connection = await permissionsProvider;
-    const resp: CheckPermissionsResponse = await connection.remoteHandle().call("checkPermissions", [perm], dev);
+    const resp: CheckPermissionsResponse = await connection.remoteHandle().call("checkPermissions", [perm], DEV_MODE);
     if (resp.failedPermissions.length > 0) {
       const readablePerm = readablePermission(perm);
       throw new Error(`Permission was not granted: ${readablePerm}`);
@@ -246,7 +249,7 @@ export function checkStoredSeed(): Uint8Array | null {
     return null;
   }
 
-  const seedStr = localStorage.getItem(seedStorageKey);
+  const seedStr = localStorage.getItem(SEED_STORAGE_KEY);
   if (!seedStr) {
     return null;
   }
@@ -278,7 +281,7 @@ export function clearStoredSeed(): void {
     return;
   }
 
-  localStorage.removeItem(seedStorageKey);
+  localStorage.removeItem(SEED_STORAGE_KEY);
 }
 
 /**
@@ -298,7 +301,7 @@ export function saveSeed(seed: Uint8Array): void {
   seed = saltSeed(seed);
   /// #endif
 
-  localStorage.setItem(seedStorageKey, JSON.stringify(Array.from(seed)));
+  localStorage.setItem(SEED_STORAGE_KEY, JSON.stringify(Array.from(seed)));
 }
 
 /**
