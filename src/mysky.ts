@@ -12,6 +12,9 @@ import { ENCRYPTION_PATH_SEED_LENGTH } from "../../skynet-js/dist/cjs";
 
 const SEED_STORAGE_KEY = "seed";
 
+// Descriptive salt that should not be changed.
+const SALT_ENCRYPTED_PATH_SEED = "encrypted filesystem path seed";
+
 // Set `DEV_MODE` based on whether we built production or dev.
 let DEV_MODE = false;
 /// #if ENV == 'dev'
@@ -98,9 +101,7 @@ export class MySky {
 
     log("Calling new MySky()");
     const referrerDomain = await client.extractDomain(document.referrer);
-    const mySky = new MySky(client, parentConnection, referrerDomain);
-
-    return mySky;
+    return new MySky(client, parentConnection, referrerDomain);
   }
 
   // ==========
@@ -150,7 +151,7 @@ export class MySky {
 
     // Compute the root path seed.
 
-    const bytes = new Uint8Array([...sha512("encrypted filesystem path seed"), ...sha512(seed)]);
+    const bytes = new Uint8Array([...sha512(SALT_ENCRYPTED_PATH_SEED), ...sha512(seed)]);
     const rootPathSeed = toHexString(sha512(bytes).slice(0, ENCRYPTION_PATH_SEED_LENGTH));
 
     // Compute the child path seed.
