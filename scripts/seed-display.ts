@@ -1,5 +1,4 @@
 import { ChildHandshake, Connection, WindowMessenger } from "post-me";
-import { SkynetClient } from "skynet-js";
 import { removeAdjacentChars } from "skynet-mysky-utils";
 import { hash } from "tweetnacl";
 

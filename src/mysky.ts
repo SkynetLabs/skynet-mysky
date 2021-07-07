@@ -1,6 +1,6 @@
 import { ChildHandshake, WindowMessenger } from "post-me";
 import type { Connection } from "post-me";
-import { CheckPermissionsResponse, CustomUserIDOptions, PermCategory, Permission, PermType } from "skynet-mysky-utils";
+import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
 import { deriveEncryptedFileSeed, RegistryEntry, signEntry, SkynetClient } from "skynet-js";
 
 import { launchPermissionsProvider } from "./provider";
@@ -137,7 +137,7 @@ export class MySky {
     return [true, permissionsResponse];
   }
 
-  async getEncryptedFileSeed(path: string, isDirectory: boolean) {
+  async getEncryptedFileSeed(path: string, isDirectory: boolean): Promise<string> {
     log("Entered getEncryptedFileSeed");
 
     // Check with the permissions provider that we have permission for this request.
@@ -179,7 +179,7 @@ export class MySky {
     return this.signRegistryEntryHelper(entry, path, PermCategory.Hidden);
   }
 
-  async userID(_opts?: CustomUserIDOptions): Promise<string> {
+  async userID(): Promise<string> {
     // Get the seed.
 
     const seed = checkStoredSeed();
@@ -256,6 +256,7 @@ export function checkStoredSeed(): Uint8Array | null {
   if (!seedStr) {
     return null;
   }
+
   // If we can't make a uint8 array out of the stored value, clear it and return null.
   let seed;
   try {
@@ -300,16 +301,19 @@ export function saveSeed(seed: Uint8Array): void {
   }
 
   // If in dev mode, salt the seed.
-  /// #if ENV == 'dev'
-  seed = saltSeed(seed);
-  /// #endif
+  if (dev) {
+    seed = saltSeedDevMode(seed);
+  }
 
   localStorage.setItem(SEED_STORAGE_KEY, JSON.stringify(Array.from(seed)));
 }
 
 /**
- * @param seed
+ * Salts the given seed for developer mode.
+ *
+ * @param seed - The seed to salt.
+ * @returns - The new seed after being salted.
  */
-function saltSeed(seed: Uint8Array): Uint8Array {
+function saltSeedDevMode(seed: Uint8Array): Uint8Array {
   return sha512(new Uint8Array([...sha512("developer mode"), ...hash(seed)])).slice(0, 16);
 }
