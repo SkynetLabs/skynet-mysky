@@ -15,10 +15,10 @@ const SEED_STORAGE_KEY = "seed";
 // Descriptive salt that should not be changed.
 const SALT_ENCRYPTED_PATH_SEED = "encrypted filesystem path seed";
 
-// Set `DEV_MODE` based on whether we built production or dev.
-let DEV_MODE = false;
+// Set `dev` based on whether we built production or dev.
+let dev = false;
 /// #if ENV == 'dev'
-DEV_MODE = true;
+dev = true;
 /// #endif
 
 let permissionsProvider: Promise<Connection> | null = null;
@@ -43,15 +43,13 @@ window.addEventListener("storage", ({ key, newValue }: StorageEvent) => {
 });
 
 export class MySky {
+  protected parentConnection: Promise<Connection>;
+
   // ============
   // Constructors
   // ============
 
-  constructor(
-    protected client: SkynetClient,
-    protected parentConnection: Connection,
-    protected referrerDomain: string
-  ) {
+  constructor(protected client: SkynetClient, protected referrerDomain: string) {
     // Set child methods.
 
     const methods = {
@@ -62,7 +60,16 @@ export class MySky {
       signEncryptedRegistryEntry: this.signEncryptedRegistryEntry.bind(this),
       userID: this.userID.bind(this),
     };
-    this.parentConnection.localHandle().setMethods(methods);
+
+    // Enable communication with connector in parent skapp.
+
+    log("Making handshake");
+    const messenger = new WindowMessenger({
+      localWindow: window,
+      remoteWindow: window.parent,
+      remoteOrigin: "*",
+    });
+    this.parentConnection = ChildHandshake(messenger, methods);
   }
 
   static async initialize(): Promise<MySky> {
@@ -83,25 +90,20 @@ export class MySky {
       permissionsProvider = launchPermissionsProvider(seed);
     }
 
-    // Enable communication with connector in parent skapp.
-
-    log("Making handshake");
-    const messenger = new WindowMessenger({
-      localWindow: window,
-      remoteWindow: window.parent,
-      remoteOrigin: "*",
-    });
-    const parentConnection = await ChildHandshake(messenger);
-
     // Initialize the Skynet client.
 
     const client = new SkynetClient();
 
+    // Get the referrer.
+
+    const referrerDomain = await client.extractDomain(document.referrer);
+
     // Create MySky object.
 
     log("Calling new MySky()");
-    const referrerDomain = await client.extractDomain(document.referrer);
-    return new MySky(client, parentConnection, referrerDomain);
+    const mySky = new MySky(client, referrerDomain);
+
+    return mySky;
   }
 
   // ==========
@@ -130,7 +132,7 @@ export class MySky {
     const connection = await permissionsProvider;
     const permissionsResponse: CheckPermissionsResponse = await connection
       .remoteHandle()
-      .call("checkPermissions", perms, DEV_MODE);
+      .call("checkPermissions", perms, dev);
 
     return [true, permissionsResponse];
   }
@@ -229,7 +231,7 @@ export class MySky {
     const perm = new Permission(this.referrerDomain, path, category, permType);
     log(`Checking permission: ${JSON.stringify(perm)}`);
     const connection = await permissionsProvider;
-    const resp: CheckPermissionsResponse = await connection.remoteHandle().call("checkPermissions", [perm], DEV_MODE);
+    const resp: CheckPermissionsResponse = await connection.remoteHandle().call("checkPermissions", [perm], dev);
     if (resp.failedPermissions.length > 0) {
       const readablePerm = readablePermission(perm);
       throw new Error(`Permission was not granted: ${readablePerm}`);
