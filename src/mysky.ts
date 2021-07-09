@@ -1,6 +1,6 @@
 import { ChildHandshake, WindowMessenger } from "post-me";
 import type { Connection } from "post-me";
-import { CheckPermissionsResponse, CustomUserIDOptions, PermCategory, Permission, PermType } from "skynet-mysky-utils";
+import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
 import { RegistryEntry, signEntry, SkynetClient } from "skynet-js";
 
 import { launchPermissionsProvider } from "./provider";
@@ -176,7 +176,7 @@ export class MySky {
     return signature;
   }
 
-  async userID(_opts?: CustomUserIDOptions): Promise<string> {
+  async userID(): Promise<string> {
     // Get the seed.
 
     const seed = checkStoredSeed();
