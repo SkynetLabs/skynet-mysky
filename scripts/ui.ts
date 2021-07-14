@@ -75,6 +75,10 @@ window.onload = () => {
  *
  */
 async function init() {
+  if (!window.opener) {
+    throw new Error("Window opener not found");
+  }
+
   // Establish handshake with parent skapp.
 
   const messenger = new WindowMessenger({
