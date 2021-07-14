@@ -1,14 +1,19 @@
 import { ChildHandshake, WindowMessenger } from "post-me";
 import type { Connection } from "post-me";
+import {
+  deriveEncryptedFileSeed,
+  ENCRYPTION_PATH_SEED_LENGTH,
+  RegistryEntry,
+  signEntry,
+  SkynetClient,
+} from "skynet-js";
 import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
-import { deriveEncryptedFileSeed, RegistryEntry, signEntry, SkynetClient } from "skynet-js";
 
 import { launchPermissionsProvider } from "./provider";
 import { hash } from "tweetnacl";
 
 import { genKeyPairFromSeed, log, readablePermission, sha512, toHexString } from "./util";
 import { SEED_LENGTH } from "./seed";
-import { ENCRYPTION_PATH_SEED_LENGTH } from "../../skynet-js/dist/cjs";
 
 const SEED_STORAGE_KEY = "seed";
 
@@ -26,7 +31,7 @@ let permissionsProvider: Promise<Connection> | null = null;
 // Set up a listener for the storage event. If the seed is set in the UI, it
 // should trigger a load of the permissions provider.
 window.addEventListener("storage", ({ key, newValue }: StorageEvent) => {
-  if (!key || key !== SEED_STORAGE_KEY) {
+  if (key !== SEED_STORAGE_KEY) {
     return;
   }
   if (!newValue) {
