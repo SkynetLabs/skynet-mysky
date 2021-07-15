@@ -1,6 +1,6 @@
 {
   "name": "mysky",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Skynet MySky",
   "browserslist": [
     "defaults",
@@ -44,7 +44,7 @@
     "buffer": "^6.0.3",
     "idb-keyval": "^5.0.5",
     "post-me": "^0.4.5",
-    "skynet-js": "^4.0.7-beta",
+    "skynet-js": "^4.0.12-beta",
     "skynet-mysky-utils": "^0.2.3",
     "tweetnacl": "^1.0.3",
     "url-join": "^4.0.1"
