@@ -33,7 +33,7 @@
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
       "eslint --ext .ts --fix",
-      "tsc --esModuleInterop --noemit",
+      "tsc --esModuleInterop --downlevelIteration --noemit",
       "prettier --write"
     ],
     "*.{json,yml,md}": [

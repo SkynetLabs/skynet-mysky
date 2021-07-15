@@ -1,7 +1,4 @@
 import { ChildHandshake, Connection, WindowMessenger } from "post-me";
-import { SkynetClient } from "skynet-js";
-
-const uiSeedSelectionSubmit = document.getElementById("seed-selection-submit")!;
 
 let readySeedProvider = "";
 let parentConnection: Connection | null = null;
@@ -72,6 +69,8 @@ async function init() {
 
 /**
  * Called by MySky UI. Checks for the ready seed provider at an interval.
+ *
+ * @returns - The seed provider, once found.
  */
 async function getSeedProvider(): Promise<string> {
   const checkInterval = 100;

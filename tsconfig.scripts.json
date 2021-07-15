@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "downlevelIteration": true,
     "esModuleInterop": true,
     "noImplicitAny": true,
     "strict": true,
@@ -10,5 +11,5 @@
     "types": ["node"],
     "typeRoots": ["./types", "./node_modules/@types"]
   },
-  "include": ["scripts"]
+  "include": ["scripts/**/*.ts", "types/**/*.d.ts"]
 }

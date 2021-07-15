@@ -22,8 +22,14 @@ npm run build
 
 Upload `dist/` folder to Skynet.
 
+You can check the `version.txt` file on the live site to see the latest git commit it was built with, e.g. `skynet-mysky.hns.siasky.net/version.txt`.
+
 ### Dev Build
 
 ```
 npm run build-dev
 ```
+
+### Dev Note
+
+We are currently using [the SkyDeploy skapp](https://sky-deploy.hns.siasky.net/#/deploy) for prod (skynet-mysky.hns) and dev (skynet-mysky-dev.hns). We are using [redsolver's skydeploy utility](https://github.com/redsolver/skydeploy/) for alpha (sandbridge.hns).

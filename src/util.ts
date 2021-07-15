@@ -1,9 +1,12 @@
 import { Buffer } from "buffer";
 import { KeyPair } from "skynet-js/dist/mjs/crypto";
+import { permCategoryToString, Permission, permTypeToString } from "skynet-mysky-utils";
 import { hash, sign } from "tweetnacl";
 
 const urlParams = new URLSearchParams(window.location.search);
 const DEBUG_ENABLED = urlParams.get("debug") === "true";
+
+const SALT_ROOT_DISCOVERABLE_KEY = "root discoverable key";
 
 // log prints to stdout only if DEBUG_ENABLED flag is set
 /**
@@ -17,25 +20,41 @@ export function log(message: string, ...optionalContext: any[]) {
 }
 
 /**
- * @param array1
- * @param array2
- */
-export function concatUint8Arrays(array1: Uint8Array, array2: Uint8Array): Uint8Array {
-  const result = new Uint8Array(array1.length + array2.length);
-  result.set(array1);
-  result.set(array2, array1.length);
-  return result;
-}
-
-/**
  * @param seed
  */
 export function genKeyPairFromSeed(seed: Uint8Array): KeyPair {
-  const bytes = hash(concatUint8Arrays(hash(stringToUint8ArrayUtf8("root discoverable key")), hash(seed))).slice(0, 32);
+  const bytes = new Uint8Array([...sha512(SALT_ROOT_DISCOVERABLE_KEY), ...sha512(seed)]);
+  const hashBytes = sha512(bytes).slice(0, 32);
 
-  const { publicKey, secretKey } = sign.keyPair.fromSeed(bytes);
+  const { publicKey, secretKey } = sign.keyPair.fromSeed(hashBytes);
 
   return { publicKey: toHexString(publicKey), privateKey: toHexString(secretKey) };
+}
+
+/**
+ * Constructs a human-readable version of the permission.
+ *
+ * @param perm - The given permission.
+ * @returns - The string.
+ */
+export function readablePermission(perm: Permission): string {
+  const category = permCategoryToString(perm.category);
+  const permType = permTypeToString(perm.permType);
+
+  return `${perm.requestor} can ${permType} ${category} files at ${perm.path}`;
+}
+
+/**
+ * Hashes the given string or byte array using sha512.
+ *
+ * @param message - The string or byte array to hash.
+ * @returns - The resulting hash.
+ */
+export function sha512(message: Uint8Array | string): Uint8Array {
+  if (typeof message === "string") {
+    return hash(stringToUint8ArrayUtf8(message));
+  }
+  return hash(message);
 }
 
 /**

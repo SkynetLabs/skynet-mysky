@@ -1,3 +1,5 @@
+#!/bin/bash
+
 npx rimraf dist &&
 cp -R html dist &&
 cp -R assets dist/assets &&
@@ -9,5 +11,5 @@ npx webpack --config webpack.config.seed-display.js &&
 npx webpack --config webpack.config.seed-selection.js &&
 node minify-src.js dist/*.html &&
 rm dist/main.js dist/seed-display.js dist/seed-selection.js dist/permissions-display.js dist/ui.js &&
-find dist -name "*.css" -type f -delete
-
+find dist -name "*.css" -type f -delete &&
+git describe --all --long > dist/version.txt
