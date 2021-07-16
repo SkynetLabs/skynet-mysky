@@ -4,6 +4,9 @@
     printf "Version:\n";
     node -p "require('./package.json').version";
 
+    printf "\nMode:\n";
+    echo "${SKYNET_MYSKY_ENV:-production}";
+
     printf "\nBranch:\n";
     git describe --all --long;
 
