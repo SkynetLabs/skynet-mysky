@@ -1,0 +1,12 @@
+#!/bin/bash
+
+{
+    printf "Version:\n";
+    node -p "require('./package.json').version";
+
+    printf "\nBranch:\n";
+    git describe --all --long;
+
+    printf "\nLocal links:\n";
+    npm ls --depth=0 --link=true;
+} > dist/version.txt

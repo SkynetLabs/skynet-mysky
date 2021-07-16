@@ -12,4 +12,4 @@ npx webpack --config webpack.config.seed-selection.js &&
 node minify-src.js dist/*.html &&
 rm dist/main.js dist/seed-display.js dist/seed-selection.js dist/permissions-display.js dist/ui.js &&
 find dist -name "*.css" -type f -delete &&
-git describe --all --long > dist/version.txt
+./generate_versions_file
