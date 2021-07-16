@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1]
+
+### Changed
+
+- Make permissions checking case-insensitive
+- Add more sanitization and error-checking for permissions.
+
 ## [0.2.0]
 
 ### Added
