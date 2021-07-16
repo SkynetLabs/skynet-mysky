@@ -87,7 +87,7 @@ export async function setPermissions(grantedPermissions: Permission[]): Promise<
 // ==========
 
 async function checkPermission(perm: Permission): Promise<boolean> {
-  const requestor = trimSuffix(perm.requestor, "/");
+  const requestor = sanitizePath(perm.requestor);
   const pathDomain = getPathDomain(perm.path);
 
   // Allow all permissions where the requestor matches the path domain.
@@ -132,12 +132,18 @@ async function savePermission(perm: Permission): Promise<void> {
   await update(key, (storedBitfield: number | undefined) => (storedBitfield || 0) | bitfieldToAdd);
 }
 
-export function createPermissionKey(requestor: string, path: string): string {
-  requestor = trimSuffix(requestor, "/");
-  path = sanitizePath(path);
-  return `[${requestor}],[${path}]`;
-}
-
 // =======
 // Helpers
 // =======
+
+export function createPermissionKey(requestor: string, path: string): string {
+  const sanitizedRequestor = sanitizePath(requestor);
+  if (sanitizedRequestor === null) {
+    throw new Error(`Invalid requestor: '${requestor}'`);
+  }
+  const sanitizedPath = sanitizePath(path);
+  if (sanitizedPath === null) {
+    throw new Error(`Invalid path: '${path}'`);
+  }
+  return `[${sanitizedRequestor}],[${sanitizedPath}]`;
+}

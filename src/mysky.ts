@@ -1,5 +1,6 @@
 import { ChildHandshake, WindowMessenger } from "post-me";
 import type { Connection } from "post-me";
+import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
 import {
   deriveEncryptedFileSeed,
   ENCRYPTION_PATH_SEED_LENGTH,
@@ -7,7 +8,6 @@ import {
   signEntry,
   SkynetClient,
 } from "skynet-js";
-import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
 
 import { launchPermissionsProvider } from "./provider";
 import { hash } from "tweetnacl";
