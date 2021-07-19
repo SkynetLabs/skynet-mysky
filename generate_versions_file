@@ -7,8 +7,14 @@
     printf "\nMode:\n";
     echo "${SKYNET_MYSKY_ENV:-production}";
 
+    printf "\nBuild info";
+    printf "\n==========\n";
+
     printf "\nBranch:\n";
     git describe --all --long;
+
+    printf "\nLocal changes:\n";
+    git diff --name-only
 
     printf "\nLocal links:\n";
     npm ls --depth=0 --link=true;

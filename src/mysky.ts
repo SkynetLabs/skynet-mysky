@@ -2,7 +2,9 @@ import { ChildHandshake, WindowMessenger } from "post-me";
 import type { Connection } from "post-me";
 import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
 import {
+  deriveDiscoverableFileTweak,
   deriveEncryptedFileSeed,
+  deriveEncryptedFileTweak,
   ENCRYPTION_PATH_SEED_LENGTH,
   RegistryEntry,
   signEntry,
@@ -177,10 +179,26 @@ export class MySky {
   }
 
   async signRegistryEntry(entry: RegistryEntry, path: string): Promise<Uint8Array> {
+    // Check that the entry data key corresponds to the right path.
+
+    const dataKey = deriveDiscoverableFileTweak(path);
+    if (entry.dataKey !== dataKey) {
+      throw new Error("Path does not match the data key in the registry entry.");
+    }
+
     return this.signRegistryEntryHelper(entry, path, PermCategory.Discoverable);
   }
 
   async signEncryptedRegistryEntry(entry: RegistryEntry, path: string): Promise<Uint8Array> {
+    // Check that the entry data key corresponds to the right path.
+
+    // Use `isDirectory: false` because registry entries can only correspond to files right now.
+    const pathSeed = await this.getEncryptedFileSeed(path, false);
+    const dataKey = deriveEncryptedFileTweak(pathSeed);
+    if (entry.dataKey !== dataKey) {
+      throw new Error("Path does not match the data key in the encrypted registry entry.");
+    }
+
     return this.signRegistryEntryHelper(entry, path, PermCategory.Hidden);
   }
 
