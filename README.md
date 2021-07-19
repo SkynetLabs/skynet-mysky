@@ -4,6 +4,12 @@ This is the repo that contains the MySky invisible element, MySky UI, the defaul
 
 MySky domain: `skynet-mysky.hns`
 
+## Docs
+
+For API docs please refer to the [SDK docs](https://siasky.net/docs/#mysky).
+
+For an interactive workshop, look [here](https://app.gitbook.com/@skynet-labs/s/skynet-developer-guide/skynet-workshops/introduction-workshop).
+
 ## Dev
 
 The Dev domain is: `sandbridge.hns` (to be changed).
