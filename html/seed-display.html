@@ -27,8 +27,12 @@
         <h1>Sign In</h1>
         <br />
         <div>Enter your passphrase:</div>
+        <br />
         <div>
-          <input type="text" id="signin-passphrase-text" name="passphrase-text" width+"100%" placeholder="word1 word2 word3 ..."/>
+          <input type="password" id="signin-passphrase-text" name="passphrase-text" width+"100%" placeholder="word1 word2 word3 ..."/>
+        </div>
+        <div>
+          <input type="checkbox" onclick="showPassword()">Show passphrase
         </div>
         <br />
         <button id="button-back" class="btn" onclick="window.goToLoggedOut()">Back</button>
@@ -48,8 +52,7 @@
         </div>
         <br />
         <div>
-          <input type="text" id="signup-passphrase-text" name="passphrase-text" width+"100%" style="color: #DCDAD1;"
-          readonly/>
+          <input type="text" id="signup-passphrase-text" name="passphrase-text" width+"100%" style="color: #DCDAD1;" readonly/>
         </div>
         <br />
         <div>Please keep your passphrase secret. You cannot retrieve your account if you lose it.</div>
@@ -74,6 +77,15 @@
       function outFunc() {
         var tooltip = document.getElementById("copy-tooltip");
         tooltip.innerHTML = "Copy to clipboard";
+      }
+
+      function showPassword() {
+        const x = document.getElementById("signin-passphrase-text");
+        if (x.type === "password") {
+          x.type = "text";
+        } else {
+          x.type = "password";
+        }
       }
     </script>
 
