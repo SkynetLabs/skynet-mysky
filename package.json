@@ -17,14 +17,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/SkynetHQ/skynet-mysky.git"
+    "url": "git+https://github.com/SkynetLabs/skynet-mysky.git"
   },
   "author": "Marcin Swieczkowski",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/SkynetHQ/skynet-mysky/issues"
+    "url": "https://github.com/SkynetLabs/skynet-mysky/issues"
   },
-  "homepage": "https://github.com/SkynetHQ/skynet-mysky#readme",
+  "homepage": "https://github.com/SkynetLabs/skynet-mysky#readme",
   "husky": {
     "hooks": {
       "pre-commit": "lint-staged"
