@@ -45,8 +45,10 @@ self.onerror = function (error: any) {
 // ==========
 
 export async function checkPermissions(perms: Permission[], dev = false): Promise<CheckPermissionsResponse> {
-  // Check the version and clear old permissions if we've updated the permission storage scheme.
-  await checkVersion();
+  if (!dev) {
+    // Check the version and clear old permissions if we've updated the permission storage scheme.
+    await checkVersion();
+  }
 
   const grantedPermissions: Permission[] = [];
   const failedPermissions: Permission[] = [];
