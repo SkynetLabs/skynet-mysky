@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.0]
+
+### Changed
+
+- Fix permissions and update to permissions v2.
+- Update versions script to use JSON.
+
+### Added
+
+- Add "show passphrase" checkbox.
+
 ## [0.3.0]
 
 ### Changed
