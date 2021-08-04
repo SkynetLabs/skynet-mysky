@@ -1,17 +1,13 @@
 // Make Typescript happy, requires "lib": ["webworker"].
 declare const self: DedicatedWorkerGlobalScope;
 
-import { get, update } from "idb-keyval";
+import { clear, get, set, update } from "idb-keyval";
 import { ChildHandshake, WorkerMessenger } from "post-me";
 import type { Connection } from "post-me";
-import {
-  CheckPermissionsResponse,
-  getParentPath,
-  getPathDomain,
-  Permission,
-  sanitizePath,
-  trimSuffix,
-} from "skynet-mysky-utils";
+import { CheckPermissionsResponse, getParentPath, getPathDomain, Permission, sanitizePath } from "skynet-mysky-utils";
+
+const version = 2;
+const versionKey = "_v";
 
 let parentConnection: Connection | null = null;
 
@@ -49,6 +45,11 @@ self.onerror = function (error: any) {
 // ==========
 
 export async function checkPermissions(perms: Permission[], dev = false): Promise<CheckPermissionsResponse> {
+  if (!dev) {
+    // Check the version and clear old permissions if we've updated the permission storage scheme.
+    await checkVersion();
+  }
+
   const grantedPermissions: Permission[] = [];
   const failedPermissions: Permission[] = [];
 
@@ -72,6 +73,9 @@ export async function checkPermissions(perms: Permission[], dev = false): Promis
 }
 
 export async function setPermissions(grantedPermissions: Permission[]): Promise<void> {
+  // Check the version and clear old permissions if we've updated the permission storage scheme.
+  await checkVersion();
+
   // TODO: Optimization: do a first-pass to combine permissions into bitfields.
 
   await Promise.all(
@@ -116,25 +120,47 @@ async function checkPermission(perm: Permission): Promise<boolean> {
   return false;
 }
 
+/**
+ * Check the version and clear old permissions if we've updated the permissions scheme.
+ */
+async function checkVersion(): Promise<void> {
+  // Get the version.
+  const oldVersion = await get(versionKey);
+
+  // Clear old permissions if we're on a new version.
+  if (!oldVersion || oldVersion < version) {
+    clear();
+  }
+
+  // Set the latest version.
+  await set(versionKey, version);
+}
+
 async function fetchPermission(perm: Permission): Promise<boolean> {
   const key = createPermissionKey(perm.requestor, perm.path);
   const storedBitfield = await get(key);
   if (!storedBitfield) {
     return false;
   }
-  const bitfieldToCheck = (1 << perm.category) | (1 << perm.permType);
+  const bitfieldToCheck = createPermissionBitfield(perm.category, perm.permType);
   return (storedBitfield & bitfieldToCheck) > 0;
 }
 
 async function savePermission(perm: Permission): Promise<void> {
   const key = createPermissionKey(perm.requestor, perm.path);
-  const bitfieldToAdd = (1 << perm.category) | (1 << perm.permType);
+  const bitfieldToAdd = createPermissionBitfield(perm.category, perm.permType);
   await update(key, (storedBitfield: number | undefined) => (storedBitfield || 0) | bitfieldToAdd);
 }
 
 // =======
 // Helpers
 // =======
+
+function createPermissionBitfield(category: number, permType: number): number {
+  // Reserve space for 16 perm types.
+  const bit = (category - 1) * 16 + permType;
+  return 1 << bit;
+}
 
 export function createPermissionKey(requestor: string, path: string): string {
   const sanitizedRequestor = sanitizePath(requestor);
