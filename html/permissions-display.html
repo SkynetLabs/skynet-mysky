@@ -13,14 +13,14 @@
 
         <br />
 
-        <!-- <div> -->
-        <!--   ⚠ The seed you provided has no checksum, are you sure it is correct? ⚠ -->
-        <!-- </div> -->
+        <div id="permissions-confusables" style="color: red;">
+          The requesting application 'A' contains potential lookalike Unicode characters. It may be trying to impersonate the URL 'B'.
+        </div>
 
         <br />
 
-        <div style="font-size: 18px">
-          The application is requesting the following additional permissions:
+        <div id="permissions-domain" style="font-size: 18px">
+          The application 'X' is requesting the following additional permissions:
         </div>
 
         <br />
@@ -32,10 +32,12 @@
 
         <br />
 
-        <button id="button-permissions-check-all" class="btn" onclick="window.checkAll()">Check All</button>
-        <button id="button-permissions-uncheck-all" class="btn" onclick="window.uncheckAll()">Uncheck All</button>
+        <div id="permissions-buttons">
+          <button id="button-permissions-check-all" class="btn" onclick="window.checkAll()">Check All</button>
+          <button id="button-permissions-uncheck-all" class="btn" onclick="window.uncheckAll()">Uncheck All</button>
 
-        <button id="button-permissions-submit" class="btn" onclick="window.submit()">Submit</button>
+          <button id="button-permissions-submit" class="btn" onclick="window.submit()">Submit</button>
+        </div>
       </div>
     </div>
 

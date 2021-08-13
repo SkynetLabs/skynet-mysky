@@ -41,8 +41,10 @@
   },
   "dependencies": {
     "buffer": "^6.0.3",
+    "confusables": "^1.0.0",
     "idb-keyval": "^5.0.5",
     "post-me": "^0.4.5",
+    "punycode": "^2.1.1",
     "skynet-js": "^4.0.12-beta",
     "skynet-mysky-utils": "^0.3.0",
     "tweetnacl": "^1.0.3",

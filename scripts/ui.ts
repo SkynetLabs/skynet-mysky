@@ -199,7 +199,9 @@ async function runPermissionsProviderDisplay(
       // Get the response.
 
       // TODO: This should be a dual-promise that also calls ping() on an interval and rejects if no response was found in a given amount of time.
-      const permissionsResponse = await permissionsConnection.remoteHandle().call("getPermissions", pendingPermissions);
+      const permissionsResponse = await permissionsConnection
+        .remoteHandle()
+        .call("getPermissions", pendingPermissions, document.referrer);
 
       resolve(permissionsResponse);
     } catch (err) {

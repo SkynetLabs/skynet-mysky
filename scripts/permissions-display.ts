@@ -1,7 +1,13 @@
+const punycode = require('punycode/');
+
+import remove from "confusables";
 import { ChildHandshake, Connection, WindowMessenger } from "post-me";
 import { CheckPermissionsResponse, permCategoryToString, Permission, permTypeToString } from "skynet-mysky-utils";
 
+const uiPermissionsButtons = document.getElementById("permissions-buttons")!;
 const uiPermissionsCheckboxes = document.getElementById("permissions-checkboxes")!;
+const uiPermissionsConfusables = document.getElementById("permissions-confusables")!;
+const uiPermissionsDomain = document.getElementById("permissions-domain")!;
 
 let requestedPermissions: Permission[] | null = null;
 let readyPermissionsResponse: CheckPermissionsResponse | null = null;
@@ -97,7 +103,7 @@ async function init() {
  *
  * @param pendingPermissions - The list of pending permissions.
  */
-async function getPermissions(pendingPermissions: Permission[]): Promise<CheckPermissionsResponse> {
+async function getPermissions(pendingPermissions: Permission[], referrer: string): Promise<CheckPermissionsResponse> {
   // Initialize the permissions checkboxes.
 
   requestedPermissions = pendingPermissions;
@@ -119,9 +125,15 @@ async function getPermissions(pendingPermissions: Permission[]): Promise<CheckPe
     i++;
   }
 
+  // Set custom messages.
+
+  const referrerUrl = new URL(referrer);
+  referrer = referrerUrl.hostname;
+  setMessages(referrer);
+
   // Display the page.
 
-  uiPermissionsCheckboxes.style.display = "block";
+  setAllPermissionsContainersVisible();
 
   // Check for ready permissions response.
 
@@ -159,5 +171,36 @@ function readablePermission(perm: Permission): string {
  *
  */
 function setAllPermissionsContainersInvisible() {
+  uiPermissionsButtons.style.display = "none";
+  uiPermissionsConfusables.style.display = "none";
   uiPermissionsCheckboxes.style.display = "none";
+  uiPermissionsDomain.style.display = "none";
+}
+
+function setAllPermissionsContainersVisible() {
+  uiPermissionsButtons.style.display = "block";
+  uiPermissionsCheckboxes.style.display = "block";
+  uiPermissionsDomain.style.display = "block";
+}
+
+function setMessages(referrer: string): void {
+  let referrerUnicode = punycode.toUnicode(referrer);
+  let fullReferrerString: string;
+  if (referrerUnicode !== referrer) {
+    fullReferrerString = `'${referrerUnicode}' ('${referrer}')`;
+  } else {
+    fullReferrerString = `'${referrer}'`;
+  }
+
+  // Set the referrer domain message.
+  uiPermissionsDomain.textContent = uiPermissionsDomain.textContent!.replace("'X'", `${fullReferrerString}`);
+
+  // Handle potentially-confusable domains.
+  const unconfusedReferrer = remove(referrerUnicode);
+  if (unconfusedReferrer !== referrerUnicode) {
+    uiPermissionsConfusables.textContent = uiPermissionsConfusables
+      .textContent!.replace("'A'", `'${referrerUnicode}'`)
+      .replace("'B'", `'${unconfusedReferrer}'`);
+    uiPermissionsConfusables.style.display = "block";
+  }
 }
