@@ -1,4 +1,5 @@
 // Make Typescript happy, requires "lib": ["webworker"].
+// @ts-ignore Can't make this work.
 declare const self: DedicatedWorkerGlobalScope;
 
 import { clear, get, set, update } from "idb-keyval";
