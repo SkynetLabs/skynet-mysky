@@ -24,7 +24,10 @@ const methods = {
 (async () => {
   const messenger = new WorkerMessenger({ worker: self });
   parentConnection = await ChildHandshake(messenger, methods);
-})();
+})().catch((error) => {
+  // Let the error be handled by self.onerror handler.
+  throw error;
+});
 
 // ======
 // Events
@@ -34,9 +37,9 @@ self.onerror = function (error: any) {
   console.log(error);
   if (parentConnection) {
     if (typeof error === "string") {
-      parentConnection.remoteHandle().call("catchError", error);
+      void parentConnection.remoteHandle().call("catchError", error);
     } else {
-      parentConnection.remoteHandle().call("catchError", error.type);
+      void parentConnection.remoteHandle().call("catchError", error.type);
     }
   }
 };
@@ -45,10 +48,18 @@ self.onerror = function (error: any) {
 // Public API
 // ==========
 
+/**
+ * Checks the given permissions and returns a list of which permissions were
+ * granted and a list of which were rejected.
+ *
+ * @param perms - The permissions to check.
+ * @param [dev=false] - Whether to check permissions in dev mode (all granted).
+ * @returns - A list of granted permissions and a list of rejected permissions.
+ */
 export async function checkPermissions(perms: Permission[], dev = false): Promise<CheckPermissionsResponse> {
   if (!dev) {
     // Check the version and clear old permissions if we've updated the permission storage scheme.
-    await checkVersion();
+    await validateVersion();
   }
 
   const grantedPermissions: Permission[] = [];
@@ -73,9 +84,14 @@ export async function checkPermissions(perms: Permission[], dev = false): Promis
   return { grantedPermissions, failedPermissions };
 }
 
+/**
+ * Sets the given granted permissions by saving them in browser storage.
+ *
+ * @param grantedPermissions - The granted permissions.
+ */
 export async function setPermissions(grantedPermissions: Permission[]): Promise<void> {
   // Check the version and clear old permissions if we've updated the permission storage scheme.
-  await checkVersion();
+  await validateVersion();
 
   // TODO: Optimization: do a first-pass to combine permissions into bitfields.
 
@@ -91,6 +107,12 @@ export async function setPermissions(grantedPermissions: Permission[]): Promise<
 // Core Logic
 // ==========
 
+/**
+ * Checks the given permission by querying local storage.
+ *
+ * @param perm - The given permission to check.
+ * @returns - A boolean indicating whether the permission was found and granted.
+ */
 async function checkPermission(perm: Permission): Promise<boolean> {
   const requestor = sanitizePath(perm.requestor);
   const pathDomain = getPathDomain(perm.path);
@@ -124,19 +146,25 @@ async function checkPermission(perm: Permission): Promise<boolean> {
 /**
  * Check the version and clear old permissions if we've updated the permissions scheme.
  */
-async function checkVersion(): Promise<void> {
+async function validateVersion(): Promise<void> {
   // Get the version.
   const oldVersion = await get(versionKey);
 
   // Clear old permissions if we're on a new version.
   if (!oldVersion || oldVersion < version) {
-    clear();
+    await clear();
   }
 
   // Set the latest version.
   await set(versionKey, version);
 }
 
+/**
+ * Fetches the permission status from storage.
+ *
+ * @param perm - The given permission.
+ * @returns - A boolean indicating whether the permission was found.
+ */
 async function fetchPermission(perm: Permission): Promise<boolean> {
   const key = createPermissionKey(perm.requestor, perm.path);
   const storedBitfield = await get(key);
@@ -147,6 +175,11 @@ async function fetchPermission(perm: Permission): Promise<boolean> {
   return (storedBitfield & bitfieldToCheck) > 0;
 }
 
+/**
+ * Saves the permission to browser storage.
+ *
+ * @param perm - The given permission.
+ */
 async function savePermission(perm: Permission): Promise<void> {
   const key = createPermissionKey(perm.requestor, perm.path);
   const bitfieldToAdd = createPermissionBitfield(perm.category, perm.permType);
@@ -157,12 +190,26 @@ async function savePermission(perm: Permission): Promise<void> {
 // Helpers
 // =======
 
+/**
+ * Creates the bitfield for the given category and permission type.
+ *
+ * @param category - The permission category.
+ * @param permType = The permission type.
+ * @returns - The bitfield.
+ */
 function createPermissionBitfield(category: number, permType: number): number {
   // Reserve space for 16 perm types.
   const bit = (category - 1) * 16 + permType;
   return 1 << bit;
 }
 
+/**
+ * Creates the permission key for the given requestor and path.
+ *
+ * @param requestor - The permission requestor.
+ * @param path - The permission path.
+ * @returns - The permission key.
+ */
 export function createPermissionKey(requestor: string, path: string): string {
   const sanitizedRequestor = sanitizePath(requestor);
   if (sanitizedRequestor === null) {

@@ -1,26 +1,31 @@
 import { Buffer } from "buffer";
-import { KeyPair } from "skynet-js/dist/mjs/crypto";
 import { permCategoryToString, Permission, permTypeToString } from "skynet-mysky-utils";
 import { hash, sign } from "tweetnacl";
+
+import type { KeyPair } from "skynet-js";
 
 const urlParams = new URLSearchParams(window.location.search);
 const DEBUG_ENABLED = urlParams.get("debug") === "true";
 
 const SALT_ROOT_DISCOVERABLE_KEY = "root discoverable key";
 
-// log prints to stdout only if DEBUG_ENABLED flag is set
 /**
- * @param message
- * @param {...any} optionalContext
+ * Prints to stdout, only if DEBUG_ENABLED flag is set.
+ *
+ * @param message - The message to print.
+ * @param {...any} optionalContext - The optional context.
  */
-export function log(message: string, ...optionalContext: any[]) {
+export function log(message: string, ...optionalContext: any[]): void {
   if (DEBUG_ENABLED) {
     console.log(message, ...optionalContext);
   }
 }
 
 /**
- * @param seed
+ * Generates a keypair from the given user seed. It first salts the seed.
+ *
+ * @param seed - The user seed as bytes.
+ * @returns - The keypair.
  */
 export function genKeyPairFromSeed(seed: Uint8Array): KeyPair {
   const bytes = new Uint8Array([...sha512(SALT_ROOT_DISCOVERABLE_KEY), ...sha512(seed)]);
