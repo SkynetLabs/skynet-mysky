@@ -11,9 +11,9 @@ window.onerror = function (error: any) {
   console.log(error);
   if (parentConnection) {
     if (typeof error === "string") {
-      parentConnection.remoteHandle().call("catchError", error);
+      void parentConnection.remoteHandle().call("catchError", error);
     } else {
-      parentConnection.remoteHandle().call("catchError", error.type);
+      void parentConnection.remoteHandle().call("catchError", error.type);
     }
   }
 };

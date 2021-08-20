@@ -3,6 +3,7 @@
   "plugins": ["jsdoc", "@typescript-eslint"],
   "parserOptions": {
     "ecmaVersion": 2020,
+    "project": ["tsconfig.json", "tsconfig.scripts.json"],
     "sourceType": "module"
   },
   "env": {
@@ -11,13 +12,16 @@
   },
   "extends": ["eslint:recommended", "plugin:jsdoc/recommended", "plugin:@typescript-eslint/recommended"],
   "rules": {
+    "@typescript-eslint/ban-ts-comment": 0,
+    "@typescript-eslint/no-explicit-any": 0,
+    "@typescript-eslint/no-floating-promises": 1,
+    "@typescript-eslint/no-non-null-assertion": 0,
+    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+
     "jsdoc/require-description": 0,
     "jsdoc/require-param-type": 0,
     "jsdoc/require-property-type": 0,
     "jsdoc/require-returns-type": 0,
-    "jsdoc/require-throws": 0,
-
-    "@typescript-eslint/no-explicit-any": 0,
-    "@typescript-eslint/no-non-null-assertion": 0
+    "jsdoc/require-throws": 0
   }
 }

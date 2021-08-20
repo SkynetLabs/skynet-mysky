@@ -20,9 +20,9 @@ window.onerror = function (error: any) {
   console.log(error);
   if (parentConnection) {
     if (typeof error === "string") {
-      parentConnection.remoteHandle().call("catchError", error);
+      void parentConnection.remoteHandle().call("catchError", error);
     } else {
-      parentConnection.remoteHandle().call("catchError", error.type);
+      void parentConnection.remoteHandle().call("catchError", error.type);
     }
   }
 };
@@ -88,7 +88,7 @@ window.onload = async () => {
 /**
  * Initialize the communication with the UI.
  */
-async function init() {
+async function init(): Promise<void> {
   // Establish handshake with parent window.
 
   const messenger = new WindowMessenger({
@@ -104,6 +104,8 @@ async function init() {
 
 /**
  * Called by MySky UI. Checks for the ready seed at an interval.
+ *
+ * @returns - The user seed as bytes.
  */
 async function getRootSeed(): Promise<Uint8Array> {
   const checkInterval = 100;
@@ -120,15 +122,18 @@ async function getRootSeed(): Promise<Uint8Array> {
 }
 
 /**
- * @param seed
- * @param phrase
+ * Handles the seed selected by the user.
+ *
+ * @param seed - The seed to handle.
  */
-function handleSeed(seed: Uint8Array) {
+function handleSeed(seed: Uint8Array): void {
   readySeed = seed;
 }
 
 /**
  * Generates a 15-word seed phrase for 16 bytes of entropy plus 20 bits of checksum. The dictionary length is 1024 which gives 10 bits of entropy per word.
+ *
+ * @returns - The generated phrase.
  */
 export function generatePhrase(): string {
   const seedWords = new Uint16Array(SEED_WORDS_LENGTH);
@@ -159,10 +164,13 @@ export function generatePhrase(): string {
 }
 
 /**
- * Validate the phrase by checking that for every word, there is a dictionary word that starts with the first 3 letters of the word. For the last word of the seed phrase (the 12th word), only the first 256 words of the dictionary are considered valid.
+ * Validate the phrase by checking that for every word, there is a dictionary
+ * word that starts with the first 3 letters of the word. For the last word of
+ * the seed phrase (the 12th word), only the first 256 words of the dictionary
+ * are considered valid.
  *
- * @param phrase - The phrase to check.
- * @returns - A boolean indicating whether the phrase is valid, and a string explaining the error if it's not.
+ * @param phrase - The input seed phrase to check.
+ * @returns - A boolean indicating whether the phrase is valid, a string explaining the error if it's not, and the final seed bytes.
  */
 export function validatePhrase(phrase: string): [boolean, string, Uint8Array | null] {
   phrase = sanitizePhrase(phrase);
@@ -226,16 +234,19 @@ export function validatePhrase(phrase: string): [boolean, string, Uint8Array | n
 // ================
 
 /**
- *
+ * Sets all the div containers to be invisible.
  */
-function setAllSeedContainersInvisible() {
+function setAllSeedContainersInvisible(): void {
   uiSeedLoggedOut.style.display = "none";
   uiSeedSignIn.style.display = "none";
   uiSeedSignUp.style.display = "none";
 }
 
 /**
- * @param seedWords
+ * Generates 2 10-bit checksum words from the 10-bit seed words.
+ *
+ * @param seedWords - The array of 10-bit seed words.
+ * @returns - The 2 10-bit checksum words.
  */
 function generateChecksumWordsFromSeedWords(seedWords: Uint16Array): Uint16Array {
   if (seedWords.length != SEED_WORDS_LENGTH) {
@@ -244,13 +255,14 @@ function generateChecksumWordsFromSeedWords(seedWords: Uint16Array): Uint16Array
 
   const seed = seedWordsToSeed(seedWords);
   const h = hash(seed);
-  const checksumWords = hashToChecksumWords(h);
-
-  return checksumWords;
+  return hashToChecksumWords(h);
 }
 
 /**
- * @param h
+ * Converts the hash of the seed bytes into 2 10-bit checksum words.
+ *
+ * @param h - The hash of the seed.
+ * @returns - The 2 10-bit checksum words.
  */
 export function hashToChecksumWords(h: Uint8Array): Uint16Array {
   let word1 = h[0] << 8;
@@ -264,7 +276,10 @@ export function hashToChecksumWords(h: Uint8Array): Uint16Array {
 }
 
 /**
- * @param seedWords
+ * Converts the input 10-bit seed words into seed bytes (8-bit array).
+ *
+ * @param seedWords - The array of 10-bit seed words.
+ * @returns - The seed bytes.
  */
 export function seedWordsToSeed(seedWords: Uint16Array): Uint8Array {
   if (seedWords.length != SEED_WORDS_LENGTH) {
@@ -303,7 +318,10 @@ export function seedWordsToSeed(seedWords: Uint16Array): Uint8Array {
 }
 
 /**
- * @param phrase
+ * Sanitizes the input phrase by trimming it and lowercasing it.
+ *
+ * @param phrase - The input seed phrase.
+ * @returns - The sanitized phrase.
  */
 function sanitizePhrase(phrase: string): string {
   // Remove duplicate adjacent spaces.
@@ -311,7 +329,10 @@ function sanitizePhrase(phrase: string): string {
 }
 
 /**
- * @param phrase
+ * Converts the input seed phrase to the actual seed bytes.
+ *
+ * @param phrase - The input seed phrase.
+ * @returns - The seed bytes.
  */
 function phraseToSeed(phrase: string): Uint8Array {
   phrase = sanitizePhrase(phrase);

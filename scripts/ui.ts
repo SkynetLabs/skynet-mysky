@@ -39,7 +39,7 @@ window.addEventListener("beforeunload", function (event) {
 
   if (parentConnection) {
     // Send value to signify that the router was closed.
-    parentConnection.remoteHandle().call("catchError", errorWindowClosed);
+    void parentConnection.remoteHandle().call("catchError", errorWindowClosed);
   }
 
   window.close();
@@ -50,9 +50,9 @@ window.onerror = function (error: any) {
   console.log(error);
   if (parentConnection) {
     if (typeof error === "string") {
-      parentConnection.remoteHandle().call("catchError", error);
+      void parentConnection.remoteHandle().call("catchError", error);
     } else {
-      parentConnection.remoteHandle().call("catchError", error.type);
+      void parentConnection.remoteHandle().call("catchError", error.type);
     }
   }
 };
@@ -64,7 +64,7 @@ window.onload = () => {
   dev = true;
   /// #endif
 
-  init();
+  void init();
 };
 
 // ==============
@@ -72,9 +72,9 @@ window.onload = () => {
 // ==============
 
 /**
- *
+ * Initializes the page.
  */
-async function init() {
+async function init(): Promise<void> {
   if (!window.opener) {
     throw new Error("Window opener not found");
   }
@@ -97,7 +97,10 @@ async function init() {
 // ==========
 
 /**
- * @param permissions
+ * Requests login access with the given permissions.
+ *
+ * @param permissions - The requested permissions.
+ * @returns - Whether the user was logged in and the granted and rejected permissions.
  */
 async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, CheckPermissionsResponse]> {
   // If we don't have a seed, show seed provider chooser.
@@ -149,7 +152,9 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
 // ==========
 
 /**
+ * Gets the user's seed provider display URL if set, or the default.
  *
+ * @returns - The seed provider display URL.
  */
 async function getSeedProviderDisplayUrl(): Promise<string> {
   // Run the seed selection display.
@@ -166,8 +171,11 @@ async function getSeedProviderDisplayUrl(): Promise<string> {
 }
 
 /**
- * @param seed
- * @param pendingPermissions
+ * Runs the permissions provider display and returns with the granted and rejected permissions.
+ *
+ * @param seed - The user seed.
+ * @param pendingPermissions - The pending permissions.
+ * @returns - The granted and rejected permissions.
  */
 async function runPermissionsProviderDisplay(
   seed: Uint8Array,
@@ -193,7 +201,7 @@ async function runPermissionsProviderDisplay(
     try {
       // Launch the full-screen iframe and connection.
 
-      permissionsFrame = await launchDisplay(permissionsProviderDisplayUrl);
+      permissionsFrame = launchDisplay(permissionsProviderDisplayUrl);
       permissionsConnection = await connectProvider(permissionsFrame);
 
       // Get the response.
@@ -226,7 +234,10 @@ async function runPermissionsProviderDisplay(
 }
 
 /**
- * @param seedProviderDisplayUrl
+ * Runs the seed provider display and returns with the user seed.
+ *
+ * @param seedProviderDisplayUrl - The seed provider display URL.
+ * @returns - The user seed as bytes.
  */
 async function runSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<Uint8Array> {
   // Add error listener.
@@ -246,7 +257,7 @@ async function runSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<U
     try {
       // Launch the full-screen iframe and connection.
 
-      seedFrame = await launchDisplay(seedProviderDisplayUrl);
+      seedFrame = launchDisplay(seedProviderDisplayUrl);
       seedConnection = await connectProvider(seedFrame);
 
       // Get the response.
@@ -279,9 +290,11 @@ async function runSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<U
 }
 
 /**
+ * Runs the seed provider selection display and returns with the seed provider.
  *
+ * @returns - The seed provider.
  */
-async function runSeedSelectionDisplay(): Promise<string> {
+async function _runSeedSelectionDisplay(): Promise<string> {
   // Get the display URL.
 
   const seedSelectionDisplayUrl = `${window.location.hostname}/${RELATIVE_SEED_SELECTION_DISPLAY_URL}`;
@@ -303,7 +316,7 @@ async function runSeedSelectionDisplay(): Promise<string> {
     try {
       // Launch the full-screen iframe and connection.
 
-      seedFrame = await launchDisplay(seedSelectionDisplayUrl);
+      seedFrame = launchDisplay(seedSelectionDisplayUrl);
       seedConnection = await connectProvider(seedFrame);
 
       // Get the response.
@@ -336,9 +349,12 @@ async function runSeedSelectionDisplay(): Promise<string> {
 }
 
 /**
- * @param displayUrl
+ * Launches the provider display at the given URL.
+ *
+ * @param displayUrl - The display URL.
+ * @returns - The display iframe.
  */
-async function launchDisplay(displayUrl: string): Promise<HTMLIFrameElement> {
+function launchDisplay(displayUrl: string): HTMLIFrameElement {
   // Create the iframe. FULL SCREEN!
 
   const childFrame = createFullScreenIframe(displayUrl, displayUrl);
@@ -346,7 +362,10 @@ async function launchDisplay(displayUrl: string): Promise<HTMLIFrameElement> {
 }
 
 /**
- * @param childFrame
+ * Connects to the provider at the given iframe.
+ *
+ * @param childFrame - The iframe to connect.
+ * @returns - The connection.
  */
 async function connectProvider(childFrame: HTMLIFrameElement): Promise<Connection> {
   const childWindow = childFrame.contentWindow!;
@@ -373,13 +392,11 @@ async function connectProvider(childFrame: HTMLIFrameElement): Promise<Connectio
 }
 
 /**
- * @param errorMsg
+ * Catches any errors that occur in the child connection.
+ *
+ * @param errorMsg - The error message.
  */
-async function catchError(errorMsg: string) {
+async function catchError(errorMsg: string): Promise<void> {
   const event = new CustomEvent(dispatchedErrorEvent, { detail: errorMsg });
   window.dispatchEvent(event);
 }
-
-// ================
-// Helper Functions
-// ================
