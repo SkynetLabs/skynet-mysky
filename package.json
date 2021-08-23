@@ -13,7 +13,8 @@
     "lint": "npm run lint:tsc && npm run lint:eslint",
     "lint:eslint": "eslint --ext .ts src scripts tests",
     "lint:tsc": "tsc --noemit && tsc --project tsconfig.scripts.json --noemit",
-    "test": "jest"
+    "test": "jest",
+      "prepare": "husky install"
   },
   "repository": {
     "type": "git",
@@ -25,14 +26,9 @@
     "url": "https://github.com/SkynetLabs/skynet-mysky/issues"
   },
   "homepage": "https://github.com/SkynetLabs/skynet-mysky#readme",
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
-      "eslint --ext .ts",
+      "eslint --ext .ts --max-warnings 0",
       "prettier --write"
     ],
     "*.{json,yml,md}": [
