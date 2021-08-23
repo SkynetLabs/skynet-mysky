@@ -21,9 +21,9 @@ window.onerror = function (error: any) {
   console.log(error);
   if (parentConnection) {
     if (typeof error === "string") {
-      parentConnection.remoteHandle().call("catchError", error);
+      void parentConnection.remoteHandle().call("catchError", error);
     } else {
-      parentConnection.remoteHandle().call("catchError", error.type);
+      void parentConnection.remoteHandle().call("catchError", error.type);
     }
   }
 };
@@ -102,6 +102,7 @@ async function init() {
  * Called by MySky UI. Checks for the ready permissions at an interval.
  *
  * @param pendingPermissions - The list of pending permissions.
+ * @returns - The list of granted permissions and the list of rejected permissions.
  */
 async function getPermissions(pendingPermissions: Permission[], referrer: string): Promise<CheckPermissionsResponse> {
   // Initialize the permissions checkboxes.
