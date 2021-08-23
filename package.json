@@ -57,7 +57,7 @@
     "@typescript-eslint/eslint-plugin": "^4.3.0",
     "@typescript-eslint/parser": "^4.3.0",
     "eslint": "^7.19.0",
-    "eslint-plugin-jsdoc": "^31.6.1",
+    "eslint-plugin-jsdoc": "^36.0.7",
     "husky": "^4.3.8",
     "ifdef-loader": "^2.1.5",
     "jest": "^26.6.3",
