@@ -1,4 +1,5 @@
-const punycode = require('punycode/');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const punycode = require("punycode/");
 
 import remove from "confusables";
 import { ChildHandshake, Connection, WindowMessenger } from "post-me";
@@ -102,6 +103,7 @@ async function init() {
  * Called by MySky UI. Checks for the ready permissions at an interval.
  *
  * @param pendingPermissions - The list of pending permissions.
+ * @param referrer - The referrer URL.
  * @returns - The list of granted permissions and the list of rejected permissions.
  */
 async function getPermissions(pendingPermissions: Permission[], referrer: string): Promise<CheckPermissionsResponse> {
@@ -169,28 +171,37 @@ function readablePermission(perm: Permission): string {
 }
 
 /**
- *
+ * Sets all permissions divs to be invisible.
  */
-function setAllPermissionsContainersInvisible() {
+function setAllPermissionsContainersInvisible(): void {
   uiPermissionsButtons.style.display = "none";
   uiPermissionsConfusables.style.display = "none";
   uiPermissionsCheckboxes.style.display = "none";
   uiPermissionsDomain.style.display = "none";
 }
 
-function setAllPermissionsContainersVisible() {
+/**
+ * Sets all permissions divs to be visible.
+ */
+function setAllPermissionsContainersVisible(): void {
   uiPermissionsButtons.style.display = "block";
   uiPermissionsCheckboxes.style.display = "block";
   uiPermissionsDomain.style.display = "block";
 }
 
-function setMessages(referrer: string): void {
-  let referrerUnicode = punycode.toUnicode(referrer);
+/**
+ * Sets the messages for the referrer, including a potential warning about a
+ * confusable domain.
+ *
+ * @param referrerDomain - The referrer domain.
+ */
+function setMessages(referrerDomain: string): void {
+  const referrerUnicode = punycode.toUnicode(referrerDomain);
   let fullReferrerString: string;
-  if (referrerUnicode !== referrer) {
-    fullReferrerString = `'${referrerUnicode}' ('${referrer}')`;
+  if (referrerUnicode !== referrerDomain) {
+    fullReferrerString = `'${referrerUnicode}' ('${referrerDomain}')`;
   } else {
-    fullReferrerString = `'${referrer}'`;
+    fullReferrerString = `'${referrerDomain}'`;
   }
 
   // Set the referrer domain message.
