@@ -55,7 +55,7 @@
     "@types/jest": "^26.0.22",
     "@types/url-join": "^4.0.0",
     "@typescript-eslint/eslint-plugin": "^4.3.0",
-    "@typescript-eslint/parser": "^4.3.0",
+    "@typescript-eslint/parser": "^4.29.3",
     "eslint": "^7.19.0",
     "eslint-plugin-jsdoc": "^31.6.1",
     "husky": "^4.3.8",
