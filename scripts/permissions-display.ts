@@ -211,7 +211,7 @@ function setMessages(referrerDomain: string): void {
   const unconfusedReferrer = remove(referrerUnicode);
   if (unconfusedReferrer !== referrerUnicode) {
     uiPermissionsConfusables.textContent = uiPermissionsConfusables
-      .textContent!.replace("'A'", `'${referrerUnicode}'`)
+      .textContent!.replace("'A'", `${fullReferrerString}`)
       .replace("'B'", `'${unconfusedReferrer}'`);
     uiPermissionsConfusables.style.display = "block";
   }
