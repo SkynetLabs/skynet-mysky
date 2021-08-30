@@ -289,7 +289,7 @@ export function checkStoredSeed(): Uint8Array | null {
       throw new Error("Bad seed length");
     }
   } catch (err) {
-    log(err);
+    log(err as string);
     clearStoredSeed();
     return null;
   }
