@@ -1,0 +1,25 @@
+name: Deploy to Skynet - Sandbridge
+
+on:
+  push:
+    branches: [sandbridge-main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 16.x
+
+      - run: yarn
+      - run: yarn build
+
+      - name: "Deploy to Skynet MySky Alpha"
+        uses: SkynetLabs/deploy-to-skynet-action@v2
+        with:
+          upload-dir: dist
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          registry-seed: ${{ secrets.SANDBRIDGE_REGISTRY_SEED || '' }}
