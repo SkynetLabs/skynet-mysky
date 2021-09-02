@@ -17,9 +17,9 @@ jobs:
       - run: yarn
       - run: yarn build
 
-      - name: "Deploy to Skynet"
+      - name: "Deploy to Skynet MySky Alpha"
         uses: SkynetLabs/deploy-to-skynet-action@v2
         with:
-          upload-dir: build
+          upload-dir: dist
           github-token: ${{ secrets.GITHUB_TOKEN }}
           registry-seed: ${{ secrets.SANDBRIDGE_REGISTRY_SEED || '' }}
