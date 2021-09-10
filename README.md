@@ -12,7 +12,7 @@ For an interactive workshop, look [here](https://app.gitbook.com/@skynet-labs/s/
 
 ## Dev
 
-The Dev domain is: `sandbridge.hns` (to be changed).
+The Dev domain is: `skynet-mysky-dev.hns`.
 
 All permissions are allowed, making testing easier. This can be enabled with `client.loadMySky(<hostApp>, { dev: true })`.
 
@@ -42,11 +42,15 @@ You can check the `version.json` file on the live site to see the latest git com
 npm run deploy-dev
 ```
 
+Domain: `skynet-mysky-dev.hns`.
+
 ### Alpha Deploy
 
 ```
 npm run deploy-alpha
 ```
+
+Domain: `sandbridge.hns`.
 
 ## Changelog
 
