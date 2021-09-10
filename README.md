@@ -22,23 +22,31 @@ You can also enable debug messages with `client.loadMySky(<hostApp>, { debug: tr
 
 ## Deployment
 
-```
-npm run build
-```
-
-Upload `dist/` folder to Skynet.
-
-You can check the `version.txt` file on the live site to see the latest git commit it was built with, e.g. `skynet-mysky.hns.siasky.net/version.txt`.
-
-### Dev Build
+Set the `RESOLVER_SEED` env var:
 
 ```
-npm run build-dev
+export RESOLVER_SEED="..."
 ```
 
-### Dev Note
+and run the deploy script:
 
-We are currently using [the SkyDeploy skapp](https://sky-deploy.hns.siasky.net/#/deploy) for prod (skynet-mysky.hns) and dev (skynet-mysky-dev.hns). We are using [redsolver's skydeploy utility](https://github.com/redsolver/skydeploy/) for alpha (sandbridge.hns).
+```
+npm run deploy
+```
+
+You can check the `version.json` file on the live site to see the latest git commit it was built with, e.g. `skynet-mysky.hns.siasky.net/version.json`.
+
+### Dev Deploy
+
+```
+npm run deploy-dev
+```
+
+### Alpha Deploy
+
+```
+npm run deploy-alpha
+```
 
 ## Changelog
 

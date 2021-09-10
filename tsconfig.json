@@ -1,4 +1,7 @@
 {
+  "ts-node": {
+    "files": true
+  },
   "compilerOptions": {
     "downlevelIteration": true,
     "esModuleInterop": true,
@@ -11,5 +14,5 @@
     "types": ["node", "jest"],
     "typeRoots": ["./types", "./node_modules/@types"]
   },
-  "include": ["src", "tests", "types/**/*.d.ts"]
+  "include": ["deploy.ts", "src", "tests", "types/**/*.d.ts"]
 }
