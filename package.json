@@ -15,7 +15,7 @@
     "deploy-dev": "npm run build-dev && DEV=1 ts-node deploy.ts",
     "deploy-alpha": "npm run build-alpha && ALPHA=1 ts-node deploy.ts",
     "lint": "npm run lint:tsc && npm run lint:eslint",
-    "lint:eslint": "eslint --ext .ts src scripts tests",
+    "lint:eslint": "eslint --ext .ts src scripts tests deploy.ts",
     "lint:tsc": "tsc --noemit && tsc --project tsconfig.scripts.json --noemit",
     "test": "jest",
     "prepare": "husky install"
@@ -68,7 +68,6 @@
     "jsdom": "^17.0.0",
     "lint-staged": "^11.1.2",
     "prettier": "^2.3.2",
-    "readline": "^1.3.0",
     "rimraf": "^3.0.2",
     "ts-loader": "^9.2.5",
     "typescript": "^4.4.2",

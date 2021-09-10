@@ -1,8 +1,7 @@
 import { SkynetClient as SkynetClientNode } from "@skynetlabs/skynet-nodejs";
 import { SkynetClient, genKeyPairFromSeed } from "skynet-js";
 
-const chalk = require("chalk");
-const { clearLine } = require("readline");
+import { cyan } from "chalk";
 
 // URL of Skynet Portal you wish to use
 const PORTAL = "https://siasky.net";
@@ -14,12 +13,30 @@ const BUILD_DIR = "./dist";
 const client = new SkynetClient(PORTAL);
 const nodeClient = new SkynetClientNode(PORTAL);
 
+/**
+ * Uploads the directory at the path.
+ *
+ * @param path - The directory path.
+ * @returns - Returns the upload directory response.
+ */
 async function pushDirectoryToSkynet(path: string) {
   const response = await nodeClient.uploadDirectory(path);
   return response;
-};
+}
 
-async function publishSkylinkToResolverSkylink(skylink: string, resolverSeed: string, resolverDataKey: string): Promise<string> {
+/**
+ * Publishes the skylink to a resolver skylink.
+ *
+ * @param skylink - The data link to publish.
+ * @param resolverSeed - The seed.
+ * @param resolverDataKey - The data key.
+ * @returns - The resolver skylink.
+ */
+async function publishSkylinkToResolverSkylink(
+  skylink: string,
+  resolverSeed: string,
+  resolverDataKey: string
+): Promise<string> {
   // Setup Keys for Read/Write of Mutable Data
   const { privateKey, publicKey } = genKeyPairFromSeed(resolverSeed);
   const dataKey = resolverDataKey;
@@ -33,6 +50,11 @@ async function publishSkylinkToResolverSkylink(skylink: string, resolverSeed: st
   return resolverSkylink;
 }
 
+/**
+ * Deploys the build directory.
+ *
+ * @returns - An empty promise.
+ */
 async function deploy(): Promise<void> {
   // Set seed for generating and updating resolver skylink.
   const resolverSeed = process.env.RESOLVER_SEED;
@@ -58,7 +80,7 @@ async function deploy(): Promise<void> {
   // Get URL based off preferred portal
   const skylinkUrl = await client.getSkylinkUrl(skylink, { subdomain: true });
 
-  console.log(`📡 App deployed to Skynet with skylink: ${chalk.cyan(skylink)}`);
+  console.log(`📡 App deployed to Skynet with skylink: ${cyan(skylink)}`);
 
   console.log();
 
@@ -68,23 +90,23 @@ async function deploy(): Promise<void> {
   // Get URL based off preferred portal
   resolverSkylinkUrl = await client.getSkylinkUrl(resolverSkylink, { subdomain: true });
 
-  console.log(`📡 Resolver skylink updated: ${chalk.cyan(resolverSkylink)}`);
+  console.log(`📡 Resolver skylink updated: ${cyan(resolverSkylink)}`);
 
   // Display final info.
   console.log("🚀 Deployment to Skynet complete!");
   console.log();
   console.log(`Use the link${resolverSkylinkUrl && "s"} below to access your app:`);
-  console.log(`   Immutable Skylink Url: ${chalk.cyan(`${skylinkUrl}`)}`);
-  console.log(`   Resolver Skylink Url: ${chalk.cyan(`${resolverSkylinkUrl}`)}`);
+  console.log(`   Immutable Skylink Url: ${cyan(`${skylinkUrl}`)}`);
+  console.log(`   Resolver Skylink Url: ${cyan(`${resolverSkylinkUrl}`)}`);
   console.log();
   console.log(
-    'Each new deployment will have a unique skylink while the "resolver skylink" will always point at the most recent deployment.',
+    'Each new deployment will have a unique skylink while the "resolver skylink" will always point at the most recent deployment.'
   );
   console.log(
-    "It is recommended that you share the resolver skylink url so that people always see the newest version of your app.",
+    "It is recommended that you share the resolver skylink url so that people always see the newest version of your app."
   );
   console.log(
-    "You can use the resolver skylink (starting with `sia://`) for setting ENS content hashes for a decentralized domain.",
+    "You can use the resolver skylink (starting with `sia://`) for setting ENS content hashes for a decentralized domain."
   );
   console.log();
 }
