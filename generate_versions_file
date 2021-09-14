@@ -7,7 +7,7 @@ BUILD_BRANCH="$(git describe --all --long)"
 BUILD_LOCAL_CHANGES="$(git diff --name-only | jq -R -s -c 'split("\n") | map(select(length > 0))')"
 BUILD_LOCAL_LINKS="$(find node_modules -maxdepth 1 -type l | jq -R -s -c 'split("\n") | map(select(length > 0))')"
 
-jq -n '{"_v": $JSON_VERSION, version: $PACKAGE_VERSION, mode: $BUILD_MODE, branch: $BUILD_BRANCH, "local changes": $BUILD_LOCAL_CHANGES, "local links": $BUILD_LOCAL_LINKS}' \
+jq -n '{"_v": $JSON_VERSION, "version": $PACKAGE_VERSION, "mode": $BUILD_MODE, "branch": $BUILD_BRANCH, "local changes": $BUILD_LOCAL_CHANGES, "local links": $BUILD_LOCAL_LINKS}' \
     --argjson JSON_VERSION        "${JSON_VERSION}" \
     --arg PACKAGE_VERSION         "${PACKAGE_VERSION}" \
     --arg BUILD_MODE              "${BUILD_MODE}" \
