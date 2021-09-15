@@ -1,5 +1,5 @@
 node_modules
 .DS_Store
 .vscode
-
+assets/style.css
 dist
