@@ -2,7 +2,7 @@ name: Deploy to Skynet - Sandbridge
 
 on:
   push:
-    branches: [sandbridge-main]
+    branches: [sandbridge-main, ui-improvements]
 
 jobs:
   build:
@@ -14,12 +14,13 @@ jobs:
         with:
           node-version: 16.x
 
-      - run: yarn
-      - run: yarn build
+      - run: npm i
+      - run: npm run build
 
       - name: "Deploy to Skynet MySky Alpha"
         uses: SkynetLabs/deploy-to-skynet-action@v2
         with:
           upload-dir: dist
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          registry-seed: ${{ secrets.SANDBRIDGE_REGISTRY_SEED || '' }}
+          registry-seed: ${{ secrets.RESOLVER_SEED || '' }}
+          registry-datakey: "sandbridge"

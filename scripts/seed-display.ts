@@ -5,9 +5,19 @@ import { hash } from "tweetnacl";
 import { dictionary } from "../src/dictionary";
 import { CHECKSUM_WORDS_LENGTH, PHRASE_LENGTH, SEED_LENGTH, SEED_WORDS_LENGTH } from "../src/seed";
 
-const uiSeedLoggedOut = document.getElementById("seed-logged-out")!;
 const uiSeedSignIn = document.getElementById("seed-sign-in")!;
 const uiSeedSignUp = document.getElementById("seed-sign-up")!;
+const uiErrorMessage = document.getElementById("error-message")!;
+const uiErrorMessageText = document.getElementById("error-message-text")!;
+
+const setErrorMessage = (message: string) => {
+  if (message) {
+    uiErrorMessageText.textContent = message;
+    uiErrorMessage.classList.remove("hidden");
+  } else {
+    uiErrorMessage.classList.add("hidden");
+  }
+};
 
 let readySeed: Uint8Array | null = null;
 let parentConnection: Connection | null = null;
@@ -33,21 +43,16 @@ window.onload = async () => {
 
   // Go to Logged Out page.
 
-  (window as any).goToLoggedOut();
+  (window as any).goToSignIn();
 };
 
 // ============
 // User Actions
 // ============
 
-(window as any).goToLoggedOut = () => {
-  setAllSeedContainersInvisible();
-  uiSeedLoggedOut.style.display = "block";
-};
-
 (window as any).goToSignIn = () => {
   setAllSeedContainersInvisible();
-  uiSeedSignIn.style.display = "block";
+  uiSeedSignIn.style.removeProperty("display");
 };
 
 (window as any).goToSignUp = () => {
@@ -56,26 +61,30 @@ window.onload = async () => {
   const generatedPhrase = generatePhrase();
   (<HTMLInputElement>document.getElementById("signup-passphrase-text")).value = generatedPhrase;
 
-  uiSeedSignUp.style.display = "block";
+  uiSeedSignUp.style.removeProperty("display");
 };
 
-(window as any).signIn = () => {
+(window as any).signIn = (event: Event) => {
+  event.preventDefault();
+
   const phraseValue = (<HTMLInputElement>document.getElementById("signin-passphrase-text")).value;
 
   if (phraseValue === "") {
-    alert("Please enter a phrase!");
-    return;
+    return setErrorMessage("Passphrase cannot be empty");
   }
+
   const [valid, error, seed] = validatePhrase(phraseValue);
+
   if (!valid || !seed) {
-    alert(error);
-    return;
+    return setErrorMessage(error);
   }
 
   handleSeed(seed);
 };
 
 (window as any).signUp = () => {
+  if ((<HTMLInputElement>document.getElementById("seed-confirm")).checked === false) return;
+
   const phraseValue = (<HTMLInputElement>document.getElementById("signup-passphrase-text")).value;
 
   handleSeed(phraseToSeed(phraseValue));
@@ -237,7 +246,6 @@ export function validatePhrase(phrase: string): [boolean, string, Uint8Array | n
  * Sets all the div containers to be invisible.
  */
 function setAllSeedContainersInvisible(): void {
-  uiSeedLoggedOut.style.display = "none";
   uiSeedSignIn.style.display = "none";
   uiSeedSignUp.style.display = "none";
 }
