@@ -1,5 +1,5 @@
 import Mustache from "mustache";
-import { domainToASCII } from "url";
+import { toASCII } from "punycode";
 import remove from "confusables";
 import { ChildHandshake, Connection, WindowMessenger } from "post-me";
 import { CheckPermissionsResponse, permCategoryToString, Permission, permTypeToString } from "skynet-mysky-utils";
@@ -176,7 +176,7 @@ function setAllPermissionsContainersInvisible(): void {
  * @param referrerDomain - The referrer domain.
  */
 function setMessages(referrerDomain: string): void {
-  const referrerUnicode = domainToASCII(referrerDomain);
+  const referrerUnicode = toASCII(referrerDomain);
   let fullReferrerString: string;
   if (referrerUnicode !== referrerDomain) {
     fullReferrerString = `'${referrerUnicode}' ('${referrerDomain}')`;
