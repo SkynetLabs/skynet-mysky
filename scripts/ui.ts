@@ -9,7 +9,7 @@ import {
   monitorWindowError,
   Permission,
 } from "skynet-mysky-utils";
-import { SkynetClient } from "skynet-js";
+import { MySky, SkynetClient } from "skynet-js";
 
 import { saveSeed } from "../src/mysky";
 import {
@@ -103,6 +103,14 @@ async function init(): Promise<void> {
  * @returns - Whether the user was logged in and the granted and rejected permissions.
  */
 async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, CheckPermissionsResponse]> {
+  // Before doing anything, check if the browser is supported.
+
+  const [isSupported, reason] = await MySky.isBrowserSupported();
+  if (!isSupported) {
+    alert(reason);
+    throw new Error(reason);
+  }
+
   // If we don't have a seed, show seed provider chooser.
 
   const seedProviderDisplayUrl = await getSeedProviderDisplayUrl();
