@@ -1,14 +1,14 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const punycode = require("punycode/");
-
+import Mustache from "mustache";
+import { toASCII } from "punycode";
 import remove from "confusables";
 import { ChildHandshake, Connection, WindowMessenger } from "post-me";
 import { CheckPermissionsResponse, permCategoryToString, Permission, permTypeToString } from "skynet-mysky-utils";
 
-const uiPermissionsButtons = document.getElementById("permissions-buttons")!;
-const uiPermissionsCheckboxes = document.getElementById("permissions-checkboxes")!;
 const uiPermissionsConfusables = document.getElementById("permissions-confusables")!;
-const uiPermissionsDomain = document.getElementById("permissions-domain")!;
+const uiPermissionsConfusablesText = document.getElementById("permissions-confusables-text")!;
+const uiRequesterDomain = document.getElementById("requester-domain")!;
+const uiPermissionsSelection = document.getElementById("permissions-selection")!;
+const uiPermissionsForm = document.getElementById("permissions-form")!;
 
 let requestedPermissions: Permission[] | null = null;
 let readyPermissionsResponse: CheckPermissionsResponse | null = null;
@@ -38,21 +38,9 @@ window.onload = async () => {
 // User Actions
 // ============
 
-(window as any).checkAll = () => {
-  const checkboxes = document.getElementsByName("permissions-checkbox");
-  for (let i = 0, n = checkboxes.length; i < n; i++) {
-    (<HTMLInputElement>checkboxes[i]).checked = true;
-  }
-};
+uiPermissionsForm.addEventListener("submit", (event: Event) => {
+  event.preventDefault();
 
-(window as any).uncheckAll = () => {
-  const checkboxes = document.getElementsByName("permissions-checkbox");
-  for (let i = 0, n = checkboxes.length; i < n; i++) {
-    (<HTMLInputElement>checkboxes[i]).checked = false;
-  }
-};
-
-(window as any).submit = () => {
   if (!requestedPermissions) {
     throw new Error("requestedPermissions object not set");
   }
@@ -74,6 +62,27 @@ window.onload = async () => {
   }
 
   readyPermissionsResponse = { grantedPermissions, failedPermissions };
+});
+
+uiPermissionsSelection.addEventListener("change", (event: Event) => {
+  const target = event.target as HTMLInputElement;
+
+  if (target.name === "permissions-checkbox") {
+    const checkboxes = Array.from(document.getElementsByName("permissions-checkbox")) as [HTMLInputElement];
+    const selectAll = document.getElementById("toggle-permissions") as HTMLInputElement;
+
+    selectAll.checked = checkboxes.every(({ checked }) => checked);
+  }
+});
+
+(window as any).toggleSelected = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const checked = target.checked;
+
+  const checkboxes = document.getElementsByName("permissions-checkbox");
+  for (let i = 0, n = checkboxes.length; i < n; i++) {
+    (<HTMLInputElement>checkboxes[i]).checked = checked;
+  }
 };
 
 // ==========
@@ -111,32 +120,28 @@ async function getPermissions(pendingPermissions: Permission[], referrer: string
 
   requestedPermissions = pendingPermissions;
 
-  // Add the permissions in reverse order since we prepend to the container each time.
-  let i = 0;
-  for (const perm of requestedPermissions.reverse()) {
-    const readablePerm = readablePermission(perm);
-    const checkboxHtml = `
-<input type="checkbox" name="permissions-checkbox" value="${i}"/>${readablePerm}<br/>
-`;
+  const permissions = requestedPermissions
+    .slice()
+    .reverse()
+    .map((permission, index) => {
+      const category = permCategoryToString(permission.category);
+      const type = permTypeToString(permission.permType);
 
-    const checkboxDiv = document.createElement("div")!;
-    checkboxDiv.classList.add("checkbox-element");
-    checkboxDiv.innerHTML = checkboxHtml;
-
-    // Add div to container.
-    uiPermissionsCheckboxes.prepend(checkboxDiv);
-    i++;
-  }
+      return {
+        value: index,
+        name: `${type} ${category}`,
+        description: `Allow this app to ${type} ${category} files at ${permission.path}`,
+      };
+    });
+  const template = document.getElementById("permissions-template")!.innerHTML;
+  const rendered = Mustache.render(template, { permissions });
+  document.getElementById("permissions-selection")!.innerHTML = rendered;
 
   // Set custom messages.
 
   const referrerUrl = new URL(referrer);
   referrer = referrerUrl.hostname;
   setMessages(referrer);
-
-  // Display the page.
-
-  setAllPermissionsContainersVisible();
 
   // Check for ready permissions response.
 
@@ -158,35 +163,10 @@ async function getPermissions(pendingPermissions: Permission[], referrer: string
 // ================
 
 /**
- * Constructs a human-readable HTML version of the permission.
- *
- * @param perm - The given permission.
- * @returns - The HTML string.
- */
-function readablePermission(perm: Permission): string {
-  const category = permCategoryToString(perm.category);
-  const permType = permTypeToString(perm.permType);
-
-  return `<b>${perm.requestor}</b> can <b>${permType}</b> <b>${category}</b> files at <b>${perm.path}</b>`;
-}
-
-/**
  * Sets all permissions divs to be invisible.
  */
 function setAllPermissionsContainersInvisible(): void {
-  uiPermissionsButtons.style.display = "none";
-  uiPermissionsConfusables.style.display = "none";
-  uiPermissionsCheckboxes.style.display = "none";
-  uiPermissionsDomain.style.display = "none";
-}
-
-/**
- * Sets all permissions divs to be visible.
- */
-function setAllPermissionsContainersVisible(): void {
-  uiPermissionsButtons.style.display = "block";
-  uiPermissionsCheckboxes.style.display = "block";
-  uiPermissionsDomain.style.display = "block";
+  uiPermissionsConfusables.classList.add("hidden");
 }
 
 /**
@@ -196,7 +176,7 @@ function setAllPermissionsContainersVisible(): void {
  * @param referrerDomain - The referrer domain.
  */
 function setMessages(referrerDomain: string): void {
-  const referrerUnicode = punycode.toUnicode(referrerDomain);
+  const referrerUnicode = toASCII(referrerDomain);
   let fullReferrerString: string;
   if (referrerUnicode !== referrerDomain) {
     fullReferrerString = `'${referrerUnicode}' ('${referrerDomain}')`;
@@ -205,14 +185,14 @@ function setMessages(referrerDomain: string): void {
   }
 
   // Set the referrer domain message.
-  uiPermissionsDomain.textContent = uiPermissionsDomain.textContent!.replace("'X'", `${fullReferrerString}`);
+  uiRequesterDomain.textContent = fullReferrerString;
 
   // Handle potentially-confusable domains.
   const unconfusedReferrer = remove(referrerUnicode);
   if (unconfusedReferrer !== referrerUnicode) {
-    uiPermissionsConfusables.textContent = uiPermissionsConfusables
+    uiPermissionsConfusablesText.textContent = uiPermissionsConfusables
       .textContent!.replace("'A'", `${fullReferrerString}`)
       .replace("'B'", `'${unconfusedReferrer}'`);
-    uiPermissionsConfusables.style.display = "block";
+    uiPermissionsConfusables.classList.remove("hidden");
   }
 }

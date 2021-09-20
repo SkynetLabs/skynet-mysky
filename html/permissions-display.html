@@ -2,44 +2,79 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Default Permissions Provider</title>
     <link rel="stylesheet" href="assets/style.css" />
   </head>
 
-  <body>
-    <div class="wrapper">
-      <div class="center">
-        <h1>Permissions Requested</h1>
-
-        <br />
-
-        <div id="permissions-confusables" style="color: red;">
-          The requesting application 'A' may contain non-English letters. It may be trying to impersonate the URL 'B'.
+  <body class="bg-palette-100 min-h-screen">
+    <div class="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div class="sm:mx-auto sm:w-full sm:max-w-xl">
+        <svg class="mx-auto h-12 w-auto fill-current text-primary" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Skynet</title><path d="m-.0004 6.4602 21.3893 11.297c.561.2935.6633 1.0532.1999 1.4846h-.011a10.0399 10.0399 0 0 1-2.2335 1.5307c-6.912 3.4734-14.9917-1.838-14.5438-9.5605l2.8601 1.9752c.856 4.508 5.6187 7.1094 9.8742 5.3932zm8.6477 3.1509 14.3661 5.6785a.8704.8704 0 0 1 .5197 1.0466v.0182c-.1537.5377-.7668.7938-1.2575.5252zm5.2896-7.4375c2.7093-.2325 6.0946.7869 8.1116 3.3871 1.699 2.1951 2.0497 4.8772 1.9298 7.6465v-.007c-.0478.5874-.6494.9616-1.1975.745l-9.7652-3.8596 9.0656 2.4313a7.296 7.296 0 0 0-1.0677-4.5631c-2.9683-4.7678-9.9847-4.5344-12.6297.4201a7.5048 7.5048 0 0 0-.398.8831L5.5546 7.9614c.069-.1017.1417-.198.2144-.2962.1163-.2416.2417-.487.3798-.7268 1.6118-2.7911 4.3102-4.4338 7.1558-4.6973.2108-.0182.4215-.049.6323-.0672z"/></svg>
+        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          Permissions Requested
+        </h2>
+        <p id="requester-domain" class="mt-2 text-center text-sm text-palette-500 font-semibold"></p>
+        <p class="mt-2 text-center text-sm text-palette-500">is requesting permissions for the following</p>
+        <div id="permissions-confusables" class="rounded-md bg-yellow-50 p-4 hidden mt-4">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <!-- Heroicon name: solid/exclamation -->
+              <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p id="permissions-confusables-text" class="text-sm text-yellow-800">
+                The requesting application 'A' may contain non-English letters. It may be trying to impersonate the URL 'B'.
+              </p>
+            </div>
+          </div>
         </div>
+      </div>
+    
+      <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-xl">
+        <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          <form id="permissions-form" class="space-y-5" action="#">
+            <div id="permissions-selection"></div>
 
-        <br />
-
-        <div id="permissions-domain" style="font-size: 18px">
-          The application 'X' is requesting the following additional permissions:
-        </div>
-
-        <br />
-
-        <div id="permissions-checkboxes">
-          <!-- Example checkbox: -->
-          <!-- <input type="checkbox" name="permissions-checkbox" value="1">Domain [domain] can Read Discoverable files at [data path]<br/> -->
-        </div>
-
-        <br />
-
-        <div id="permissions-buttons">
-          <button id="button-permissions-check-all" class="btn" onclick="window.checkAll()">Check All</button>
-          <button id="button-permissions-uncheck-all" class="btn" onclick="window.uncheckAll()">Uncheck All</button>
-
-          <button id="button-permissions-submit" class="btn" onclick="window.submit()">Submit</button>
+            <div class="relative flex items-start border-top-1">
+              <div class="flex items-center h-5">
+                <input id="toggle-permissions" onchange="toggleSelected(event)" name="toggle-permissions" type="checkbox" class="focus:ring-primary h-4 w-4 text-primary border-palette-300 rounded">
+              </div>
+              <div class="ml-3 text-sm">
+                <label for="toggle-permissions" class="font-medium text-primary uppercase">Select all</label>
+              </div>
+            </div>
+    
+            <div>
+              <button type="submit" class="w-full text-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-palette-600 bg-primary hover:bg-primary-light transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                Grant selected permissions
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
+
+    <script id="permissions-template" type="x-tmpl-mustache">
+      <fieldset>
+        <legend class="sr-only">Permissions</legend>
+        <div class="space-y-5">
+          {{#permissions}}
+            <div class="relative flex items-start">
+              <div class="flex items-center h-5">
+                <input value="{{value}}" id="{{value}}-input" aria-describedby="{{value}}-description" name="permissions-checkbox" type="checkbox" class="focus:ring-primary h-4 w-4 text-primary border-palette-200 rounded">
+              </div>
+              <div class="ml-3 text-sm">
+                <label for="{{value}}-input" class="font-medium text-palette-600 uppercase">{{name}}</label>
+                <p id="{{value}}-description" class="text-palette-500 lowercase">{{description}}</p>
+              </div>
+            </div>
+          {{/permissions}}
+        </div>
+      </fieldset>
+    </script>
 
     <script async src="permissions-display.js"></script>
   </body>
