@@ -9,7 +9,7 @@ npx webpack --config webpack.config.permissions.js &&
 npx webpack --config webpack.config.permissions-display.js &&
 npx webpack --config webpack.config.seed-display.js &&
 npx webpack --config webpack.config.seed-selection.js &&
-node minify-src.js dist/*.html &&
+node utilities/minify-src.js dist/*.html &&
 rm dist/main.js dist/seed-display.js dist/seed-selection.js dist/permissions-display.js dist/ui.js &&
 find dist -name "*.css" -type f -delete &&
-./generate_versions_file
+./utilities/generate_versions_file

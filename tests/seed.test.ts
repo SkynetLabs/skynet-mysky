@@ -6,7 +6,7 @@ import {
   seedToPhrase,
   seedWordsToSeed,
   validatePhrase,
-} from "../scripts/seed-display";
+} from "../src/seed";
 
 const validDictionarySeeds = [
   // Typical phrase.
