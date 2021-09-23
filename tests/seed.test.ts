@@ -65,12 +65,12 @@ describe("validatePhrase", () => {
     // 14 words
     [
       "abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey pastry abbey",
-      "Phrase must be 15 words long, was 14",
+      "Phrase must be '15' words long, was '14'",
     ],
     // 16 words
     [
       "abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey",
-      "Phrase must be 15 words long, was 16",
+      "Phrase must be '15' words long, was '16'",
     ],
     // Word is too short
     ["ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ", "Word 1 is not at least 3 letters long"],
