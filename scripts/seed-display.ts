@@ -173,6 +173,33 @@ export function generatePhrase(): string {
 }
 
 /**
+ * Converts the input seed phrase to the actual seed bytes.
+ *
+ * @param phrase - The input seed phrase.
+ * @returns - The seed bytes.
+ */
+export function phraseToSeed(phrase: string): Uint8Array {
+  phrase = sanitizePhrase(phrase);
+  const [valid, error, seed] = validatePhrase(phrase);
+  if (!valid || !seed) {
+    throw new Error(error);
+  }
+
+  return seed;
+}
+
+/**
+ * Converts the seed bytes to the original phrase. Useful for recovery of a lost phrase.
+ *
+ * @param seed - The seed bytes.
+ * @returns - The original phrase.
+ */
+export function seedToPhrase(seed: Uint8Array): string {
+  const seedWords = seedToSeedWords(seed);
+  return seedWordsToPhrase(seedWords);
+}
+
+/**
  * Validate the phrase by checking that for every word, there is a dictionary
  * word that starts with the first 3 letters of the word. For the last word of
  * the seed phrase (the 12th word), only the first 256 words of the dictionary
@@ -185,10 +212,10 @@ export function validatePhrase(phrase: string): [boolean, string, Uint8Array | n
   phrase = sanitizePhrase(phrase);
   const phraseWords = phrase.split(" ");
   if (phraseWords.length !== PHRASE_LENGTH) {
-    return [false, `Phrase must be 15 words long, was ${phraseWords.length}`, null];
+    return [false, `Phrase must be '${PHRASE_LENGTH}' words long, was '${phraseWords.length}'`, null];
   }
 
-  // Build the seed from words.
+  // Build the seed words from phrase words.
   const seedWords = new Uint16Array(SEED_WORDS_LENGTH);
   let i = 0;
   for (const word of phraseWords) {
@@ -197,7 +224,7 @@ export function validatePhrase(phrase: string): [boolean, string, Uint8Array | n
       return [false, `Word ${i + 1} is not at least 3 letters long`, null];
     }
 
-    // Check word prefix.
+    // Iterate through the dictionary looking for the word prefix.
     const prefix = word.slice(0, 3);
     let bound = dictionary.length;
     if (i === 12) {
@@ -213,6 +240,7 @@ export function validatePhrase(phrase: string): [boolean, string, Uint8Array | n
         break;
       }
     }
+    // The prefix was not found in the dictionary.
     if (found < 0) {
       if (i === 12) {
         return [false, `Prefix for word ${i + 1} must be found in the first 256 words of the dictionary`, null];
@@ -284,14 +312,110 @@ export function hashToChecksumWords(h: Uint8Array): Uint16Array {
 }
 
 /**
+ * Sanitizes the input phrase by trimming it and lowercasing it.
+ *
+ * @param phrase - The input seed phrase.
+ * @returns - The sanitized phrase.
+ */
+export function sanitizePhrase(phrase: string): string {
+  // Remove duplicate adjacent spaces.
+  return removeAdjacentChars(phrase.trim().toLowerCase(), " ");
+}
+
+/**
+ * Converts the given seed bytes to 10-bit seed words.
+ *
+ * @param seed - The given seed bytes.
+ * @returns - The 10-bit seed words.
+ */
+export function seedToSeedWords(seed: Uint8Array): Uint16Array {
+  if (seed.length !== SEED_LENGTH) {
+    throw new Error(`Input seed should be length '${SEED_LENGTH}', was '${seed.length}'`);
+  }
+
+  const words = new Uint16Array(SEED_WORDS_LENGTH);
+  let curWord = 0;
+  let curBit = 0;
+  let wordBits = 10;
+
+  for (let i = 0; i < SEED_LENGTH; i++) {
+    const byte = seed[i];
+
+    // Iterate over the bits of the 8-bit byte.
+    for (let j = 0; j < 8; j++) {
+      const bitSet = (byte & (1 << (8 - j - 1))) > 0;
+
+      if (bitSet) {
+        words[curWord] |= 1 << (wordBits - curBit - 1);
+      }
+
+      curBit += 1;
+      if (curBit >= wordBits) {
+        // Current word has maximum bits, go to the next word.
+        curWord += 1;
+        curBit = 0;
+        if (curWord === SEED_WORDS_LENGTH - 1) {
+          wordBits = 8;
+        }
+      }
+    }
+  }
+
+  return words;
+}
+
+/**
+ * Converts the given 10-bit seed words to a full phrase, including the checksum.
+ *
+ * @param seedWords - The seed words.
+ * @returns - The full phrase.
+ */
+function seedWordsToPhrase(seedWords: Uint16Array): string {
+  if (seedWords.length !== SEED_WORDS_LENGTH) {
+    throw new Error(`Seed words must be '${SEED_WORDS_LENGTH}' long, was '${seedWords.length}'`);
+  }
+
+  let phrase = "";
+
+  // Add checksum words.
+  const checksumWords = generateChecksumWordsFromSeedWords(seedWords);
+  const seedWordsWithChecksum = [...seedWords, ...checksumWords];
+
+  // Build the phrase from seed words.
+  let i = 0;
+  for (const seedWord of seedWordsWithChecksum) {
+    let maxSeedWord = dictionary.length;
+    if (i === 12) {
+      maxSeedWord = 256;
+    }
+
+    if (seedWord > maxSeedWord) {
+      throw new Error(
+        `Seed word '${seedWord}' is greater than the max seed word '${maxSeedWord}' for seed index '${i}'`
+      );
+    }
+
+    if (i === 0) {
+      phrase = dictionary[seedWord];
+    } else {
+      phrase += ` ${dictionary[seedWord]}`;
+    }
+
+    i++;
+  }
+
+  return phrase;
+}
+
+/**
  * Converts the input 10-bit seed words into seed bytes (8-bit array).
  *
  * @param seedWords - The array of 10-bit seed words.
  * @returns - The seed bytes.
  */
 export function seedWordsToSeed(seedWords: Uint16Array): Uint8Array {
-  if (seedWords.length != SEED_WORDS_LENGTH) {
-    throw new Error(`Input seed was not of length ${SEED_WORDS_LENGTH}`);
+  if (seedWords.length !== SEED_WORDS_LENGTH) {
+    throw new Error(`Input seed words should be length '${SEED_WORDS_LENGTH}', was '${seedWords.length}'`);
   }
 
   // We are getting 16 bytes of entropy.
@@ -316,6 +440,7 @@ export function seedWordsToSeed(seedWords: Uint16Array): Uint8Array {
 
       curBit += 1;
       if (curBit >= 8) {
+        // Current byte has 8 bits, go to the next byte.
         curByte += 1;
         curBit = 0;
       }
@@ -323,31 +448,4 @@ export function seedWordsToSeed(seedWords: Uint16Array): Uint8Array {
   }
 
   return bytes;
-}
-
-/**
- * Sanitizes the input phrase by trimming it and lowercasing it.
- *
- * @param phrase - The input seed phrase.
- * @returns - The sanitized phrase.
- */
-function sanitizePhrase(phrase: string): string {
-  // Remove duplicate adjacent spaces.
-  return removeAdjacentChars(phrase.trim().toLowerCase(), " ");
-}
-
-/**
- * Converts the input seed phrase to the actual seed bytes.
- *
- * @param phrase - The input seed phrase.
- * @returns - The seed bytes.
- */
-function phraseToSeed(phrase: string): Uint8Array {
-  phrase = sanitizePhrase(phrase);
-  const [valid, error, seed] = validatePhrase(phrase);
-  if (!valid || !seed) {
-    throw new Error(error);
-  }
-
-  return seed;
 }
