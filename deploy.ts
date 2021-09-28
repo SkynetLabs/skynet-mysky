@@ -1,5 +1,5 @@
 import { SkynetClient as SkynetClientNode } from "@skynetlabs/skynet-nodejs";
-import { SkynetClient, genKeyPairFromSeed, CustomUploadOptions } from "skynet-js";
+import { SkynetClient, genKeyPairFromSeed } from "skynet-js";
 
 import { cyan } from "chalk";
 
@@ -132,7 +132,7 @@ void (async () => {
 })();
 
 function prepareUploadOptions() {
-  const options: CustomUploadOptions = {};
+  const options: Record<string, unknown> = {};
 
   if (TRY_FILES) {
     // transform try-files input which is space separated list
