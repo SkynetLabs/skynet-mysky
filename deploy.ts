@@ -1,13 +1,33 @@
 import { SkynetClient as SkynetClientNode } from "@skynetlabs/skynet-nodejs";
-import { SkynetClient, genKeyPairFromSeed } from "skynet-js";
+import { SkynetClient, genKeyPairFromSeed, CustomUploadOptions } from "skynet-js";
 
 import { cyan } from "chalk";
 
+// ===============================
+// ===== CUSTOMIZABLE FIELDS =====
+// ===============================
+
 // URL of Skynet Portal you wish to use
-const PORTAL = "https://siasky.net";
+const PORTAL = process.env.SKYNET_PORTAL || "https://siasky.net";
 
 // Build directory.
-const BUILD_DIR = "./dist";
+const BUILD_DIR = process.env.BUILD_DIR || "./dist";
+
+// Resolver datakey, e.g. "skynet-mysky". Allowed to be empty.
+const RESOLVER_DATA_KEY = process.env.RESOLVER_DATA_KEY || "";
+
+// Seed for generating and updating resolver skylink. Not allowed to be empty.
+const RESOLVER_SEED = process.env.RESOLVER_SEED || "";
+
+// A space-separated list of files that the portal should try when resolving a directory.
+const TRY_FILES = process.env.TRY_FILES || "index.html";
+
+// Defines a path to a file that will replace the default 404 Not Found error page, ie `404.html`.
+const NOT_FOUND_PAGE = process.env.NOT_FOUND_PAGE;
+
+// ===============================
+// ===============================
+// ===============================
 
 // Create clients for upload and resolver skylink.
 const client = new SkynetClient(PORTAL);
@@ -20,7 +40,7 @@ const nodeClient = new SkynetClientNode(PORTAL);
  * @returns - Returns the upload directory response.
  */
 async function pushDirectoryToSkynet(path: string) {
-  const response = await nodeClient.uploadDirectory(path);
+  const response = await nodeClient.uploadDirectory(path, prepareUploadOptions());
   return response;
 }
 
@@ -56,17 +76,8 @@ async function publishSkylinkToResolverSkylink(
  * @returns - An empty promise.
  */
 async function deploy(): Promise<void> {
-  // Set seed for generating and updating resolver skylink.
-  const resolverSeed = process.env.RESOLVER_SEED;
-  if (!resolverSeed) {
+  if (!RESOLVER_SEED) {
     throw new Error("RESOLVER_SEED env var not found");
-  }
-  // Set dataKey for resolver skylink.
-  let resolverDataKey = "skynet-mysky";
-  if (process.env.DEV) {
-    resolverDataKey = "skynet-mysky-dev";
-  } else if (process.env.ALPHA) {
-    resolverDataKey = "sandbridge";
   }
 
   console.log("Sending to Skynet...");
@@ -85,7 +96,7 @@ async function deploy(): Promise<void> {
   console.log();
 
   // Call method to update resolver skylink.
-  const resolverSkylink = await publishSkylinkToResolverSkylink(skylink, resolverSeed, resolverDataKey);
+  const resolverSkylink = await publishSkylinkToResolverSkylink(skylink, RESOLVER_SEED, RESOLVER_DATA_KEY);
 
   // Get URL based off preferred portal
   resolverSkylinkUrl = await client.getSkylinkUrl(resolverSkylink, { subdomain: true });
@@ -119,3 +130,21 @@ void (async () => {
     process.exit(1);
   }
 })();
+
+function prepareUploadOptions() {
+  const options: CustomUploadOptions = {};
+
+  if (TRY_FILES) {
+    // transform try-files input which is space separated list
+    // of file paths into an array of those paths
+    options.tryFiles = TRY_FILES.split(/\s+/);
+  }
+
+  if (NOT_FOUND_PAGE) {
+    // transform not-found-page input which is a single file path into
+    // an object with a 404 key and its value being the specified path
+    options.errorPages = { 404: NOT_FOUND_PAGE };
+  }
+
+  return options;
+}
