@@ -14,5 +14,5 @@
     "types": ["node", "jest"],
     "typeRoots": ["./types", "./node_modules/@types"]
   },
-  "include": ["deploy.ts", "src", "tests", "types/**/*.d.ts"]
+  "include": ["src", "tests", "types/**/*.d.ts"]
 }

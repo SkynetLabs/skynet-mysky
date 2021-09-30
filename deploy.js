@@ -1,7 +1,4 @@
-const { SkynetClient: SkynetClientNode } = require("@skynetlabs/skynet-nodejs");
-const { SkynetClient, genKeyPairFromSeed } = require("skynet-js");
-
-const { cyan } = require("chalk");
+const { SkynetClient, genKeyPairFromSeed } = require("@skynetlabs/skynet-nodejs");
 
 // ===============================
 // ===== CUSTOMIZABLE FIELDS =====
@@ -29,9 +26,8 @@ const NOT_FOUND_PAGE = process.env.NOT_FOUND_PAGE;
 // ===============================
 // ===============================
 
-// Create clients for upload and resolver skylink.
+// Create client for upload and resolver skylink.
 const client = new SkynetClient(PORTAL);
-const nodeClient = new SkynetClientNode(PORTAL);
 
 /**
  * Uploads the directory at the path.
@@ -40,7 +36,7 @@ const nodeClient = new SkynetClientNode(PORTAL);
  * @returns - Returns the upload directory response.
  */
 async function pushDirectoryToSkynet(path) {
-  const response = await nodeClient.uploadDirectory(path, prepareUploadOptions());
+  const response = await client.uploadDirectory(path, prepareUploadOptions());
   return response;
 }
 
@@ -87,7 +83,7 @@ async function deploy() {
   // Get URL based off preferred portal
   const skylinkUrl = await client.getSkylinkUrl(skylink, { subdomain: true });
 
-  console.log(`📡 App deployed to Skynet with skylink: ${cyan(skylink)}`);
+  console.log(`📡 App deployed to Skynet with skylink: ${skylink}`);
 
   console.log();
 
@@ -97,14 +93,14 @@ async function deploy() {
   // Get URL based off preferred portal
   resolverSkylinkUrl = await client.getSkylinkUrl(resolverSkylink, { subdomain: true });
 
-  console.log(`📡 Resolver skylink updated: ${cyan(resolverSkylink)}`);
+  console.log(`📡 Resolver skylink updated: ${resolverSkylink}`);
 
   // Display final info.
   console.log("🚀 Deployment to Skynet complete!");
   console.log();
   console.log(`Use the link${resolverSkylinkUrl && "s"} below to access your app:`);
-  console.log(`   Immutable Skylink Url: ${cyan(`${skylinkUrl}`)}`);
-  console.log(`   Resolver Skylink Url: ${cyan(`${resolverSkylinkUrl}`)}`);
+  console.log(`   Immutable Skylink Url: ${`${skylinkUrl}`}`);
+  console.log(`   Resolver Skylink Url: ${`${resolverSkylinkUrl}`}`);
   console.log();
   console.log(
     'Each new deployment will have a unique skylink while the "resolver skylink" will always point at the most recent deployment.'
