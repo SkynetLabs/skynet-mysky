@@ -3,11 +3,17 @@
 npx rimraf dist &&
 cp -R html dist &&
 cp -R assets dist/assets &&
+printf "\nBuilding src..." &&
 npx webpack &&
+printf "\nBuilding scripts/ui..." &&
 npx webpack --config webpack.config.ui.js &&
+printf "\nBuilding scripts/permissions..." &&
 npx webpack --config webpack.config.permissions.js &&
+printf "\nBuilding scripts/permissions-display..." &&
 npx webpack --config webpack.config.permissions-display.js &&
+printf "\nBuilding scripts/seed-display..." &&
 npx webpack --config webpack.config.seed-display.js &&
+printf "\nBuilding scripts/seed-selection..." &&
 npx webpack --config webpack.config.seed-selection.js &&
 node utilities/minify-src.js dist/*.html &&
 rm dist/main.js dist/seed-display.js dist/seed-selection.js dist/permissions-display.js dist/ui.js &&
