@@ -8,6 +8,8 @@ export const SEED_WORDS_LENGTH = 13;
 export const CHECKSUM_WORDS_LENGTH = 2;
 export const PHRASE_LENGTH = SEED_WORDS_LENGTH + CHECKSUM_WORDS_LENGTH;
 
+const LAST_WORD_INDEX = 12;
+
 /**
  * Generates a 15-word seed phrase for 16 bytes of entropy plus 20 bits of checksum. The dictionary length is 1024 which gives 10 bits of entropy per word.
  *
@@ -21,7 +23,7 @@ export function generatePhrase(): string {
   for (let i = 0; i < SEED_WORDS_LENGTH; i++) {
     let numBits = 10;
     // For the 13th word, only the first 256 words are considered valid.
-    if (i === 12) {
+    if (i === LAST_WORD_INDEX) {
       numBits = 8;
     }
     seedWords[i] = seedWords[i] % (1 << numBits);
@@ -64,15 +66,14 @@ export function phraseToSeed(phrase: string): Uint8Array {
  * @returns - The original phrase.
  */
 export function seedToPhrase(seed: Uint8Array): string {
-  const seedWords = seedToSeedWords(seed);
-  return seedWordsToPhrase(seedWords);
+  return seedWordsToPhrase(seedToSeedWords(seed));
 }
 
 /**
  * Validate the phrase by checking that for every word, there is a dictionary
  * word that starts with the first 3 letters of the word. For the last word of
- * the seed phrase (the 12th word), only the first 256 words of the dictionary
- * are considered valid.
+ * the seed phrase (the 13th word; words 14 and 15 are checksum words), only the
+ * first 256 words of the dictionary are considered valid.
  *
  * @param phrase - The input seed phrase to check.
  * @returns - A boolean indicating whether the phrase is valid, a string explaining the error if it's not, and the final seed bytes.
@@ -96,7 +97,7 @@ export function validatePhrase(phrase: string): [boolean, string, Uint8Array | n
     // Iterate through the dictionary looking for the word prefix.
     const prefix = word.slice(0, 3);
     let bound = dictionary.length;
-    if (i === 12) {
+    if (i === LAST_WORD_INDEX) {
       bound = 256;
     }
     let found = -1;
@@ -111,7 +112,7 @@ export function validatePhrase(phrase: string): [boolean, string, Uint8Array | n
     }
     // The prefix was not found in the dictionary.
     if (found < 0) {
-      if (i === 12) {
+      if (i === LAST_WORD_INDEX) {
         return [false, `Prefix for word ${i + 1} must be found in the first 256 words of the dictionary`, null];
       } else {
         return [false, `Unrecognized prefix "${prefix}" at word ${i + 1}, not found in dictionary`, null];
@@ -246,7 +247,7 @@ function seedWordsToPhrase(seedWords: Uint16Array): string {
   let i = 0;
   for (const seedWord of seedWordsWithChecksum) {
     let maxSeedWord = dictionary.length;
-    if (i === 12) {
+    if (i === LAST_WORD_INDEX) {
       maxSeedWord = 256;
     }
 
