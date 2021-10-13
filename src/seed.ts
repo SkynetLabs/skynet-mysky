@@ -9,6 +9,7 @@ export const CHECKSUM_WORDS_LENGTH = 2;
 export const PHRASE_LENGTH = SEED_WORDS_LENGTH + CHECKSUM_WORDS_LENGTH;
 
 const LAST_WORD_INDEX = 12;
+const PHRASE_DELIMITER = " ";
 
 /**
  * Generates a 15-word seed phrase for 16 bytes of entropy plus 20 bits of checksum. The dictionary length is 1024 which gives 10 bits of entropy per word.
@@ -33,14 +34,15 @@ export function generatePhrase(): string {
   const checksumWords = generateChecksumWordsFromSeedWords(seedWords);
 
   const phraseWords: string[] = new Array(PHRASE_LENGTH);
+  let phraseWord = 0;
   for (let i = 0; i < SEED_WORDS_LENGTH; i++) {
-    phraseWords[i] = dictionary[seedWords[i]];
+    phraseWords[phraseWord++] = dictionary[seedWords[i]];
   }
   for (let i = 0; i < CHECKSUM_WORDS_LENGTH; i++) {
-    phraseWords[i + SEED_WORDS_LENGTH] = dictionary[checksumWords[i]];
+    phraseWords[phraseWord++] = dictionary[checksumWords[i]];
   }
 
-  return phraseWords.join(" ");
+  return phraseWords.join(PHRASE_DELIMITER);
 }
 
 /**
