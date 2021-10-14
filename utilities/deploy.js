@@ -36,8 +36,7 @@ const client = new SkynetClient(PORTAL);
  * @returns - Returns the upload directory response.
  */
 async function pushDirectoryToSkynet(path) {
-  const response = await client.uploadDirectory(path, prepareUploadOptions());
-  return response;
+  return await client.uploadDirectory(path, prepareUploadOptions());
 }
 
 /**
@@ -57,9 +56,7 @@ async function publishSkylinkToResolverSkylink(skylink, resolverSeed, resolverDa
   await client.db.setDataLink(privateKey, dataKey, skylink);
 
   // Get the resolver skylink that represents the registry entry
-  const resolverSkylink = await client.registry.getEntryLink(publicKey, dataKey);
-
-  return resolverSkylink;
+  return await client.registry.getEntryLink(publicKey, dataKey);
 }
 
 /**
@@ -80,7 +77,7 @@ async function deploy() {
     throw new Error("App deployment failed");
   }
 
-  // Get URL based off preferred portal
+  // Get URL based off preferred portal.
   const skylinkUrl = await client.getSkylinkUrl(skylink, { subdomain: true });
 
   console.log(`📡 App deployed to Skynet with skylink: ${skylink}`);
@@ -90,7 +87,7 @@ async function deploy() {
   // Call method to update resolver skylink.
   const resolverSkylink = await publishSkylinkToResolverSkylink(skylink, RESOLVER_SEED, RESOLVER_DATA_KEY);
 
-  // Get URL based off preferred portal
+  // Get URL based off preferred portal.
   resolverSkylinkUrl = await client.getSkylinkUrl(resolverSkylink, { subdomain: true });
 
   console.log(`📡 Resolver skylink updated: ${resolverSkylink}`);
@@ -98,7 +95,7 @@ async function deploy() {
   // Display final info.
   console.log("🚀 Deployment to Skynet complete!");
   console.log();
-  console.log(`Use the link${resolverSkylinkUrl && "s"} below to access your app:`);
+  console.log(`Use the links below to access your app:`);
   console.log(`   Immutable Skylink Url: ${`${skylinkUrl}`}`);
   console.log(`   Resolver Skylink Url: ${`${resolverSkylinkUrl}`}`);
   console.log();
