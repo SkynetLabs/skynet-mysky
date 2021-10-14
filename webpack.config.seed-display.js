@@ -20,7 +20,7 @@ module.exports = {
           { loader: "ifdef-loader", options: opts },
           { loader: "ts-loader", options: { configFile: "tsconfig.scripts.json" } },
         ],
-        include: [path.resolve(__dirname, `scripts/${name}.ts`)],
+        include: [path.resolve(__dirname, "src"), path.resolve(__dirname, `scripts/${name}.ts`)],
       },
     ],
   },

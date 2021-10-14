@@ -8,14 +8,14 @@
     "not OperaMini all"
   ],
   "scripts": {
-    "build": "NODE_ENV=production npm run build:css && ./build",
-    "build-dev": "npm run build:css && SKYNET_MYSKY_ENV=dev ./build",
+    "build": "NODE_ENV=production npm run build:css && ./utilities/build",
+    "build-dev": "npm run build:css && SKYNET_MYSKY_ENV=dev ./utilities/build",
     "build:css": "postcss assets/style.compile.css -o assets/style.css",
-    "deploy": "npm run build && RESOLVER_DATA_KEY=skynet-mysky node deploy.js",
-    "deploy-dev": "npm run build-dev && RESOLVER_DATA_KEY=skynet-mysky-dev node deploy.js",
-    "deploy-alpha": "npm run build && RESOLVER_DATA_KEY=sandbridge node deploy.js",
+    "deploy": "npm run build && RESOLVER_DATA_KEY=skynet-mysky node utilities/deploy.js",
+    "deploy-dev": "npm run build-dev && RESOLVER_DATA_KEY=skynet-mysky-dev node utilities/deploy.js",
+    "deploy-alpha": "npm run build && RESOLVER_DATA_KEY=sandbridge node utilities/deploy.js",
     "lint": "npm run lint:tsc && npm run lint:eslint",
-    "lint:eslint": "eslint --ext .ts src scripts tests",
+    "lint:eslint": "eslint --ext .ts src scripts tests utilities",
     "lint:tsc": "tsc --noemit && tsc --project tsconfig.scripts.json --noemit",
     "test": "jest",
     "prepare": "husky install"

@@ -1,4 +1,25 @@
-import { generatePhrase, hashToChecksumWords, seedWordsToSeed, validatePhrase } from "../scripts/seed-display";
+import {
+  generatePhrase,
+  hashToChecksumWords,
+  phraseToSeed,
+  sanitizePhrase,
+  seedToPhrase,
+  seedWordsToSeed,
+  validatePhrase,
+} from "../src/seed";
+
+const validDictionarySeeds = [
+  // Typical phrase.
+  "vector items adopt agenda ticket nagged devoid onward geyser mime eleven frown apart origin woes",
+  // Single word repeated.
+  " abbey    abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey amidst punch   ",
+  "yanks yanks yanks yanks yanks yanks yanks yanks yanks yanks yanks yanks eggs voyage topic  ",
+];
+const validSeeds = [
+  ...validDictionarySeeds,
+  // Words not in dictionary but prefixes are valid.
+  "abb about yanked yah unctuous spry mayflower malodious jabba irish gazebo bombastic eggplant acer avoidance",
+];
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -25,25 +46,17 @@ expect.extend({
 });
 
 describe("generateSeed", () => {
-  const seeds = new Array(100).map(() => generatePhrase());
+  const phrases = new Array(100).map(() => generatePhrase());
 
-  it.each(seeds)("generated seed %s should be a valid seed", (seed) => {
-    const [valid] = validatePhrase(seed);
+  it.each(phrases)("generated phrase '%s' should be a valid phrase", (phrase) => {
+    const [valid] = validatePhrase(phrase);
     expect(valid).toBeTruthy();
   });
 });
 
 describe("validatePhrase", () => {
-  const validSeeds = [
-    // Single word
-    " abbey    abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey amidst punch   ",
-    "yanks yanks yanks yanks yanks yanks yanks yanks yanks yanks yanks yanks eggs voyage topic  ",
-    // Words not in dictionary but with valid prefixes
-    "abb about yanked yah unctuous spry mayflower malodious jabba irish gazebo bombastic eggplant acer avoidance",
-  ];
-
-  it.each(validSeeds)("validatePhrase should return true for phrase %s", (seed) => {
-    const [valid, error] = validatePhrase(seed);
+  it.each(validSeeds)("validatePhrase should return true for phrase '%s'", (phrase) => {
+    const [valid, error] = validatePhrase(phrase);
     expect(error).toEqual("");
     expect(valid).toBeTruthy();
   });
@@ -52,12 +65,12 @@ describe("validatePhrase", () => {
     // 14 words
     [
       "abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey pastry abbey",
-      "Phrase must be 15 words long, was 14",
+      "Phrase must be '15' words long, was '14'",
     ],
     // 16 words
     [
       "abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey abbey",
-      "Phrase must be 15 words long, was 16",
+      "Phrase must be '15' words long, was '16'",
     ],
     // Word is too short
     ["ab ab ab ab ab ab ab ab ab ab ab ab ab ab ab ", "Word 1 is not at least 3 letters long"],
@@ -94,6 +107,17 @@ describe("hashToChecksumWords", () => {
     expect(checksumWords[0]).toEqual(0b0101110000);
     expect(checksumWords[1]).toEqual(0b1100110101);
   });
+});
+
+describe("phraseToSeed/seedToPhrase", () => {
+  it.each(validDictionarySeeds)(
+    "phraseToSeed should convert valid dictionary phrase '%s' and seedToPhrase should convert it back to the original phrase",
+    (phrase) => {
+      const seed = phraseToSeed(phrase);
+      const returnedPhrase = seedToPhrase(seed);
+      expect(returnedPhrase).toEqual(sanitizePhrase(phrase));
+    }
+  );
 });
 
 describe("seedWordsToSeed", () => {
