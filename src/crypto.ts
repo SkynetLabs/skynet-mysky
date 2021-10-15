@@ -1,7 +1,7 @@
 import { hash, sign } from "tweetnacl";
-
 import { KeyPair, stringToUint8ArrayUtf8 } from "skynet-js";
-import { toHexString } from "skynet-js/dist/cjs/utils/string";
+
+import { toHexString } from "./util";
 
 const SALT_ROOT_DISCOVERABLE_KEY = "root discoverable key";
 
