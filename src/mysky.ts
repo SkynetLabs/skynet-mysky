@@ -3,9 +3,7 @@ import type { Connection } from "post-me";
 import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
 import {
   deriveDiscoverableFileTweak,
-  deriveEncryptedFileSeed,
   deriveEncryptedFileTweak,
-  ENCRYPTION_PATH_SEED_LENGTH,
   RegistryEntry,
   signEntry,
   SkynetClient,
@@ -14,8 +12,10 @@ import {
 import { launchPermissionsProvider } from "./provider";
 import { hash } from "tweetnacl";
 
-import { genKeyPairFromSeed, log, readablePermission, sha512, toHexString } from "./util";
+import { genKeyPairFromSeed, sha512 } from "./crypto";
+import { log, readablePermission } from "./util";
 import { SEED_LENGTH } from "./seed";
+import { deriveEncryptedPathSeedForRoot, ENCRYPTION_ROOT_PATH_SEED_BYTES_LENGTH } from "./encrypted_files";
 
 const SEED_STORAGE_KEY = "seed";
 
@@ -61,7 +61,8 @@ export class MySky {
 
     const methods = {
       checkLogin: this.checkLogin.bind(this),
-      getEncryptedFileSeed: this.getEncryptedFileSeed.bind(this),
+      getEncryptedFileSeed: this.getEncryptedPathSeed.bind(this),
+      getEncryptedPathSeed: this.getEncryptedPathSeed.bind(this),
       logout: this.logout.bind(this),
       signRegistryEntry: this.signRegistryEntry.bind(this),
       signEncryptedRegistryEntry: this.signEncryptedRegistryEntry.bind(this),
@@ -144,8 +145,8 @@ export class MySky {
     return [true, permissionsResponse];
   }
 
-  async getEncryptedFileSeed(path: string, isDirectory: boolean): Promise<string> {
-    log("Entered getEncryptedFileSeed");
+  async getEncryptedPathSeed(path: string, isDirectory: boolean): Promise<string> {
+    log("Entered getEncryptedPathSeed");
 
     // Check with the permissions provider that we have permission for this request.
 
@@ -161,11 +162,13 @@ export class MySky {
     // Compute the root path seed.
 
     const bytes = new Uint8Array([...sha512(SALT_ENCRYPTED_PATH_SEED), ...sha512(seed)]);
-    const rootPathSeed = toHexString(sha512(bytes).slice(0, ENCRYPTION_PATH_SEED_LENGTH));
+    // NOTE: Truncate to 32 bytes instead of the 64 bytes for a directory path
+    // seed. This is a historical artifact left for backwards compatibility.
+    const rootPathSeedBytes = sha512(bytes).slice(0, ENCRYPTION_ROOT_PATH_SEED_BYTES_LENGTH);
 
     // Compute the child path seed.
 
-    return deriveEncryptedFileSeed(rootPathSeed, path, isDirectory);
+    return deriveEncryptedPathSeedForRoot(rootPathSeedBytes, path, isDirectory);
   }
 
   // TODO
@@ -193,7 +196,7 @@ export class MySky {
     // Check that the entry data key corresponds to the right path.
 
     // Use `isDirectory: false` because registry entries can only correspond to files right now.
-    const pathSeed = await this.getEncryptedFileSeed(path, false);
+    const pathSeed = await this.getEncryptedPathSeed(path, false);
     const dataKey = deriveEncryptedFileTweak(pathSeed);
     if (entry.dataKey !== dataKey) {
       throw new Error("Path does not match the data key in the encrypted registry entry.");
