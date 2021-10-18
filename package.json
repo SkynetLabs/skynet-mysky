@@ -49,7 +49,7 @@
     "mustache": "^4.2.0",
     "post-me": "^0.4.5",
     "punycode": "^2.1.1",
-    "skynet-js": "^4.0.17-beta",
+    "skynet-js": "^4.0.18-beta",
     "skynet-mysky-utils": "^0.3.0",
     "stream-browserify": "^3.0.0",
     "tweetnacl": "^1.0.3",
