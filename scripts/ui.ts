@@ -11,7 +11,7 @@ import {
 } from "skynet-mysky-utils";
 import { MySky, SkynetClient } from "skynet-js";
 
-import { saveSeed } from "../src/mysky";
+import { checkStoredSeed, saveSeed } from "../src/mysky";
 import {
   getPermissionsProviderUrl,
   relativePermissionsDisplayUrl,
@@ -111,20 +111,23 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
     throw new Error(reason);
   }
 
-  // If we don't have a seed, show seed provider chooser.
+  let seed = checkStoredSeed();
 
-  const seedProviderDisplayUrl = await getSeedProviderDisplayUrl();
+  if (!seed) {
+    // If we don't have a seed, show seed provider chooser.
 
-  // User has chosen seed provider, open seed provider display.
+    const seedProviderDisplayUrl = await getSeedProviderDisplayUrl();
 
-  log("Calling runSeedProviderDisplay");
-  const seed = await runSeedProviderDisplay(seedProviderDisplayUrl);
-  const seedFound = true;
+    // User has chosen seed provider, open seed provider display.
 
-  // Save the seed in local storage.
+    log("Calling runSeedProviderDisplay");
+    seed = await runSeedProviderDisplay(seedProviderDisplayUrl);
 
-  log("Calling saveSeed");
-  saveSeed(seed);
+    // Save the seed in local storage.
+
+    log("Calling saveSeed");
+    saveSeed(seed);
+  }
 
   // Open the permissions provider.
 
@@ -152,7 +155,7 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
   // Return remaining failed permissions to skapp.
 
   log("Returning permissions response");
-  return [seedFound, permissionsResponse];
+  return [true, permissionsResponse];
 }
 
 // ==========
