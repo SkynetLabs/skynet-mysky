@@ -73,7 +73,7 @@
     "ifdef-loader": "^2.1.5",
     "jest": "^27.3.1",
     "jsdom": "^18.0.0",
-    "lint-staged": "^11.2.3",
+    "lint-staged": "^11.2.6",
     "postcss": "^8.3.9",
     "postcss-cli": "^9.0.1",
     "prettier": "^2.4.1",
