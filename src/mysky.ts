@@ -7,17 +7,19 @@ import {
   RegistryEntry,
   signEntry,
   SkynetClient,
+  stringToUint8ArrayUtf8,
 } from "skynet-js";
 
 import { launchPermissionsProvider } from "./provider";
 import { hash } from "tweetnacl";
 
 import { genKeyPairFromSeed, sha512 } from "./crypto";
-import { log, readablePermission } from "./util";
+import { log, readablePermission, toHexString } from "./util";
 import { SEED_LENGTH } from "./seed";
 import { deriveEncryptedPathSeedForRoot, ENCRYPTION_ROOT_PATH_SEED_BYTES_LENGTH } from "./encrypted_files";
 
 const SEED_STORAGE_KEY = "seed";
+export const SEED_DERIVATE_PREFIX = "seed derivation v1";
 
 // Descriptive salt that should not be changed.
 const SALT_ENCRYPTED_PATH_SEED = "encrypted filesystem path seed";
@@ -61,6 +63,7 @@ export class MySky {
 
     const methods = {
       checkLogin: this.checkLogin.bind(this),
+      fetchDerivativeSeed: this.fetchDerivativeSeed.bind(this),
       getEncryptedFileSeed: this.getEncryptedPathSeed.bind(this),
       getEncryptedPathSeed: this.getEncryptedPathSeed.bind(this),
       logout: this.logout.bind(this),
@@ -143,6 +146,25 @@ export class MySky {
       .call("checkPermissions", perms, dev);
 
     return [true, permissionsResponse];
+  }
+
+  fetchDerivativeSeed(): string {
+    // fetch seed
+    const seed = checkStoredSeed();
+    if (!seed) {
+      throw new Error("User seed not found");
+    }
+
+    // return H(prefix|domain|seed) as derivative seed
+    return toHexString(
+      sha512(
+        new Uint8Array([
+          ...stringToUint8ArrayUtf8(SEED_DERIVATE_PREFIX),
+          ...stringToUint8ArrayUtf8(this.referrerDomain),
+          ...seed,
+        ])
+      )
+    );
   }
 
   async getEncryptedPathSeed(path: string, isDirectory: boolean): Promise<string> {
@@ -340,6 +362,6 @@ export function saveSeed(seed: Uint8Array): void {
  * @param seed - The seed to salt.
  * @returns - The new seed after being salted.
  */
-function saltSeedDevMode(seed: Uint8Array): Uint8Array {
+export function saltSeedDevMode(seed: Uint8Array): Uint8Array {
   return sha512(new Uint8Array([...sha512("developer mode"), ...hash(seed)])).slice(0, 16);
 }
