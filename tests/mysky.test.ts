@@ -5,10 +5,18 @@ import { generatePhrase } from "../src/seed";
 import { toHexString } from "../src/util";
 
 // mock the crypto lib
+//
+// NOTE: this function does not replace the given array in-place, it merely
+// avoids the function being undefined
+//
+// TODO: found out why this is not updating the array
 const crypto = require("crypto");
 Object.defineProperty(global.self, "crypto", {
   value: {
-    getRandomValues: (arr: Uint16Array) => crypto.randomBytes(arr.length),
+    getRandomValues: (arr: Uint16Array) => {
+      arr = crypto.randomBytes(arr.length);
+      return arr;
+    },
   },
 });
 
