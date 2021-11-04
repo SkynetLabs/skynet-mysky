@@ -18,39 +18,49 @@ All permissions are allowed, making testing easier. This can be enabled with `cl
 
 ## Debug
 
-You can also enable debug messages with `client.loadMySky(<hostApp>, { debug: true })`. Both `dev` and `debug` can be set.
+You can also enable debug messages with `client.loadMySky(<hostApp>, { debug: true })`. Both `dev` and `debug` can be
+set.
 
-## Deployment
+## Deployment process
 
-Set the `RESOLVER_SEED` env var:
+### Preparation
+
+- Make your changes to `skynet-mysky`
+- Link any changes e.g. to `skynet-js` that are being tested (`npm link`)
+- Set the `RESOLVER_SEED` env var (you can find the value in LastPass under `MySky Seed`):
 
 ```
 export RESOLVER_SEED="..."
 ```
 
-and run the deploy script:
-
-```
-npm run deploy
-```
-
-You can check the `version.json` file on the live site to see the latest git commit it was built with, e.g. `skynet-mysky.hns.siasky.net/version.json`.
-
-### Dev Deploy
-
-```
-npm run deploy-dev
-```
-
-Domain: `skynet-mysky-dev.hns`.
-
-### Alpha Deploy
+### Deploy Alpha (sandbridge.hns)
 
 ```
 npm run deploy-alpha
 ```
 
-Domain: `sandbridge.hns`.
+### Run integration tests for Alpha
+
+- Follow https://github.com/SkynetLabs/test-skapp
+
+Secrets found in LastPass under `MySky Test Skapp`.
+
+### Deploy dev (skynet-mysky-dev.hns)
+
+```
+npm run deploy-dev
+```
+
+### Deploy production (skynet-mysky.hns)
+
+```
+npm run deploy
+```
+
+## Notes
+
+- You can find out what is currently deployed at prod, dev, or alpha by pinging `version.json`,
+  e.g. https://skynet-mysky.hns.siasky.net/version.json
 
 ## Changelog
 
