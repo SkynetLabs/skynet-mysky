@@ -10,7 +10,6 @@ import {
 } from "skynet-js";
 
 import { launchPermissionsProvider } from "./provider";
-import { hash } from "tweetnacl";
 
 import { genKeyPairFromSeed, sha512 } from "./crypto";
 import { log, readablePermission } from "./util";
@@ -372,5 +371,5 @@ export function saveSeed(seed: Uint8Array): void {
  * @returns - The new seed after being salted.
  */
 function saltSeedDevMode(seed: Uint8Array): Uint8Array {
-  return sha512(new Uint8Array([...sha512("developer mode"), ...hash(seed)])).slice(0, 16);
+  return sha512(new Uint8Array([...sha512("developer mode"), ...sha512(seed)])).slice(0, 16);
 }

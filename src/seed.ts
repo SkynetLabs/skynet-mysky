@@ -1,7 +1,7 @@
 import { removeAdjacentChars } from "skynet-mysky-utils";
-import { hash } from "tweetnacl";
 
-import { dictionary } from "../src/dictionary";
+import { sha512 } from "./crypto";
+import { dictionary } from "./dictionary";
 
 export const SEED_LENGTH = 16;
 export const SEED_WORDS_LENGTH = 13;
@@ -154,7 +154,7 @@ function generateChecksumWordsFromSeedWords(seedWords: Uint16Array): Uint16Array
   }
 
   const seed = seedWordsToSeed(seedWords);
-  const h = hash(seed);
+  const h = sha512(seed);
   return hashToChecksumWords(h);
 }
 
