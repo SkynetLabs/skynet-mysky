@@ -25,7 +25,7 @@ set.
 
 ### Preparation
 
-- Make you changes to `skynet-mysky`
+- Make your changes to `skynet-mysky`
 - Link any changes e.g. to `skynet-js` that are being tested (`npm link`)
 - Set the `RESOLVER_SEED` env var (you can find the value in LastPass under `MySky Seed`):
 
