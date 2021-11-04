@@ -28,7 +28,16 @@ let dev = false;
 dev = true;
 /// #endif
 
-let permissionsProvider: Promise<Connection> | null = null;
+let permissionsProvider: Promise<PermissionsProvider> | null = null;
+
+export class PermissionsProvider {
+  constructor(public connection: Connection, public worker: Worker) {}
+
+  close() {
+    this.worker.terminate();
+    this.connection.close();
+  }
+}
 
 // Set up a listener for the storage event. If the seed is set in the UI, it
 // should trigger a load of the permissions provider.
@@ -36,17 +45,23 @@ window.addEventListener("storage", ({ key, newValue }: StorageEvent) => {
   if (key !== SEED_STORAGE_KEY) {
     return;
   }
+
+  if (permissionsProvider) {
+    // Unload the old permissions provider. No need to await on this.
+    void permissionsProvider.then((provider) => provider.close());
+    permissionsProvider = null;
+  }
+
   if (!newValue) {
     // Seed was removed.
-    // TODO: Unload the permissions provider.
     return;
   }
 
+  // Parse the seed.
   const seed = new Uint8Array(JSON.parse(newValue));
 
-  if (!permissionsProvider) {
-    permissionsProvider = launchPermissionsProvider(seed);
-  }
+  // Launch the new permissions provider.
+  permissionsProvider = launchPermissionsProvider(seed);
 });
 
 export class MySky {
@@ -118,6 +133,13 @@ export class MySky {
   // Public API
   // ==========
 
+  /**
+   * Checks whether the user can be automatically logged in (the seed is present
+   * and required permissions are granted).
+   *
+   * @param perms - The requested permissions.
+   * @returns - Whether the seed is present and a list of granted and rejected permissions.
+   */
   async checkLogin(perms: Permission[]): Promise<[boolean, CheckPermissionsResponse]> {
     log("Entered checkLogin");
 
@@ -129,22 +151,29 @@ export class MySky {
       return [false, permissionsResponse];
     }
 
-    // Permissions provider should have been loaded by now.
-    // TODO: Should this be async?
+    // Load of permissions provider should have been triggered by now, either
+    // when initiatializing MySky frame or when setting seed in MySky UI.
     if (!permissionsProvider) {
       throw new Error("Permissions provider not loaded");
     }
 
     // Check given permissions with the permissions provider.
     log("Calling checkPermissions");
-    const connection = await permissionsProvider;
-    const permissionsResponse: CheckPermissionsResponse = await connection
+    const provider = await permissionsProvider;
+    const permissionsResponse: CheckPermissionsResponse = await provider.connection
       .remoteHandle()
       .call("checkPermissions", perms, dev);
 
     return [true, permissionsResponse];
   }
 
+  /**
+   * Gets the encrypted path seed for the given path.
+   *
+   * @param path - The given file or directory path.
+   * @param isDirectory - Whether the path corresponds to a directory.
+   * @returns - The hex-encoded encrypted path seed.
+   */
   async getEncryptedPathSeed(path: string, isDirectory: boolean): Promise<string> {
     log("Entered getEncryptedPathSeed");
 
@@ -256,8 +285,10 @@ export class MySky {
 
     const perm = new Permission(this.referrerDomain, path, category, permType);
     log(`Checking permission: ${JSON.stringify(perm)}`);
-    const connection = await permissionsProvider;
-    const resp: CheckPermissionsResponse = await connection.remoteHandle().call("checkPermissions", [perm], dev);
+    const provider = await permissionsProvider;
+    const resp: CheckPermissionsResponse = await provider.connection
+      .remoteHandle()
+      .call("checkPermissions", [perm], dev);
     if (resp.failedPermissions.length > 0) {
       const readablePerm = readablePermission(perm);
       throw new Error(`Permission was not granted: ${readablePerm}`);

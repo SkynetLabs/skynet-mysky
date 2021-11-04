@@ -131,14 +131,13 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
 
   // Open the permissions provider.
 
-  // TODO: Call terminate() on the returned permissions worker.
   log("Calling launchPermissionsProvider");
   const permissionsProvider = await launchPermissionsProvider(seed);
 
   // Pass it the requested permissions.
 
   log("Calling checkPermissions on permissions provider");
-  let permissionsResponse: CheckPermissionsResponse = await permissionsProvider
+  let permissionsResponse: CheckPermissionsResponse = await permissionsProvider.connection
     .remoteHandle()
     .call("checkPermissions", permissions, dev);
 
@@ -149,8 +148,11 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
 
     // Send the permissions provider worker the new and failed permissions.
 
-    await permissionsProvider.remoteHandle().call("setPermissions", permissionsResponse.grantedPermissions);
+    await permissionsProvider.connection.remoteHandle().call("setPermissions", permissionsResponse.grantedPermissions);
   }
+
+  // Call terminate() on the returned permissions worker.
+  permissionsProvider.close();
 
   // Return remaining failed permissions to skapp.
 
