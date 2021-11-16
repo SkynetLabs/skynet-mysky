@@ -29,6 +29,10 @@ dev = true;
 
 let permissionsProvider: Promise<PermissionsProvider> | null = null;
 
+/**
+ * Convenience class containing the permissions provider handshake connection
+ * and worker handle.
+ */
 export class PermissionsProvider {
   constructor(public connection: Connection, public worker: Worker) {}
 
