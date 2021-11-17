@@ -54,3 +54,18 @@ export function toHexString(byteArray: Uint8Array): string {
   });
   return s;
 }
+
+/**
+ * Convert a hex encoded string to a uint8 array
+ *
+ * @param hexString - The string to convert
+ * @returns - The uint8 array, or null in case the input was not a valid
+ * hex-encoded string or empty
+ */
+export function fromHexString(hexString: string): Uint8Array | null {
+  const matches = hexString.match(/.{1,2}/g);
+  if (!matches) {
+    return null;
+  }
+  return new Uint8Array(matches.map((byte) => parseInt(byte, 16)));
+}

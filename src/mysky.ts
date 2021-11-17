@@ -10,10 +10,10 @@ import {
 } from "skynet-js";
 
 import { launchPermissionsProvider } from "./provider";
-import { hash } from "tweetnacl";
+import { hash, sign } from "tweetnacl";
 
 import { genKeyPairFromSeed, sha512 } from "./crypto";
-import { log, readablePermission } from "./util";
+import { fromHexString, log, readablePermission } from "./util";
 import { SEED_LENGTH } from "./seed";
 import { deriveEncryptedPathSeedForRoot, ENCRYPTION_ROOT_PATH_SEED_BYTES_LENGTH } from "./encrypted_files";
 
@@ -21,6 +21,10 @@ const SEED_STORAGE_KEY = "seed";
 
 // Descriptive salt that should not be changed.
 const SALT_ENCRYPTED_PATH_SEED = "encrypted filesystem path seed";
+
+// SALT_MYSKY_ID_VERIFICATION is the prefix with which we salt the data that
+// MySky signs in order to be able to prove ownership of the MySky id.
+const SALT_MYSKY_ID_VERIFICATION = "MYSKY_ID_VERIFICATION";
 
 // Set `dev` based on whether we built production or dev.
 let dev = false;
@@ -64,6 +68,7 @@ export class MySky {
       getEncryptedFileSeed: this.getEncryptedPathSeed.bind(this),
       getEncryptedPathSeed: this.getEncryptedPathSeed.bind(this),
       logout: this.logout.bind(this),
+      sign: this.sign.bind(this),
       signRegistryEntry: this.signRegistryEntry.bind(this),
       signEncryptedRegistryEntry: this.signEncryptedRegistryEntry.bind(this),
       userID: this.userID.bind(this),
@@ -179,6 +184,39 @@ export class MySky {
     // Clear the stored seed.
 
     clearStoredSeed();
+  }
+
+  /**
+   * sign will sign the given data using the MySky user's private key, this
+   * method can be used for MySky user verification as the signature may be
+   * verified against the user's public key, which is the MySky user id.
+   *
+   * NOTE: this function adds a salt to the given data array to ensure there's
+   * no potential overlap with anything else, like registry entries.
+   *
+   * @param data - data to sign
+   * @returns signature
+   */
+  async sign(data: Uint8Array): Promise<Uint8Array> {
+    // fetch the user's seed
+    const seed = checkStoredSeed();
+    if (!seed) {
+      throw new Error("User seed not found");
+    }
+
+    // fetch the private key
+    const { privateKey } = genKeyPairFromSeed(seed);
+
+    const privateKeyBytes = fromHexString(privateKey);
+    if (!privateKeyBytes) {
+      throw new Error("Corrupted key pair");
+    }
+
+    // salt the data
+    const hashed = new Uint8Array([...sha512(SALT_MYSKY_ID_VERIFICATION), ...sha512(data)]);
+
+    // return the signature
+    return sign(hashed, privateKeyBytes);
   }
 
   async signRegistryEntry(entry: RegistryEntry, path: string): Promise<Uint8Array> {
