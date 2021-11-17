@@ -1,4 +1,4 @@
-import { genKeyPairFromSeed } from "../src/crypto";
+import { genKeyPairFromSeed } from "../../src/crypto";
 
 describe("genKeyPairFromSeed", () => {
   it("should generate correct hard-coded value", () => {

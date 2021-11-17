@@ -1,4 +1,5 @@
 import { KeyPair, SkynetClient } from "skynet-js";
+import type { CustomClientOptions } from "skynet-js";
 import { sign } from "tweetnacl";
 
 import { genKeyPairDeterministic, sha512 } from "./crypto";
@@ -26,6 +27,35 @@ const CHALLENGE_TYPE_REGISTER = "skynet-portal-register";
 const PUB_KEY_SIZE = sign.publicKeyLength;
 
 /**
+ * Custom register options.
+ *
+ * @property [endpointRegisterRequest] - The relative URL path of the portal endpoint to contact.
+ * @property [endpointRegister] - The relative URL path of the portal endpoint to contact for large uploads.
+ */
+export type CustomRegisterOptions = CustomClientOptions & {
+  endpointUpload?: string;
+  endpointLargeUpload?: string;
+};
+
+/**
+ * The default custom client options.
+ */
+const DEFAULT_CUSTOM_CLIENT_OPTIONS = {
+  APIKey: "",
+  customUserAgent: "",
+  customCookie: "",
+  onDownloadProgress: undefined,
+  onUploadProgress: undefined,
+};
+
+export const DEFAULT_UPLOAD_OPTIONS = {
+  ...DEFAULT_CUSTOM_CLIENT_OPTIONS,
+
+  endpointRegisterRequest: "/api/register/request",
+  endpointRegister: "/api/register",
+};
+
+/**
  * The challenge response.
  *
  * @property response - The hex-encoded byte array of the signed data, e.g. challenge+type+recipient. The type is either
@@ -47,30 +77,31 @@ function genPortalLoginKeypair(seed: Uint8Array, salt: string): KeyPair {
 /**
  * @returns - The JWT token.
  */
-export async function register(client: SkynetClient, seed: Uint8Array, email: string): Promise<string> {
+export async function register(
+  client: SkynetClient,
+  seed: Uint8Array,
+  email: string,
+  customOptions?: CustomRegisterOptions
+): Promise<string> {
+  const opts = { ...DEFAULT_UPLOAD_OPTIONS, ...client.customOptions, ...customOptions };
+
   const { publicKey, privateKey } = genPortalLoginKeypair(seed, email);
 
-  // TODO: Get accounts URL.
-  const registerGETUrl = "https://account.dev3.siasky.dev/api/register";
-  const portal = "siasky.dev";
+  console.log("Sending register request");
 
-  console.log("Sending register GET");
-
-  // @ts-expect-error - Using protected method.
-  const registerGETResponse = await client.executeRequest({
-    url: registerGETUrl,
-    endpointPath: "/register",
-    method: "GET",
+  const registerRequestResponse = await client.executeRequest({
+    endpointPath: opts.endpointRegisterRequest,
+    method: "POST",
+    subdomain: "account",
     query: { pubKey: publicKey },
   });
 
-  console.log("Got register GET");
+  console.log("Got register request");
 
-  const challenge = registerGETResponse.data.challenge;
+  const challenge = registerRequestResponse.data.challenge;
+  // TODO: Get the recipient.
+  const portal = "siasky.dev";
   const challengeResponse = signChallenge(privateKey, challenge, CHALLENGE_TYPE_REGISTER, portal);
-
-  // TODO: Get accounts URL.
-  const registerPOSTUrl = "https://account.dev3.siasky.dev/api/register";
 
   const data = {
     response: challengeResponse.response,
@@ -79,16 +110,15 @@ export async function register(client: SkynetClient, seed: Uint8Array, email: st
   };
   console.log("Sending register POST");
   try {
-    // @ts-expect-error - Using protected method.
-    const registerPOSTResponse = await client.executeRequest({
-      url: registerPOSTUrl,
-      endpointPath: "/register",
+    const registerResponse = await client.executeRequest({
+      endpointPath: opts.endpointRegister,
       method: "POST",
+      subdomain: "account",
       data,
     });
-    console.log(registerPOSTResponse);
+    console.log(registerResponse);
 
-    const jwt = registerPOSTResponse.headers["Skynet-Cookie"];
+    const jwt = registerResponse.headers["Skynet-Cookie"];
     return jwt;
   } catch (e) {
     console.log(e);
