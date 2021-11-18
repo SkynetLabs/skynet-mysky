@@ -276,11 +276,11 @@ export class MySky {
   async verifySignedMessage(signedMsg: Uint8Array, publicKey: Uint8Array | string): Promise<Uint8Array | null> {
     // if the given public key is a hex-encoded string, transform it to bytes
     if (typeof publicKey === "string") {
-      const publicKeyArray = fromHexString(publicKey);
-      if (!publicKeyArray) {
+      const publicKeyBytes = fromHexString(publicKey);
+      if (!publicKeyBytes) {
         throw new Error("Given public key is not valid hex");
       }
-      publicKey = publicKeyArray;
+      publicKey = publicKeyBytes;
     }
 
     // verify the message
