@@ -68,10 +68,11 @@ export class MySky {
       getEncryptedFileSeed: this.getEncryptedPathSeed.bind(this),
       getEncryptedPathSeed: this.getEncryptedPathSeed.bind(this),
       logout: this.logout.bind(this),
-      sign: this.sign.bind(this),
+      signMessage: this.signMessage.bind(this),
       signRegistryEntry: this.signRegistryEntry.bind(this),
       signEncryptedRegistryEntry: this.signEncryptedRegistryEntry.bind(this),
       userID: this.userID.bind(this),
+      verifySignedMessage: this.verifySignedMessage.bind(this),
     };
 
     // Enable communication with connector in parent skapp.
@@ -187,17 +188,21 @@ export class MySky {
   }
 
   /**
-   * sign will sign the given data using the MySky user's private key, this
-   * method can be used for MySky user verification as the signature may be
+   * signMessage will sign the given data using the MySky user's private key,
+   * this method can be used for MySky user verification as the signature may be
    * verified against the user's public key, which is the MySky user id.
    *
-   * NOTE: this function adds a salt to the given data array to ensure there's
-   * no potential overlap with anything else, like registry entries.
+   * NOTE: verifySignedMessage is the counter part of this method, and verifies
+   * the signed message and returns the message without signature
    *
-   * @param data - data to sign
-   * @returns signature
+   * NOTE: this function (internally) adds a salt to the given data array to
+   * ensure there's no potential overlap with anything else, like registry
+   * entries.
+   *
+   * @param message - message to sign
+   * @returns signed message
    */
-  async sign(data: Uint8Array): Promise<Uint8Array> {
+  async signMessage(message: Uint8Array): Promise<Uint8Array> {
     // fetch the user's seed
     const seed = checkStoredSeed();
     if (!seed) {
@@ -206,16 +211,16 @@ export class MySky {
 
     // fetch the private key
     const { privateKey } = genKeyPairFromSeed(seed);
-
     const privateKeyBytes = fromHexString(privateKey);
     if (!privateKeyBytes) {
       throw new Error("Corrupted key pair");
     }
 
-    // salt the data
-    const hashed = new Uint8Array([...sha512(SALT_MYSKY_ID_VERIFICATION), ...sha512(data)]);
+    // prepend a salt to the message, essentially name spacing it so the
+    // signature is only useful for MySky ID verification
+    const hashed = new Uint8Array([...sha512(SALT_MYSKY_ID_VERIFICATION), ...message]);
 
-    // return the signature
+    // return the signed message
     return sign(hashed, privateKeyBytes);
   }
 
@@ -255,6 +260,43 @@ export class MySky {
 
     const { publicKey } = genKeyPairFromSeed(seed);
     return publicKey;
+  }
+
+  /**
+   * verifySignedMessage verifies the given message and returns the original
+   * message without signature if verification succeeded
+   *
+   * @param signedMsg - the signed message that needs to be verified
+   * @param publicKey - the public key to verify against, this can be a uint8
+   * array or hex-encoded string (the hex-encoded string can be the MySky user
+   * id)
+   *
+   * @returns - the original message, or null if the verification failed
+   */
+  async verifySignedMessage(signedMsg: Uint8Array, publicKey: Uint8Array | string): Promise<Uint8Array | null> {
+    // if the given public key is a hex-encoded string, transform it to bytes
+    if (typeof publicKey === "string") {
+      const publicKeyArray = fromHexString(publicKey);
+      if (!publicKeyArray) {
+        throw new Error("Given public key is not valid hex");
+      }
+      publicKey = publicKeyArray;
+    }
+
+    // verify the message
+    const msg = sign.open(signedMsg, publicKey);
+    if (!msg) {
+      return null;
+    }
+
+    // verify it's prefixed with the salt
+    const salt = sha512(SALT_MYSKY_ID_VERIFICATION);
+    if (msg.slice(0, salt.length) !== salt) {
+      return null;
+    }
+
+    // return the original message
+    return msg.slice(salt.length);
   }
 
   // ================
