@@ -33,8 +33,19 @@ const PUB_KEY_SIZE = sign.publicKeyLength;
  * @property [endpointRegister] - The relative URL path of the portal endpoint to contact for large uploads.
  */
 export type CustomRegisterOptions = CustomClientOptions & {
-  endpointUpload?: string;
-  endpointLargeUpload?: string;
+  endpointRegister?: string;
+  endpointRegisterRequest?: string;
+};
+
+/**
+ * Custom login options.
+ *
+ * @property [endpointLoginRequest] - The relative URL path of the portal endpoint to contact.
+ * @property [endpointLogin] - The relative URL path of the portal endpoint to contact for large uploads.
+ */
+export type CustomLoginOptions = CustomClientOptions & {
+  endpointLogin?: string;
+  endpointLoginRequest?: string;
 };
 
 /**
@@ -48,11 +59,18 @@ const DEFAULT_CUSTOM_CLIENT_OPTIONS = {
   onUploadProgress: undefined,
 };
 
-export const DEFAULT_UPLOAD_OPTIONS = {
+export const DEFAULT_REGISTER_OPTIONS = {
   ...DEFAULT_CUSTOM_CLIENT_OPTIONS,
 
   endpointRegisterRequest: "/api/register/request",
   endpointRegister: "/api/register",
+};
+
+export const DEFAULT_LOGIN_OPTIONS = {
+  ...DEFAULT_CUSTOM_CLIENT_OPTIONS,
+
+  endpointLoginRequest: "/api/login/request",
+  endpointLogin: "/api/login",
 };
 
 /**
@@ -83,11 +101,9 @@ export async function register(
   email: string,
   customOptions?: CustomRegisterOptions
 ): Promise<string> {
-  const opts = { ...DEFAULT_UPLOAD_OPTIONS, ...client.customOptions, ...customOptions };
+  const opts = { ...DEFAULT_REGISTER_OPTIONS, ...client.customOptions, ...customOptions };
 
   const { publicKey, privateKey } = genPortalLoginKeypair(seed, email);
-
-  console.log("Sending register request");
 
   const registerRequestResponse = await client.executeRequest({
     endpointPath: opts.endpointRegisterRequest,
@@ -95,8 +111,6 @@ export async function register(
     subdomain: "account",
     query: { pubKey: publicKey },
   });
-
-  console.log("Got register request");
 
   const challenge = registerRequestResponse.data.challenge;
   // TODO: Get the recipient.
@@ -108,22 +122,52 @@ export async function register(
     signature: challengeResponse.signature,
     email,
   };
-  console.log("Sending register POST");
-  try {
-    const registerResponse = await client.executeRequest({
-      endpointPath: opts.endpointRegister,
-      method: "POST",
-      subdomain: "account",
-      data,
-    });
-    console.log(registerResponse);
+  const registerResponse = await client.executeRequest({
+    endpointPath: opts.endpointRegister,
+    method: "POST",
+    subdomain: "account",
+    data,
+  });
 
-    const jwt = registerResponse.headers["Skynet-Cookie"];
-    return jwt;
-  } catch (e) {
-    console.log(e);
-    throw e;
-  }
+  const jwt = registerResponse.headers["Skynet-Cookie"];
+  return jwt;
+}
+
+/**
+ * @returns - The JWT token.
+ */
+export async function login(
+  client: SkynetClient,
+  seed: Uint8Array,
+  email: string,
+  customOptions?: CustomLoginOptions
+): Promise<string> {
+  const opts = { ...DEFAULT_LOGIN_OPTIONS, ...client.customOptions, ...customOptions };
+
+  const { publicKey, privateKey } = genPortalLoginKeypair(seed, email);
+
+  const registerRequestResponse = await client.executeRequest({
+    endpointPath: opts.endpointLoginRequest,
+    method: "POST",
+    subdomain: "account",
+    query: { pubKey: publicKey },
+  });
+
+  const challenge = registerRequestResponse.data.challenge;
+  // TODO: Get the recipient.
+  const portal = "siasky.dev";
+  const challengeResponse = signChallenge(privateKey, challenge, CHALLENGE_TYPE_LOGIN, portal);
+
+  const data = challengeResponse;
+  const registerResponse = await client.executeRequest({
+    endpointPath: opts.endpointLogin,
+    method: "POST",
+    subdomain: "account",
+    data,
+  });
+
+  const jwt = registerResponse.headers["Skynet-Cookie"];
+  return jwt;
 }
 
 function signChallenge(
