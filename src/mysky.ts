@@ -210,7 +210,7 @@ export class MySky {
     }
 
     // fetch the private key
-    const { privateKey, publicKey } = genKeyPairFromSeed(seed);
+    const { privateKey } = genKeyPairFromSeed(seed);
     const privateKeyBytes = fromHexString(privateKey);
     if (!privateKeyBytes) {
       throw new Error("Corrupted key pair");
