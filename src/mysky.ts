@@ -13,7 +13,7 @@ import { launchPermissionsProvider } from "./provider";
 import { hash, sign } from "tweetnacl";
 
 import { genKeyPairFromSeed, sha512 } from "./crypto";
-import { fromHexString, log, readablePermission } from "./util";
+import { fromHexString, log, readablePermission, uint8ArrayEquals } from "./util";
 import { SEED_LENGTH } from "./seed";
 import { deriveEncryptedPathSeedForRoot, ENCRYPTION_ROOT_PATH_SEED_BYTES_LENGTH } from "./encrypted_files";
 
@@ -210,7 +210,7 @@ export class MySky {
     }
 
     // fetch the private key
-    const { privateKey } = genKeyPairFromSeed(seed);
+    const { privateKey, publicKey } = genKeyPairFromSeed(seed);
     const privateKeyBytes = fromHexString(privateKey);
     if (!privateKeyBytes) {
       throw new Error("Corrupted key pair");
@@ -291,7 +291,7 @@ export class MySky {
 
     // verify it's prefixed with the salt
     const salt = sha512(SALT_MYSKY_ID_VERIFICATION);
-    if (msg.slice(0, salt.length) !== salt) {
+    if (!uint8ArrayEquals(msg.slice(0, salt.length), salt)) {
       return null;
     }
 

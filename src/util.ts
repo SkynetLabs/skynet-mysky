@@ -69,3 +69,13 @@ export function fromHexString(hexString: string): Uint8Array | null {
   }
   return new Uint8Array(matches.map((byte) => parseInt(byte, 16)));
 }
+
+/**
+ * Verifies whether the given uint8 arrays are equal
+ *
+ * @param x - the uint8 array to compare for equality
+ * @param y - the uint8 array to compare it with
+ */
+export function uint8ArrayEquals(x: Uint8Array, y: Uint8Array): boolean {
+  return x.length === y.length && x.every((value, index) => value === y[index]);
+}
