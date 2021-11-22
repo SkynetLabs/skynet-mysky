@@ -267,11 +267,8 @@ export class MySky {
    * message without signature if verification succeeded
    *
    * @param signedMsg - the signed message that needs to be verified
-   * @param publicKey - the public key to verify against, this can be a uint8
-   * array or hex-encoded string (the hex-encoded string can be the MySky user
-   * id)
-   *
-   * @returns - the original message, or null if the verification failed
+   * @param publicKey - the public key to verify against
+   * @returns original message, or null in case verification failed
    */
   async verifySignedMessage(signedMsg: Uint8Array, publicKey: Uint8Array | string): Promise<Uint8Array | null> {
     // if the given public key is a hex-encoded string, transform it to bytes
