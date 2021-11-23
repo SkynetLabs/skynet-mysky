@@ -22,9 +22,9 @@ const SEED_STORAGE_KEY = "seed";
 // Descriptive salt that should not be changed.
 const SALT_ENCRYPTED_PATH_SEED = "encrypted filesystem path seed";
 
-// SALT_MYSKY_ID_VERIFICATION is the prefix with which we salt the data that
-// MySky signs in order to be able to prove ownership of the MySky id.
-const SALT_MYSKY_ID_VERIFICATION = "MYSKY_ID_VERIFICATION";
+// SALT_MESSAGE_SIGNING is the prefix with which we salt the data that MySky
+// signs in order to be able to prove ownership of the MySky id.
+const SALT_MESSAGE_SIGNING = "MYSKY_ID_VERIFICATION";
 
 // Set `dev` based on whether we built production or dev.
 let dev = false;
@@ -193,7 +193,7 @@ export class MySky {
    * verified against the user's public key, which is the MySky user id.
    *
    * NOTE: verifySignedMessage is the counter part of this method, and verifies
-   * the signed message and returns the message without signature
+   * the signed message equals the original message
    *
    * NOTE: this function (internally) adds a salt to the given data array to
    * ensure there's no potential overlap with anything else, like registry
@@ -210,7 +210,7 @@ export class MySky {
     }
 
     // fetch the private key
-    const { privateKey, publicKey } = genKeyPairFromSeed(seed);
+    const { privateKey } = genKeyPairFromSeed(seed);
     const privateKeyBytes = fromHexString(privateKey);
     if (!privateKeyBytes) {
       throw new Error("Corrupted key pair");
@@ -218,7 +218,7 @@ export class MySky {
 
     // prepend a salt to the message, essentially name spacing it so the
     // signature is only useful for MySky ID verification
-    const hashed = new Uint8Array([...sha512(SALT_MYSKY_ID_VERIFICATION), ...message]);
+    const hashed = sha512(new Uint8Array([...sha512(SALT_MESSAGE_SIGNING), ...sha512(message)]));
 
     // return the signed message
     return sign(hashed, privateKeyBytes);
@@ -263,37 +263,32 @@ export class MySky {
   }
 
   /**
-   * verifySignedMessage verifies the given message and returns the original
-   * message without signature if verification succeeded
+   * verifySignedMessage verifies the given message with signature against the
+   * original message and returns a boolean indicating whether it is valid.
    *
+   * @param originalMsg - the original message
    * @param signedMsg - the signed message that needs to be verified
    * @param publicKey - the public key to verify against
-   * @returns original message, or null in case verification failed
+   * @returns boolean that indicates whether the given message is valid
    */
-  async verifySignedMessage(signedMsg: Uint8Array, publicKey: Uint8Array | string): Promise<Uint8Array | null> {
-    // if the given public key is a hex-encoded string, transform it to bytes
-    if (typeof publicKey === "string") {
-      const publicKeyBytes = fromHexString(publicKey);
-      if (!publicKeyBytes) {
-        throw new Error("Given public key is not valid hex");
-      }
-      publicKey = publicKeyBytes;
+  async verifySignedMessage(originalMsg: Uint8Array, signedMsg: Uint8Array, publicKey: string): Promise<boolean> {
+    // transform the public key to a by array
+    const publicKeyBytes = fromHexString(publicKey);
+    if (!publicKeyBytes) {
+      throw new Error("Given public key is not valid hex");
     }
 
-    // verify the message
-    const msg = sign.open(signedMsg, publicKey);
-    if (!msg) {
-      return null;
+    // verify the message and get the message without signature
+    const actual = sign.open(signedMsg, publicKeyBytes);
+    if (!actual) {
+      return false;
     }
 
-    // verify it's prefixed with the salt
-    const salt = sha512(SALT_MYSKY_ID_VERIFICATION);
-    if (!uint8ArrayEquals(msg.slice(0, salt.length), salt)) {
-      return null;
-    }
+    // prepend the salt to the original message and hash it
+    const expected = sha512(new Uint8Array([...sha512(SALT_MESSAGE_SIGNING), ...sha512(originalMsg)]));
 
-    // return the original message
-    return msg.slice(salt.length);
+    // compare the two
+    return uint8ArrayEquals(actual, expected);
   }
 
   // ================
