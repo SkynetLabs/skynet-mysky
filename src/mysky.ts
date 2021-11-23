@@ -193,7 +193,7 @@ export class MySky {
    * verified against the user's public key, which is the MySky user id.
    *
    * NOTE: verifySignedMessage is the counter part of this method, and verifies
-   * the signed message equals the original message
+   * an original message against the signed message and public key
    *
    * NOTE: this function (internally) adds a salt to the given data array to
    * ensure there's no potential overlap with anything else, like registry
