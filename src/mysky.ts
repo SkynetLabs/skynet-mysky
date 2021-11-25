@@ -1,6 +1,5 @@
-import { ChildHandshake, WindowMessenger } from "post-me";
 import type { Connection } from "post-me";
-import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
+import { ChildHandshake, WindowMessenger } from "post-me";
 import {
   deriveDiscoverableFileTweak,
   deriveEncryptedFileTweak,
@@ -8,14 +7,13 @@ import {
   signEntry,
   SkynetClient,
 } from "skynet-js";
-
-import { launchPermissionsProvider } from "./provider";
+import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
 import { hash, sign } from "tweetnacl";
-
 import { genKeyPairFromSeed, sha512 } from "./crypto";
-import { fromHexString, log, readablePermission, uint8ArrayEquals } from "./util";
-import { SEED_LENGTH } from "./seed";
 import { deriveEncryptedPathSeedForRoot, ENCRYPTION_ROOT_PATH_SEED_BYTES_LENGTH } from "./encrypted_files";
+import { launchPermissionsProvider } from "./provider";
+import { SEED_LENGTH } from "./seed";
+import { fromHexString, log, readablePermission } from "./util";
 
 const SEED_STORAGE_KEY = "seed";
 
