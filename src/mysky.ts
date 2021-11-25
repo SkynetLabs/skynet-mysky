@@ -72,7 +72,7 @@ export class MySky {
       signRegistryEntry: this.signRegistryEntry.bind(this),
       signEncryptedRegistryEntry: this.signEncryptedRegistryEntry.bind(this),
       userID: this.userID.bind(this),
-      verifySignedMessage: this.verifySignedMessage.bind(this),
+      verifyMessageSignature: this.verifyMessageSignature.bind(this),
     };
 
     // Enable communication with connector in parent skapp.
@@ -192,15 +192,16 @@ export class MySky {
    * this method can be used for MySky user verification as the signature may be
    * verified against the user's public key, which is the MySky user id.
    *
-   * NOTE: verifySignedMessage is the counter part of this method, and verifies
-   * an original message against the signed message and public key
+   * NOTE: verifyMessageSignature is the counter part of this method, and
+   * verifies an original message against the signature and the user's public
+   * key
    *
    * NOTE: this function (internally) adds a salt to the given data array to
    * ensure there's no potential overlap with anything else, like registry
    * entries.
    *
    * @param message - message to sign
-   * @returns signed message
+   * @returns signature
    */
   async signMessage(message: Uint8Array): Promise<Uint8Array> {
     // fetch the user's seed
@@ -220,8 +221,8 @@ export class MySky {
     // signature is only useful for MySky ID verification
     const hashed = sha512(new Uint8Array([...sha512(SALT_MESSAGE_SIGNING), ...sha512(message)]));
 
-    // return the signed message
-    return sign(hashed, privateKeyBytes);
+    // return the signature
+    return sign.detached(hashed, privateKeyBytes);
   }
 
   async signRegistryEntry(entry: RegistryEntry, path: string): Promise<Uint8Array> {
@@ -263,32 +264,27 @@ export class MySky {
   }
 
   /**
-   * verifySignedMessage verifies the given message with signature against the
-   * original message and returns a boolean indicating whether it is valid.
+   * verifyMessageSignature verifies the signature for the message and given
+   * public key and returns a boolean that indicates whether the verification
+   * succeeded.
    *
-   * @param originalMsg - the original message
-   * @param signedMsg - the signed message that needs to be verified
-   * @param publicKey - the public key to verify against
-   * @returns boolean that indicates whether the given message is valid
+   * @param message - the original message that was signed
+   * @param signature - the signature
+   * @param publicKey - the public key
+   * @returns boolean that indicates whether the verification succeeded
    */
-  async verifySignedMessage(originalMsg: Uint8Array, signedMsg: Uint8Array, publicKey: string): Promise<boolean> {
+  async verifyMessageSignature(message: Uint8Array, signature: Uint8Array, publicKey: string): Promise<boolean> {
     // transform the public key to a by array
     const publicKeyBytes = fromHexString(publicKey);
     if (!publicKeyBytes) {
       throw new Error("Given public key is not valid hex");
     }
 
-    // verify the message and get the message without signature
-    const actual = sign.open(signedMsg, publicKeyBytes);
-    if (!actual) {
-      return false;
-    }
+    // reconstruct the original message
+    const originalMessage = sha512(new Uint8Array([...sha512(SALT_MESSAGE_SIGNING), ...sha512(message)]));
 
-    // prepend the salt to the original message and hash it
-    const expected = sha512(new Uint8Array([...sha512(SALT_MESSAGE_SIGNING), ...sha512(originalMsg)]));
-
-    // compare the two
-    return uint8ArrayEquals(actual, expected);
+    // verify the message against the signature and public key
+    return sign.detached.verify(originalMessage, signature, publicKeyBytes);
   }
 
   // ================
