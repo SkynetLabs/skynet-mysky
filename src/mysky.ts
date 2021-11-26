@@ -1,26 +1,30 @@
-import { ChildHandshake, WindowMessenger } from "post-me";
 import type { Connection } from "post-me";
-import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
+import { ChildHandshake, WindowMessenger } from "post-me";
 import {
   deriveDiscoverableFileTweak,
   deriveEncryptedFileTweak,
   RegistryEntry,
   signEntry,
   SkynetClient,
+  PUBLIC_KEY_LENGTH,
+  PRIVATE_KEY_LENGTH,
 } from "skynet-js";
-
-import { launchPermissionsProvider } from "./provider";
-import { hash } from "tweetnacl";
-
+import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
+import { hash, sign } from "tweetnacl";
 import { genKeyPairFromSeed, sha512 } from "./crypto";
-import { log, readablePermission } from "./util";
-import { SEED_LENGTH } from "./seed";
 import { deriveEncryptedPathSeedForRoot, ENCRYPTION_ROOT_PATH_SEED_BYTES_LENGTH } from "./encrypted_files";
+import { launchPermissionsProvider } from "./provider";
+import { SEED_LENGTH } from "./seed";
+import { fromHexString, log, readablePermission } from "./util";
 
 const SEED_STORAGE_KEY = "seed";
 
 // Descriptive salt that should not be changed.
 const SALT_ENCRYPTED_PATH_SEED = "encrypted filesystem path seed";
+
+// SALT_MESSAGE_SIGNING is the prefix with which we salt the data that MySky
+// signs in order to be able to prove ownership of the MySky id.
+const SALT_MESSAGE_SIGNING = "MYSKY_ID_VERIFICATION";
 
 // Set `dev` based on whether we built production or dev.
 let dev = false;
@@ -64,9 +68,11 @@ export class MySky {
       getEncryptedFileSeed: this.getEncryptedPathSeed.bind(this),
       getEncryptedPathSeed: this.getEncryptedPathSeed.bind(this),
       logout: this.logout.bind(this),
+      signMessage: this.signMessage.bind(this),
       signRegistryEntry: this.signRegistryEntry.bind(this),
       signEncryptedRegistryEntry: this.signEncryptedRegistryEntry.bind(this),
       userID: this.userID.bind(this),
+      verifyMessageSignature: this.verifyMessageSignature.bind(this),
     };
 
     // Enable communication with connector in parent skapp.
@@ -181,6 +187,52 @@ export class MySky {
     clearStoredSeed();
   }
 
+  /**
+   * signMessage will sign the given data using the MySky user's private key,
+   * this method can be used for MySky user verification as the signature may be
+   * verified against the user's public key, which is the MySky user id.
+   *
+   * NOTE: verifyMessageSignature is the counter part of this method, and
+   * verifies an original message against the signature and the user's public
+   * key
+   *
+   * NOTE: this function (internally) adds a salt to the given data array to
+   * ensure there's no potential overlap with anything else, like registry
+   * entries.
+   *
+   * @param message - message to sign
+   * @returns signature
+   */
+  async signMessage(message: Uint8Array): Promise<Uint8Array> {
+    // fetch the user's seed
+    const seed = checkStoredSeed();
+    if (!seed) {
+      throw new Error("User seed not found");
+    }
+
+    // fetch the private key and sanity check the length
+    const { privateKey } = genKeyPairFromSeed(seed);
+    if (!privateKey) {
+      throw new Error("Private key not found");
+    }
+    if (privateKey.length !== PRIVATE_KEY_LENGTH) {
+      throw new Error(`Private key had the incorrect length, ${privateKey.length}!=${PRIVATE_KEY_LENGTH}`);
+    }
+
+    // convert it to bytes
+    const privateKeyBytes = fromHexString(privateKey);
+    if (!privateKeyBytes) {
+      throw new Error("Private key was not properly hex-encoded");
+    }
+
+    // prepend a salt to the message, essentially name spacing it so the
+    // signature is only useful for MySky ID verification
+    const hashed = sha512(new Uint8Array([...sha512(SALT_MESSAGE_SIGNING), ...sha512(message)]));
+
+    // return the signature
+    return sign.detached(hashed, privateKeyBytes);
+  }
+
   async signRegistryEntry(entry: RegistryEntry, path: string): Promise<Uint8Array> {
     // Check that the entry data key corresponds to the right path.
 
@@ -217,6 +269,35 @@ export class MySky {
 
     const { publicKey } = genKeyPairFromSeed(seed);
     return publicKey;
+  }
+
+  /**
+   * verifyMessageSignature verifies the signature for the message and given
+   * public key and returns a boolean that indicates whether the verification
+   * succeeded.
+   *
+   * @param message - the original message that was signed
+   * @param signature - the signature
+   * @param publicKey - the public key
+   * @returns boolean that indicates whether the verification succeeded
+   */
+  async verifyMessageSignature(message: Uint8Array, signature: Uint8Array, publicKey: string): Promise<boolean> {
+    // sanity check the public key length
+    if (publicKey.length !== PUBLIC_KEY_LENGTH) {
+      throw new Error(`Public key had the incorrect length, ${publicKey.length}!=${PUBLIC_KEY_LENGTH}`);
+    }
+
+    // convert it to bytes
+    const publicKeyBytes = fromHexString(publicKey);
+    if (!publicKeyBytes) {
+      throw new Error("Public key was not properly hex-encoded");
+    }
+
+    // reconstruct the original message
+    const originalMessage = sha512(new Uint8Array([...sha512(SALT_MESSAGE_SIGNING), ...sha512(message)]));
+
+    // verify the message against the signature and public key
+    return sign.detached.verify(originalMessage, signature, publicKeyBytes);
   }
 
   // ================
