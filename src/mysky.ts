@@ -210,19 +210,19 @@ export class MySky {
       throw new Error("User seed not found");
     }
 
-    // fetch the private key
+    // fetch the private key and sanity check the length
     const { privateKey } = genKeyPairFromSeed(seed);
     if (!privateKey) {
       throw new Error("Private key not found");
     }
+    if (privateKey.length !== PRIVATE_KEY_LENGTH) {
+      throw new Error(`Private key had the incorrect length, ${privateKey.length}!=${PRIVATE_KEY_LENGTH}`);
+    }
 
-    // convert it to bytes and sanity check the length
+    // convert it to bytes
     const privateKeyBytes = fromHexString(privateKey);
     if (!privateKeyBytes) {
       throw new Error("Private key was not properly hex-encoded");
-    }
-    if (privateKeyBytes.length !== PRIVATE_KEY_LENGTH) {
-      throw new Error(`Private key had the incorrect length, ${privateKeyBytes.length}!=${PRIVATE_KEY_LENGTH}`);
     }
 
     // prepend a salt to the message, essentially name spacing it so the
@@ -282,18 +282,15 @@ export class MySky {
    * @returns boolean that indicates whether the verification succeeded
    */
   async verifyMessageSignature(message: Uint8Array, signature: Uint8Array, publicKey: string): Promise<boolean> {
-    // sanity check the public key is not empty
-    if (!publicKey) {
-      throw new Error("Public key can not be empty");
+    // sanity check the public key length
+    if (publicKey.length !== PUBLIC_KEY_LENGTH) {
+      throw new Error(`Public key had the incorrect length, ${publicKey.length}!=${PUBLIC_KEY_LENGTH}`);
     }
 
-    // convert it to bytes and sanity check the length
+    // convert it to bytes
     const publicKeyBytes = fromHexString(publicKey);
     if (!publicKeyBytes) {
       throw new Error("Public key was not properly hex-encoded");
-    }
-    if (publicKeyBytes.length !== PUBLIC_KEY_LENGTH) {
-      throw new Error(`Public key had the incorrect length, ${publicKeyBytes.length}!=${PUBLIC_KEY_LENGTH}`);
     }
 
     // reconstruct the original message
