@@ -6,6 +6,8 @@ import {
   RegistryEntry,
   signEntry,
   SkynetClient,
+  PUBLIC_KEY_LENGTH,
+  PRIVATE_KEY_LENGTH,
 } from "skynet-js";
 import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
 import { hash, sign } from "tweetnacl";
@@ -210,9 +212,17 @@ export class MySky {
 
     // fetch the private key
     const { privateKey } = genKeyPairFromSeed(seed);
+    if (!privateKey) {
+      throw new Error("Private key not found");
+    }
+
+    // convert it to bytes and sanity check the length
     const privateKeyBytes = fromHexString(privateKey);
     if (!privateKeyBytes) {
-      throw new Error("Corrupted key pair");
+      throw new Error("Private key was not properly hex-encoded");
+    }
+    if (privateKeyBytes.length !== PRIVATE_KEY_LENGTH) {
+      throw new Error(`Private key had the incorrect length, ${privateKeyBytes.length}!=${PRIVATE_KEY_LENGTH}`);
     }
 
     // prepend a salt to the message, essentially name spacing it so the
@@ -272,10 +282,18 @@ export class MySky {
    * @returns boolean that indicates whether the verification succeeded
    */
   async verifyMessageSignature(message: Uint8Array, signature: Uint8Array, publicKey: string): Promise<boolean> {
-    // transform the public key to a by array
+    // sanity check the public key is not empty
+    if (!publicKey) {
+      throw new Error("Public key can not be empty");
+    }
+
+    // convert it to bytes and sanity check the length
     const publicKeyBytes = fromHexString(publicKey);
     if (!publicKeyBytes) {
-      throw new Error("Given public key is not valid hex");
+      throw new Error("Public key was not properly hex-encoded");
+    }
+    if (publicKeyBytes.length !== PUBLIC_KEY_LENGTH) {
+      throw new Error(`Public key had the incorrect length, ${publicKeyBytes.length}!=${PUBLIC_KEY_LENGTH}`);
     }
 
     // reconstruct the original message
