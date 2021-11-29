@@ -1,3 +1,4 @@
+import randomBytes from "randombytes";
 import { removeAdjacentChars } from "skynet-mysky-utils";
 
 import { sha512 } from "./crypto";
@@ -17,8 +18,7 @@ const PHRASE_DELIMITER = " ";
  * @returns - The generated phrase.
  */
 export function generatePhrase(): string {
-  const seedWords = new Uint16Array(SEED_WORDS_LENGTH);
-  window.crypto.getRandomValues(seedWords);
+  const seedWords = randomUint16Words(SEED_WORDS_LENGTH);
 
   // Populate the seed words from the random values.
   for (let i = 0; i < SEED_WORDS_LENGTH; i++) {
@@ -173,6 +173,25 @@ export function hashToChecksumWords(h: Uint8Array): Uint16Array {
   word2 += h[2] << 2;
   word2 >>= 6;
   return new Uint16Array([word1, word2]);
+}
+
+/**
+ * Returns a uint16 typed array containing random values.
+ *
+ * NOTE: This has been tested manually only.
+ *
+ * @param length - The length of the uint16 array.
+ * @returns - The uint16 array.
+ */
+export function randomUint16Words(length: number): Uint16Array {
+  const bytes = randomBytes(length * 2);
+  const words = new Uint16Array(length);
+
+  for (let i = 0; i < length * 2; i += 2) {
+    words[i / 2] = (bytes[i] << 8) | bytes[i + 1];
+  }
+
+  return words;
 }
 
 /**

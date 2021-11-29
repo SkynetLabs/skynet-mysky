@@ -14,10 +14,16 @@ const SALT_ROOT_DISCOVERABLE_KEY = "root discoverable key";
 export function genKeyPairFromSeed(seed: Uint8Array): KeyPair {
   const hash = sha512(new Uint8Array([...sha512(SALT_ROOT_DISCOVERABLE_KEY), ...sha512(seed)]));
 
-  return genKeyPairDeterministic(hash);
+  return genKeyPairFromHash(hash);
 }
 
-export function genKeyPairDeterministic(hash: Uint8Array): KeyPair {
+/**
+ * Generates a keypair from a given hash.
+ *
+ * @param hash - The hash.
+ * @returns - The keypair.
+ */
+export function genKeyPairFromHash(hash: Uint8Array): KeyPair {
   const hashBytes = hash.slice(0, 32);
 
   const { publicKey, secretKey } = sign.keyPair.fromSeed(hashBytes);
