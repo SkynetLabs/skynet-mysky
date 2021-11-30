@@ -15,16 +15,17 @@ describe("Integration tests for registration and login", () => {
   it("should register a new user", async () => {
     const jwt = await register(client, seed, email);
 
-    // TODO: assert expected size of jwt.
     expect(jwt).not.toEqual("");
-    // console.log(jwt);
+    // We don't know the exact length.
+    expect(jwt.length).toBeGreaterThan(1000);
   });
 
   it("should login to an existing user", async () => {
     // Log into the user that was registered above.
     const jwt = await login(client, seed, email);
 
-    // TODO: assert expected size of jwt.
     expect(jwt).not.toEqual("");
+    // We don't know the exact length.
+    expect(jwt.length).toBeGreaterThan(1000);
   });
 });

@@ -137,7 +137,9 @@ export async function register(
     data,
   });
 
-  const jwt = registerResponse.headers["skynet-cookie"];
+  // TODO: This is temporary for testing purposes. This should be changed to
+  // `set-cookie` (will only work in the browser).
+  const jwt = registerResponse.headers["skynet-token"];
   return jwt;
 }
 
@@ -179,7 +181,9 @@ export async function login(
     data,
   });
 
-  const jwt = registerResponse.headers["skynet-cookie"];
+  // TODO: This is temporary for testing purposes. This should be changed to
+  // `set-cookie` (will only work in the browser).
+  const jwt = registerResponse.headers["skynet-token"];
   return jwt;
 }
 
