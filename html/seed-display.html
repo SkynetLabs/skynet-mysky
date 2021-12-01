@@ -8,6 +8,7 @@
   </head>
 
   <body class="bg-palette-100 min-h-screen">
+    <!-- Sign in page -->
     <div id="seed-sign-in" class="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div class="sm:mx-auto sm:w-full sm:max-w-md">
         <svg class="mx-auto h-12 w-auto fill-current text-primary" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Skynet</title><path d="m-.0004 6.4602 21.3893 11.297c.561.2935.6633 1.0532.1999 1.4846h-.011a10.0399 10.0399 0 0 1-2.2335 1.5307c-6.912 3.4734-14.9917-1.838-14.5438-9.5605l2.8601 1.9752c.856 4.508 5.6187 7.1094 9.8742 5.3932zm8.6477 3.1509 14.3661 5.6785a.8704.8704 0 0 1 .5197 1.0466v.0182c-.1537.5377-.7668.7938-1.2575.5252zm5.2896-7.4375c2.7093-.2325 6.0946.7869 8.1116 3.3871 1.699 2.1951 2.0497 4.8772 1.9298 7.6465v-.007c-.0478.5874-.6494.9616-1.1975.745l-9.7652-3.8596 9.0656 2.4313a7.296 7.296 0 0 0-1.0677-4.5631c-2.9683-4.7678-9.9847-4.5344-12.6297.4201a7.5048 7.5048 0 0 0-.398.8831L5.5546 7.9614c.069-.1017.1417-.198.2144-.2962.1163-.2416.2417-.487.3798-.7268 1.6118-2.7911 4.3102-4.4338 7.1558-4.6973.2108-.0182.4215-.049.6323-.0672z"/></svg>
@@ -18,10 +19,12 @@
           Use your MySky passphrase to authenticate <br />or create a free account.
         </p>
       </div>
-    
+
+      <!-- Sign in form -->
       <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form class="space-y-6" action="#" onsubmit="window.signIn(event)">
+            <!-- Passphrase input -->
             <div>
               <label for="signin-passphrase-text" class="block text-sm font-medium text-gray-700">
                 Passphrase
@@ -30,7 +33,8 @@
                 <input id="signin-passphrase-text" name="password" type="password" autocomplete="current-password" required placeholder="word1 word2 word3 word4 · · ·" class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-palette-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
               </div>
             </div>
-    
+
+            <!-- Show passphrase button  -->
             <div class="flex items-center justify-between">
               <div class="flex items-center cursor-pointer text-palette-400 hover:text-palette-500 transition-colors duration-200" onclick="showPassword()">
                 <svg id="show-seed-on" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -47,33 +51,35 @@
                 </span>
               </div>
             </div>
-    
+
+            <!-- Authenticate button -->
             <div>
-              <button id="button-authenticate" type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-palette-600 bg-primary hover:bg-primary-light transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+              <button id="button-authenticate" type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-palette-100 bg-primary hover:bg-primary-light transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
                 Authenticate
               </button>
             </div>
           </form>
-    
-          <div class="mt-6">
-            <div class="relative">
-              <div class="absolute inset-0 flex items-center">
-                <div class="w-full border-t border-gray-300"></div>
-              </div>
-              <div class="relative flex justify-center text-sm">
-                <span class="px-2 bg-white">
-                  <a href="#" class="text-primary font-semibold inline-flex items-center" onclick="window.goToSignUp()">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                    </svg>
-                    <span class="ml-1">sign up</span>
-                  </a>
-                </span>
-              </div>
+
+          <!-- Sign up link -->
+          <div class="mt-6 relative">
+            <!-- Border -->
+            <div class="absolute inset-0 flex items-center">
+              <div class="w-full border-t border-gray-300"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+              <span class="px-2 bg-white">
+                <a href="#" class="text-primary font-semibold inline-flex items-center" onclick="window.goToSignUp()">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  </svg>
+                  <span class="ml-1">sign up</span>
+                </a>
+              </span>
             </div>
           </div>
         </div>
 
+        <!-- Error message -->
         <div id="error-message" class="rounded-md bg-red-50 p-4 hidden mt-4">
           <div class="flex">
             <div class="flex-shrink-0">
@@ -92,6 +98,7 @@
       </div>
     </div>
 
+    <!-- Sign up page -->
     <div id="seed-sign-up" class="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div class="sm:mx-auto sm:w-full sm:max-w-md">
         <svg class="mx-auto h-12 w-auto fill-current text-primary" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Skynet</title><path d="m-.0004 6.4602 21.3893 11.297c.561.2935.6633 1.0532.1999 1.4846h-.011a10.0399 10.0399 0 0 1-2.2335 1.5307c-6.912 3.4734-14.9917-1.838-14.5438-9.5605l2.8601 1.9752c.856 4.508 5.6187 7.1094 9.8742 5.3932zm8.6477 3.1509 14.3661 5.6785a.8704.8704 0 0 1 .5197 1.0466v.0182c-.1537.5377-.7668.7938-1.2575.5252zm5.2896-7.4375c2.7093-.2325 6.0946.7869 8.1116 3.3871 1.699 2.1951 2.0497 4.8772 1.9298 7.6465v-.007c-.0478.5874-.6494.9616-1.1975.745l-9.7652-3.8596 9.0656 2.4313a7.296 7.296 0 0 0-1.0677-4.5631c-2.9683-4.7678-9.9847-4.5344-12.6297.4201a7.5048 7.5048 0 0 0-.398.8831L5.5546 7.9614c.069-.1017.1417-.198.2144-.2962.1163-.2416.2417-.487.3798-.7268 1.6118-2.7911 4.3102-4.4338 7.1558-4.6973.2108-.0182.4215-.049.6323-.0672z"/></svg>
@@ -99,20 +106,25 @@
           Creating Your MySky Account
         </h2>
       </div>
-    
+
+      <!-- Signup form -->
       <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form class="space-y-6" action="#" onsubmit="window.signUp()">
+            <!-- Passphrase container -->
             <div>
+              <!-- Passphrase label -->
               <div class="flex flex-row justify-between">
                 <label for="signup-passphrase-text" class="block text-sm font-medium text-gray-700">
                   Passphrase
                 </label>
                 <a href="#" class="text-palette-300 hover:text-palette-400 transition-colors duration-200 text-sm" onclick="window.goToSignUp()">&#x21bb; regenerate</a>
               </div>
+              <!-- Passphrase text -->
               <div class="mt-1">
-                <textarea id="signup-passphrase-text" name="about" rows="3" readonly class="text-center resize-none max-w-lg shadow-sm block w-full focus:ring-primary focus:border-primary sm:text-sm border border-gray-300 rounded-md py-2 px-4"></textarea>
+                <textarea id="signup-passphrase-text" name="about" rows="2" readonly class="text-center resize-none max-w-lg shadow-sm block w-full focus:ring-primary focus:border-primary text-xs border border-gray-300 rounded-md py-2 px-4"></textarea>
               </div>
+              <!-- Passphrase copy button -->
               <div class="mt-1 text-center">
                 <a href="#" id="copy-seed-button" class="text-palette-400 text-sm inline-flex flex-row items-center hover:text-palette-500 transition-colors duration-200" onclick="window.copySeed()">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -124,6 +136,7 @@
               </div>
             </div>
 
+            <!-- Passphrase secret notice -->
             <div class="space-y-2 text-palette-600">
               <p class="text-sm font-semibold">Please keep your passphrase secret. You cannot retrieve your account if you lose it.</p>
 
@@ -134,24 +147,43 @@
                 </label>
               </div>
             </div>
-    
+
+            <!-- Email input -->
             <div>
-              <button id="signup-submit" type="submit" disabled="disabled" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-palette-600 bg-primary hover:bg-primary-light transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50">
+              <!-- Email label -->
+              <div class="flex flex-row justify-between">
+                <label for="signin-email-text" class="block text-sm font-medium text-gray-700">
+                  Email
+                </label>
+                <span class="text-palette-300 text-sm">optional</span>
+              </div>
+              <div class="mt-1">
+                <input id="signin-email-text" name="email" type="email" autocomplete="email" placeholder="Enter an email to connect to your portal account" class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-palette-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
+              </div>
+            </div>
+
+            <!-- Sign up button -->
+            <div>
+              <button id="signup-submit" type="submit" disabled="disabled" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-palette-100 bg-primary hover:bg-primary-light transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50">
                 Sign Up
               </button>
             </div>
           </form>
-    
-          <div class="mt-6">
-            <div class="relative">
-              <div class="absolute inset-0 flex items-center">
-                <div class="w-full border-t border-gray-300"></div>
-              </div>
-              <div class="relative flex justify-center text-sm">
-                <span class="px-2 bg-white text-gray-500">
-                  <a href="#" class="text-primary" onclick="window.goToSignIn()">back to login</a>
-                </span>
-              </div>
+
+          <!-- Back to login link -->
+          <div class="mt-6 relative">
+            <div class="absolute inset-0 flex items-center">
+              <div class="w-full border-t border-gray-300"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+              <span class="px-2 bg-white">
+                <a href="#" class="text-primary inline-flex items-center" onclick="window.goToSignIn()">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="currentColor" class="bi bi-arrow-bar-left" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M12.5 15a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 1 0v13a.5.5 0 0 1-.5.5zM10 8a.5.5 0 0 1-.5.5H3.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L3.707 7.5H9.5a.5.5 0 0 1 .5.5z"/>
+                  </svg>
+                  <span class="ml-1">back to login</span>
+                </a>
+              </span>
             </div>
           </div>
         </div>
@@ -159,59 +191,59 @@
     </div>
 
     <script>
-      function copySeed() {
-        const { value: text } = document.getElementById("signup-passphrase-text")
+     function copySeed() {
+         const { value: text } = document.getElementById("signup-passphrase-text")
 
-        navigator.clipboard.writeText(text).then(() => {
-          const button = document.getElementById("copy-seed-button");
-          const copied = document.getElementById("copy-seed-copied");
-          
-          button.classList.add("hidden")
-          copied.classList.remove("hidden")
+         navigator.clipboard.writeText(text).then(() => {
+             const button = document.getElementById("copy-seed-button");
+             const copied = document.getElementById("copy-seed-copied");
 
-          window.setTimeout(() => {
-            button.classList.remove("hidden")
-            copied.classList.add("hidden")
-          }, 3000)
-        }, (error) => {
-          console.error('Async: Could not copy text: ', error);
-        });
-      }
+             button.classList.add("hidden")
+             copied.classList.remove("hidden")
 
-      function outFunc() {
-        var tooltip = document.getElementById("copy-tooltip");
-        tooltip.innerHTML = "Copy to clipboard";
-      }
+             window.setTimeout(() => {
+                 button.classList.remove("hidden")
+                 copied.classList.add("hidden")
+             }, 3000)
+         }, (error) => {
+             console.error('Async: Could not copy text: ', error);
+         });
+     }
 
-      function showPassword() {
-        const seedInput = document.getElementById("signin-passphrase-text");
-        const triggerText = document.getElementById("show-seed-text");
-        const triggerIconOn = document.getElementById("show-seed-on");
-        const triggerIconOff = document.getElementById("show-seed-off");
+     function outFunc() {
+         var tooltip = document.getElementById("copy-tooltip");
+         tooltip.innerHTML = "Copy to clipboard";
+     }
 
-        if (seedInput.type === "password") {
-          seedInput.type = "text";
-          triggerText.textContent = "Hide passphrase"
-          triggerIconOn.classList.add("hidden");
-          triggerIconOff.classList.remove("hidden");
-        } else {
-          seedInput.type = "password";
-          triggerText.textContent = "Show passphrase"
-          triggerIconOn.classList.remove("hidden");
-          triggerIconOff.classList.add("hidden");
-        }
-      }
+     function showPassword() {
+         const seedInput = document.getElementById("signin-passphrase-text");
+         const triggerText = document.getElementById("show-seed-text");
+         const triggerIconOn = document.getElementById("show-seed-on");
+         const triggerIconOff = document.getElementById("show-seed-off");
 
-      function confirmStoredPassphrase() {
-        const seedConfirm = document.getElementById("seed-confirm");
-        const signupSubmit = document.getElementById("signup-submit");
+         if (seedInput.type === "password") {
+             seedInput.type = "text";
+             triggerText.textContent = "Hide passphrase"
+             triggerIconOn.classList.add("hidden");
+             triggerIconOff.classList.remove("hidden");
+         } else {
+             seedInput.type = "password";
+             triggerText.textContent = "Show passphrase"
+             triggerIconOn.classList.remove("hidden");
+             triggerIconOff.classList.add("hidden");
+         }
+     }
 
-        if(seedConfirm.checked) {
-          signupSubmit.removeAttribute("disabled")
-        } else {
-          signupSubmit.setAttribute("disabled", "disabled")
-        }
-      }
+     function confirmStoredPassphrase() {
+         const seedConfirm = document.getElementById("seed-confirm");
+         const signupSubmit = document.getElementById("signup-submit");
+
+         if(seedConfirm.checked) {
+             signupSubmit.removeAttribute("disabled")
+         } else {
+             signupSubmit.setAttribute("disabled", "disabled")
+         }
+     }
     </script>
 
     <script async src="seed-display.js"></script>

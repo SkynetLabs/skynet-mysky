@@ -17,6 +17,7 @@
     "lint": "npm run lint:tsc && npm run lint:eslint",
     "lint:eslint": "eslint --ext .ts src scripts tests utilities",
     "lint:tsc": "tsc --noemit && tsc --project tsconfig.scripts.json --noemit",
+    "serve": "npx http-server dist",
     "test": "jest",
     "prepare": "husky install"
   },

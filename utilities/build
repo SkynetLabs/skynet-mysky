@@ -1,8 +1,11 @@
 #!/bin/bash
 
+# Clear dist folder, copy over HTML and assets.
 npx rimraf dist &&
 cp -R html dist &&
 cp -R assets dist/assets &&
+
+# Run all webpack scripts.
 printf "\nBuilding src..." &&
 npx webpack &&
 printf "\nBuilding scripts/ui..." &&
@@ -15,7 +18,12 @@ printf "\nBuilding scripts/seed-display..." &&
 npx webpack --config webpack.config.seed-display.js &&
 printf "\nBuilding scripts/seed-selection..." &&
 npx webpack --config webpack.config.seed-selection.js &&
+
+# Minify the HTML files and inline assets.
 node utilities/minify-src.js dist/*.html &&
+# Delete unneeded assets.
 rm dist/main.js dist/seed-display.js dist/seed-selection.js dist/permissions-display.js dist/ui.js &&
 find dist -name "*.css" -type f -delete &&
+
+# Generate version file.
 ./utilities/generate_versions_file
