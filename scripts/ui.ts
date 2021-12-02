@@ -11,7 +11,7 @@ import {
 } from "skynet-mysky-utils";
 import { MySky, SkynetClient } from "skynet-js";
 
-import { hashSeedWithSalt } from "../src/crypto";
+import { hashWithSalt } from "../src/crypto";
 import { login, register } from "../src/login";
 import { checkStoredSeed, JWT_STORAGE_KEY, SEED_STORAGE_KEY } from "../src/mysky";
 import {
@@ -474,6 +474,6 @@ export function saveSeed(seed: Uint8Array, jwt: string | null): void {
  * @returns - The new seed after being salted.
  */
 function saltSeedDevMode(seed: Uint8Array): Uint8Array {
-  const hash = hashSeedWithSalt(seed, "developer mode");
+  const hash = hashWithSalt(seed, "developer mode");
   return hash.slice(0, 16);
 }

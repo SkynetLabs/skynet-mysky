@@ -12,7 +12,7 @@ import {
 
 import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
 import { sign } from "tweetnacl";
-import { genKeyPairFromSeed, sha512 } from "./crypto";
+import { genKeyPairFromSeed, hashWithSalt, sha512 } from "./crypto";
 import { deriveEncryptedPathSeedForRoot, ENCRYPTION_ROOT_PATH_SEED_BYTES_LENGTH } from "./encrypted_files";
 import { launchPermissionsProvider } from "./provider";
 import { SEED_LENGTH } from "./seed";
@@ -201,9 +201,9 @@ export class MySky {
   }
 
   /**
-   * signMessage will sign the given data using the MySky user's private key,
-   * this method can be used for MySky user verification as the signature may be
-   * verified against the user's public key, which is the MySky user id.
+   * signs the given data using the MySky user's private key. This method can be
+   * used for MySky user verification as the signature may be verified against
+   * the user's public key, which is the MySky user id.
    *
    * NOTE: verifyMessageSignature is the counter part of this method, and
    * verifies an original message against the signature and the user's public
@@ -238,12 +238,12 @@ export class MySky {
       throw new Error("Private key was not properly hex-encoded");
     }
 
-    // prepend a salt to the message, essentially name spacing it so the
-    // signature is only useful for MySky ID verification
-    const hashed = sha512(new Uint8Array([...sha512(SALT_MESSAGE_SIGNING), ...sha512(message)]));
+    // Prepend a salt to the message, essentially name spacing it so the
+    // signature is only useful for MySky ID verification.
+    const hash = hashWithSalt(message, SALT_MESSAGE_SIGNING);
 
-    // return the signature
-    return sign.detached(hashed, privateKeyBytes);
+    // Return the signature.
+    return sign.detached(hash, privateKeyBytes);
   }
 
   async signRegistryEntry(entry: RegistryEntry, path: string): Promise<Uint8Array> {

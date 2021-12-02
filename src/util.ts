@@ -184,6 +184,7 @@ export function validationError(name: string, value: unknown, valueKind: string,
   return new Error(`Expected ${valueKind} '${name}' to be ${expected}, was ${actualValue}`);
 }
 
+// TODO: Replace with hexToUint8Array
 /**
  * Convert a hex encoded string to a uint8 array
  *

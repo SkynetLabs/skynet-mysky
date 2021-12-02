@@ -2,8 +2,13 @@ import { KeyPair, SkynetClient } from "skynet-js";
 import type { CustomClientOptions } from "skynet-js";
 import { sign } from "tweetnacl";
 
-import { genKeyPairFromHash, hashSeedWithSalt } from "./crypto";
+import { genKeyPairFromHash, hashWithSalt } from "./crypto";
 import { hexToUint8Array, stringToUint8ArrayUtf8, toHexString, validateHexString, validateUint8ArrayLen } from "./util";
+
+/**
+ * The name of the response header containing the cookie.
+ */
+export const COOKIE_HEADER_NAME = "skynet-token";
 
 /**
  * The size of the expected signature.
@@ -89,7 +94,7 @@ type ChallengeResponse = {
  * @returns - The login keypair.
  */
 function genPortalLoginKeypair(seed: Uint8Array, email: string): KeyPair {
-  const hash = hashSeedWithSalt(seed, email);
+  const hash = hashWithSalt(seed, email);
 
   return genKeyPairFromHash(hash);
 }
@@ -138,7 +143,7 @@ export async function register(
 
   // TODO: This is temporary for testing purposes. This should be changed to
   // `set-cookie` (will only work in the browser).
-  const jwt = registerResponse.headers["skynet-token"];
+  const jwt = registerResponse.headers[COOKIE_HEADER_NAME];
   return jwt;
 }
 
@@ -182,7 +187,7 @@ export async function login(
 
   // TODO: This is temporary for testing purposes. This should be changed to
   // `set-cookie` (will only work in the browser).
-  const jwt = registerResponse.headers["skynet-token"];
+  const jwt = registerResponse.headers[COOKIE_HEADER_NAME];
   return jwt;
 }
 

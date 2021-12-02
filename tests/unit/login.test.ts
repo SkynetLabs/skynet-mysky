@@ -1,7 +1,7 @@
 import { DEFAULT_SKYNET_PORTAL_URL, SkynetClient } from "skynet-js";
 
 import { phraseToSeed } from "../../src/seed";
-import { login, register } from "../../src/login";
+import { login, register, COOKIE_HEADER_NAME } from "../../src/login";
 
 const portalUrl = DEFAULT_SKYNET_PORTAL_URL;
 const client = new SkynetClient(portalUrl);
@@ -9,14 +9,15 @@ const phrase = "topic gambit bumper lyrics etched dime going mocked abbey scrub 
 const seed = phraseToSeed(phrase);
 const pubKey = "0fce18836a7f730ad8d0442c8f311530297ce2807456f1454a9a755cde5333a4";
 
+const email = "foo@bar.com";
 const challenge = "490ccffbbbcc304652488903ca425d42490ccffbbbcc304652488903ca425d42";
 const cookie = "I'm a cookie";
+const headers: Record<string, unknown> = {};
+headers[COOKIE_HEADER_NAME] = cookie;
 
 client.executeRequest = jest.fn();
 
 describe("Unit tests for registration and login", () => {
-  const email = "foo@bar.com";
-
   it("should register a new user", async () => {
     client.executeRequest
       // @ts-expect-error - TS complains about this property not existing.
@@ -26,9 +27,7 @@ describe("Unit tests for registration and login", () => {
         },
       })
       .mockReturnValueOnce({
-        headers: {
-          "skynet-cookie": cookie,
-        },
+        headers,
       });
 
     const receivedCookie = await register(client, seed, email);
@@ -59,9 +58,7 @@ describe("Unit tests for registration and login", () => {
         },
       })
       .mockReturnValueOnce({
-        headers: {
-          "skynet-cookie": cookie,
-        },
+        headers,
       });
 
     const receivedCookie = await login(client, seed, email);
