@@ -2,7 +2,7 @@ import { KeyPair, SkynetClient } from "skynet-js";
 import type { CustomClientOptions } from "skynet-js";
 import { sign } from "tweetnacl";
 
-import { genKeyPairFromHash, sha512 } from "./crypto";
+import { genKeyPairFromHash, hashSeedWithSalt } from "./crypto";
 import { hexToUint8Array, stringToUint8ArrayUtf8, toHexString, validateHexString, validateUint8ArrayLen } from "./util";
 
 /**
@@ -81,16 +81,15 @@ type ChallengeResponse = {
   signature: string;
 };
 
-// TODO: What will be the salt?
 /**
  * Generates a portal login keypair.
  *
  * @param seed - The user seed.
- * @param salt - The salt to use.
+ * @param email - The email.
  * @returns - The login keypair.
  */
-function genPortalLoginKeypair(seed: Uint8Array, salt: string): KeyPair {
-  const hash = sha512(new Uint8Array([...sha512(salt), ...sha512(seed)]));
+function genPortalLoginKeypair(seed: Uint8Array, email: string): KeyPair {
+  const hash = hashSeedWithSalt(seed, email);
 
   return genKeyPairFromHash(hash);
 }

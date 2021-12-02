@@ -11,7 +11,9 @@ import {
 } from "skynet-mysky-utils";
 import { MySky, SkynetClient } from "skynet-js";
 
-import { checkStoredSeed, saveSeed } from "../src/mysky";
+import { hashSeedWithSalt } from "../src/crypto";
+import { register } from "../src/login";
+import { checkStoredSeed, JWT_STORAGE_KEY, SEED_STORAGE_KEY } from "../src/mysky";
 import {
   getPermissionsProviderUrl,
   relativePermissionsDisplayUrl,
@@ -111,22 +113,33 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
     throw new Error(reason);
   }
 
+  // Get the seed and email.
+
   let seed = checkStoredSeed();
 
+  // If we don't have a seed, get it from the seed provider. We will also get
+  // the email if the user is signing up for the first time.
   if (!seed) {
-    // If we don't have a seed, show seed provider chooser.
+    // Show seed provider chooser.
 
     const seedProviderDisplayUrl = await getSeedProviderDisplayUrl();
 
     // User has chosen seed provider, open seed provider display.
 
     log("Calling runSeedProviderDisplay");
-    seed = await runSeedProviderDisplay(seedProviderDisplayUrl);
+    let email = null;
+    [seed, email] = await runSeedProviderDisplay(seedProviderDisplayUrl);
 
-    // Save the seed in local storage.
+    // Register and get the JWT.
+    let jwt = null;
+    if (email) {
+      jwt = await register(client, seed, email);
+    }
+
+    // Save the seed and jwt in local storage.
 
     log("Calling saveSeed");
-    saveSeed(seed);
+    saveSeed(seed, jwt);
   }
 
   // Open the permissions provider.
@@ -141,8 +154,9 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
     .remoteHandle()
     .call("checkPermissions", permissions, dev);
 
+  // If failed permissions, query the user in the permissions provider display.
   if (permissionsResponse.failedPermissions.length > 0) {
-    // If failed permissions, open the permissions provider display.
+    // Open the permissions provider display.
 
     permissionsResponse = await runPermissionsProviderDisplay(seed, permissionsResponse.failedPermissions);
 
@@ -151,7 +165,7 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
     await permissionsProvider.connection.remoteHandle().call("setPermissions", permissionsResponse.grantedPermissions);
   }
 
-  // Call terminate() on the returned permissions worker.
+  // Terminate the returned permissions worker.
   permissionsProvider.close();
 
   // Return remaining failed permissions to skapp.
@@ -252,9 +266,9 @@ async function runPermissionsProviderDisplay(
  * Runs the seed provider display and returns with the user seed.
  *
  * @param seedProviderDisplayUrl - The seed provider display URL.
- * @returns - The user seed as bytes.
+ * @returns - The user seed as bytes and the email.
  */
-async function runSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<Uint8Array> {
+async function runSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<[Uint8Array, string | null]> {
   // Add error listener.
 
   const { promise: promiseError, controller: controllerError } = monitorWindowError();
@@ -263,7 +277,7 @@ async function runSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<U
   let seedConnection: Connection;
 
   // eslint-disable-next-line no-async-promise-executor
-  const promise: Promise<Uint8Array> = new Promise(async (resolve, reject) => {
+  const promise: Promise<[Uint8Array, string | null]> = new Promise(async (resolve, reject) => {
     // Make this promise run in the background and reject on window close or any errors.
     promiseError.catch((err: string) => {
       reject(err);
@@ -278,9 +292,9 @@ async function runSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<U
       // Get the response.
 
       // TODO: This should be a dual-promise that also calls ping() on an interval and rejects if no response was found in a given amount of time.
-      const seed = await seedConnection.remoteHandle().call("getRootSeed");
+      const [seed, email] = await seedConnection.remoteHandle().call("getRootSeedAndEmail");
 
-      resolve(seed);
+      resolve([seed, email]);
     } catch (err) {
       reject(err);
     }
@@ -414,4 +428,44 @@ async function connectProvider(childFrame: HTMLIFrameElement): Promise<Connectio
 async function catchError(errorMsg: string): Promise<void> {
   const event = new CustomEvent(dispatchedErrorEvent, { detail: errorMsg });
   window.dispatchEvent(event);
+}
+
+/**
+ * Stores the root seed in local storage. This triggers the storage event
+ * listener in the invisible MySky frame.
+ *
+ * NOTE: If ENV == 'dev' the seed is salted before storage.
+ *
+ * @param seed - The root seed.
+ * @param jwt - The jwt.
+ */
+export function saveSeed(seed: Uint8Array, jwt: string | null): void {
+  if (!localStorage) {
+    console.log("WARNING: localStorage disabled, seed not stored");
+    return;
+  }
+
+  // If in dev mode, salt the seed.
+  if (dev) {
+    seed = saltSeedDevMode(seed);
+  }
+
+  // Set the jwt first.
+  if (jwt) {
+    localStorage.setItem(JWT_STORAGE_KEY, jwt);
+  }
+
+  // Set the seed, triggering the storage event.
+  localStorage.setItem(SEED_STORAGE_KEY, JSON.stringify(Array.from(seed)));
+}
+
+/**
+ * Salts the given seed for developer mode.
+ *
+ * @param seed - The seed to salt.
+ * @returns - The new seed after being salted.
+ */
+function saltSeedDevMode(seed: Uint8Array): Uint8Array {
+  const hash = hashSeedWithSalt(seed, "developer mode");
+  return hash.slice(0, 16);
 }

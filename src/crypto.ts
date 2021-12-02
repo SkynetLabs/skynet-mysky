@@ -5,6 +5,10 @@ import { toHexString } from "./util";
 
 const SALT_ROOT_DISCOVERABLE_KEY = "root discoverable key";
 
+export function hashSeedWithSalt(seed: Uint8Array, salt: string): Uint8Array {
+  return sha512(new Uint8Array([...sha512(salt), ...sha512(seed)]));
+}
+
 /**
  * Generates a keypair from the given user seed. It first salts the seed.
  *
@@ -12,7 +16,7 @@ const SALT_ROOT_DISCOVERABLE_KEY = "root discoverable key";
  * @returns - The keypair.
  */
 export function genKeyPairFromSeed(seed: Uint8Array): KeyPair {
-  const hash = sha512(new Uint8Array([...sha512(SALT_ROOT_DISCOVERABLE_KEY), ...sha512(seed)]));
+  const hash = hashSeedWithSalt(seed, SALT_ROOT_DISCOVERABLE_KEY);
 
   return genKeyPairFromHash(hash);
 }
