@@ -12,7 +12,7 @@ import {
 import { MySky, SkynetClient } from "skynet-js";
 
 import { hashSeedWithSalt } from "../src/crypto";
-import { register } from "../src/login";
+import { login, register } from "../src/login";
 import { checkStoredSeed, JWT_STORAGE_KEY, SEED_STORAGE_KEY } from "../src/mysky";
 import {
   getPermissionsProviderUrl,
@@ -133,7 +133,15 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
     // Register and get the JWT.
     let jwt = null;
     if (email) {
-      jwt = await register(client, seed, email);
+      try {
+        jwt = await register(client, seed, email);
+      } catch (e1) {
+        try {
+          jwt = await login(client, seed, email);
+        } catch (e2) {
+          throw new Error(`Could not register: ${e1}. Could not login: ${e2}`);
+        }
+      }
     }
 
     // Save the seed and jwt in local storage.
