@@ -1,3 +1,4 @@
+import jwt_decode from "jwt-decode";
 import { KeyPair, SkynetClient } from "skynet-js";
 import type { CustomClientOptions } from "skynet-js";
 import { sign } from "tweetnacl";
@@ -5,6 +6,8 @@ import { sign } from "tweetnacl";
 import { genKeyPairFromHash, hashWithSalt } from "./crypto";
 import { hexToUint8Array, stringToUint8ArrayUtf8, toHexString, validateHexString, validateUint8ArrayLen } from "./util";
 
+// TODO: This is temporary for testing purposes. This should be changed to
+// `set-cookie` (will only work in the browser).
 /**
  * The name of the response header containing the cookie.
  */
@@ -26,6 +29,17 @@ const CHALLENGE_TYPE_LOGIN = "skynet-portal-login";
  * The type of the registration challenge.
  */
 const CHALLENGE_TYPE_REGISTER = "skynet-portal-register";
+
+export type JWTData = { session: { identity: { traits: { email: string } } } };
+
+/**
+ * Hack that allows us to use ?. optional chaining on unknown types in Typescript.
+ *
+ * See https://github.com/microsoft/TypeScript/issues/37700#issuecomment-940865298
+ */
+type Unreliable<T> = { [P in keyof T]?: Unreliable<T[P]> } | undefined;
+
+type JWTResult = Unreliable<JWTData>;
 
 /**
  * Custom register options.
@@ -141,9 +155,11 @@ export async function register(
     data,
   });
 
-  // TODO: This is temporary for testing purposes. This should be changed to
-  // `set-cookie` (will only work in the browser).
   const jwt = registerResponse.headers[COOKIE_HEADER_NAME];
+  const decodedEmail = getEmailFromJWT(jwt);
+  if (decodedEmail !== email) {
+    throw new Error("Email not found in JWT or did not match provided email");
+  }
   return jwt;
 }
 
@@ -185,10 +201,25 @@ export async function login(
     data,
   });
 
-  // TODO: This is temporary for testing purposes. This should be changed to
-  // `set-cookie` (will only work in the browser).
   const jwt = registerResponse.headers[COOKIE_HEADER_NAME];
+  const decodedEmail = getEmailFromJWT(jwt);
+  if (decodedEmail !== email) {
+    throw new Error(
+      `Email not found in JWT or did not match provided email. Expected: '${email}', received: '${decodedEmail}'`
+    );
+  }
   return jwt;
+}
+
+/**
+ * Decodes the given JWT and extracts the email, if found.
+ *
+ * @param jwt - The given JWT string.
+ * @returns - The email in the JWT, or undefined.
+ */
+export function getEmailFromJWT(jwt: string): string | undefined {
+  const decodedJWT = jwt_decode(jwt) as JWTResult;
+  return decodedJWT?.session?.identity?.traits?.email;
 }
 
 /**

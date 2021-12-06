@@ -348,6 +348,13 @@ export class MySky {
       const jwt = localStorage.getItem(JWT_STORAGE_KEY);
       if (jwt) {
         // Clear the stored JWT.
+        //
+        // The JWT can be cleared here because `localStorage` is only used to
+        // marshal the JWT from MySky UI over to the invisible MySky iframe. We
+        // don't clear the seed because we need it in storage so that users are
+        // automatically logged-in, when possible. But for the JWT, it should be
+        // stored on MySky, as the local storage can get cleared, users can move
+        // across browsers etc.
         localStorage.removeItem(JWT_STORAGE_KEY);
 
         this.client.customOptions.customCookie = `skynet-jwt=${jwt}`;
