@@ -9,6 +9,19 @@ export const defaultSeedDisplayProvider = "seed-display.html";
 const _permissionsProviderPreferencePath = "permissions-provider.json";
 
 /**
+ * The response returned by the seed provider to the UI.
+ *
+ * @property seed - The user seed.
+ * @property email - The user email.
+ * @property action - The user action.
+ */
+export type SeedProviderResponse = {
+  seed: Uint8Array;
+  email: string | null;
+  action: "signin" | "signup";
+};
+
+/**
  * Tries to get the saved permissions provider preference, returning the default provider if not found.
  *
  * @param _seed - The user seed as bytes.

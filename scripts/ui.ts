@@ -19,6 +19,7 @@ import {
   relativePermissionsDisplayUrl,
   defaultSeedDisplayProvider,
   launchPermissionsProvider,
+  SeedProviderResponse,
 } from "../src/provider";
 import { log } from "../src/util";
 
@@ -127,17 +128,17 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
     // User has chosen seed provider, open seed provider display.
 
     log("Calling runSeedProviderDisplay");
-    let email = null;
-    [seed, email] = await runSeedProviderDisplay(seedProviderDisplayUrl);
+    const resp = await runSeedProviderDisplay(seedProviderDisplayUrl);
+    seed = resp.seed;
 
     // Register and get the JWT.
     let jwt = null;
-    if (email) {
+    if (resp.email) {
       try {
-        jwt = await register(client, seed, email);
+        jwt = await register(client, seed, resp.email);
       } catch (e1) {
         try {
-          jwt = await login(client, seed, email);
+          jwt = await login(client, seed, resp.email);
         } catch (e2) {
           throw new Error(`Could not register: ${e1}. Could not login: ${e2}`);
         }
@@ -276,7 +277,7 @@ async function runPermissionsProviderDisplay(
  * @param seedProviderDisplayUrl - The seed provider display URL.
  * @returns - The user seed as bytes and the email.
  */
-async function runSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<[Uint8Array, string | null]> {
+async function runSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<SeedProviderResponse> {
   // Add error listener.
 
   const { promise: promiseError, controller: controllerError } = monitorWindowError();
@@ -285,7 +286,7 @@ async function runSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<[
   let seedConnection: Connection;
 
   // eslint-disable-next-line no-async-promise-executor
-  const promise: Promise<[Uint8Array, string | null]> = new Promise(async (resolve, reject) => {
+  const promise: Promise<SeedProviderResponse> = new Promise(async (resolve, reject) => {
     // Make this promise run in the background and reject on window close or any errors.
     promiseError.catch((err: string) => {
       reject(err);
@@ -300,9 +301,9 @@ async function runSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<[
       // Get the response.
 
       // TODO: This should be a dual-promise that also calls ping() on an interval and rejects if no response was found in a given amount of time.
-      const [seed, email] = await seedConnection.remoteHandle().call("getRootSeedAndEmail");
+      const resp = await seedConnection.remoteHandle().call("getSeedProviderResponse");
 
-      resolve([seed, email]);
+      resolve(resp);
     } catch (err) {
       reject(err);
     }

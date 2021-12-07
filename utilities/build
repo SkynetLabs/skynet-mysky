@@ -8,6 +8,7 @@ cp -R assets dist/assets &&
 # Run all webpack scripts.
 printf "\nBuilding src..." &&
 npx webpack &&
+# TODO: Will consolidate these into a single Webpack script.
 printf "\nBuilding scripts/ui..." &&
 npx webpack --config webpack.config.ui.js &&
 printf "\nBuilding scripts/permissions..." &&
@@ -18,6 +19,8 @@ printf "\nBuilding scripts/seed-display..." &&
 npx webpack --config webpack.config.seed-display.js &&
 printf "\nBuilding scripts/seed-selection..." &&
 npx webpack --config webpack.config.seed-selection.js &&
+printf "\nBuilding scripts/signin-connect..." &&
+npx webpack --config webpack.config.signin-connect.js &&
 
 # Minify the HTML files and inline assets.
 node utilities/minify-src.js dist/*.html &&
