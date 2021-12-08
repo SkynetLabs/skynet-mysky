@@ -109,45 +109,18 @@ async function init(): Promise<void> {
  */
 async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, CheckPermissionsResponse]> {
   // Before doing anything, check if the browser is supported.
-
   await checkBrowserSupported();
 
   // Get the seed and email.
-
   const [seed, email] = await getSeedAndEmail();
 
   // Save the seed and email in local storage.
-
   saveSeedAndEmail(seed, email);
 
-  // Open the permissions provider.
-
-  log("Calling launchPermissionsProvider");
-  const permissionsProvider = await launchPermissionsProvider(seed);
-
-  // Pass it the requested permissions.
-
-  log("Calling checkPermissions on permissions provider");
-  let permissionsResponse: CheckPermissionsResponse = await permissionsProvider.connection
-    .remoteHandle()
-    .call("checkPermissions", permissions, dev);
-
-  // If failed permissions, query the user in the permissions provider display.
-  if (permissionsResponse.failedPermissions.length > 0) {
-    // Open the permissions provider display.
-
-    permissionsResponse = await runPermissionsProviderDisplay(seed, permissionsResponse.failedPermissions);
-
-    // Send the permissions provider worker the new and failed permissions.
-
-    await permissionsProvider.connection.remoteHandle().call("setPermissions", permissionsResponse.grantedPermissions);
-  }
-
-  // Terminate the returned permissions worker.
-  permissionsProvider.close();
+  // Pass in any request permissions and get a permissions response.
+  const permissionsResponse = await getPermissions(seed, permissions);
 
   // Return remaining failed permissions to skapp.
-
   log("Returning permissions response");
   return [true, permissionsResponse];
 }
@@ -268,6 +241,33 @@ async function getSeedAndEmailFromProvider(): Promise<SeedProviderResponse> {
  * @returns - The email if found.
  */
 async function getEmailFromSettings(): Promise<string | null> {}
+
+async function getPermissions(seed: Uint8Array, permissions: Permission[]): Promise<CheckPermissionsResponse> {
+  // Open the permissions provider.
+  log("Calling launchPermissionsProvider");
+  const permissionsProvider = await launchPermissionsProvider(seed);
+
+  // Pass it the requested permissions.
+  log("Calling checkPermissions on permissions provider");
+  let permissionsResponse: CheckPermissionsResponse = await permissionsProvider.connection
+    .remoteHandle()
+    .call("checkPermissions", permissions, dev);
+
+  // If failed permissions, query the user in the permissions provider display.
+  if (permissionsResponse.failedPermissions.length > 0) {
+    // Open the permissions provider display.
+
+    permissionsResponse = await runPermissionsProviderDisplay(seed, permissionsResponse.failedPermissions);
+
+    // Send the permissions provider worker the new and failed permissions.
+    await permissionsProvider.connection.remoteHandle().call("setPermissions", permissionsResponse.grantedPermissions);
+  }
+
+  // Terminate the returned permissions worker.
+  permissionsProvider.close();
+
+  return permissionsResponse;
+}
 
 /**
  * Connects to a portal account by either registering or logging in to an
