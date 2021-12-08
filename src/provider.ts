@@ -8,6 +8,8 @@ export const defaultSeedDisplayProvider = "seed-display.html";
 
 const _permissionsProviderPreferencePath = "permissions-provider.json";
 
+export type SeedProviderAction = "signin" | "signup";
+
 /**
  * The response returned by the seed provider to the UI.
  *
@@ -18,7 +20,7 @@ const _permissionsProviderPreferencePath = "permissions-provider.json";
 export type SeedProviderResponse = {
   seed: Uint8Array;
   email: string | null;
-  action: "signin" | "signup";
+  action: SeedProviderAction;
 };
 
 /**

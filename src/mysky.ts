@@ -19,7 +19,7 @@ import { SEED_LENGTH } from "./seed";
 import { fromHexString, log, readablePermission } from "./util";
 
 export const SEED_STORAGE_KEY = "seed";
-export const JWT_STORAGE_KEY = "jwt";
+export const EMAIL_STORAGE_KEY = "email";
 
 // Descriptive salt that should not be changed.
 const SALT_ENCRYPTED_PATH_SEED = "encrypted filesystem path seed";
@@ -198,6 +198,10 @@ export class MySky {
     // Clear the stored seed.
 
     clearStoredSeed();
+
+    // Clear the JWT cookie.
+
+    // TODO: accounts /logout?
   }
 
   /**
@@ -344,20 +348,20 @@ export class MySky {
       // Launch the new permissions provider.
       this.permissionsProvider = launchPermissionsProvider(seed);
 
-      // If JWT is found, then set it on the client.
-      const jwt = localStorage.getItem(JWT_STORAGE_KEY);
-      if (jwt) {
-        // Clear the stored JWT.
+      // If the email is found, then set up auto-login on Main MySky.
+      const email = localStorage.getItem(EMAIL_STORAGE_KEY);
+      if (email) {
+        // Clear the stored email.
         //
-        // The JWT can be cleared here because `localStorage` is only used to
-        // marshal the JWT from MySky UI over to the invisible MySky iframe. We
-        // don't clear the seed because we need it in storage so that users are
-        // automatically logged-in, when possible. But for the JWT, it should be
-        // stored on MySky, as the local storage can get cleared, users can move
-        // across browsers etc.
-        localStorage.removeItem(JWT_STORAGE_KEY);
+        // The email can be cleared here because `localStorage` is only used to
+        // marshal the email from MySky UI over to the invisible MySky iframe.
+        // We don't clear the seed because we need it in storage so that users
+        // are automatically logged-in, when possible. But for the email, it
+        // should be stored on MySky, as the local storage can get cleared,
+        // users can move across browsers etc.
+        localStorage.removeItem(EMAIL_STORAGE_KEY);
 
-        this.client.customOptions.customCookie = `skynet-jwt=${jwt}`;
+        // TODO: Set up auto-login.
       }
     });
   }
