@@ -14,6 +14,7 @@ import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "sk
 import { sign } from "tweetnacl";
 import { genKeyPairFromSeed, hashWithSalt, sha512 } from "./crypto";
 import { deriveEncryptedPathSeedForRoot, ENCRYPTION_ROOT_PATH_SEED_BYTES_LENGTH } from "./encrypted_files";
+import { logout } from "./portal-account";
 import { launchPermissionsProvider } from "./provider";
 import { SEED_LENGTH } from "./seed";
 import { fromHexString, log, readablePermission } from "./util";
@@ -201,7 +202,9 @@ export class MySky {
 
     // Clear the JWT cookie.
 
-    // TODO: accounts /logout?
+    // TODO: When auto re-login is implemented, this should not auto-login on an
+    // expired JWT just to logout again.
+    await logout(this.client);
   }
 
   /**

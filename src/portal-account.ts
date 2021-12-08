@@ -64,6 +64,15 @@ export type CustomLoginOptions = CustomClientOptions & {
 };
 
 /**
+ * Custom logout options.
+ *
+ * @property [endpointLogout] - The relative URL path of the portal endpoint to contact for large uploads.
+ */
+export type CustomLogoutOptions = CustomClientOptions & {
+  endpointLogout?: string;
+};
+
+/**
  * The default custom client options.
  */
 const DEFAULT_CUSTOM_CLIENT_OPTIONS = {
@@ -86,6 +95,12 @@ export const DEFAULT_LOGIN_OPTIONS = {
 
   endpointLogin: "/api/login",
   endpointLoginRequest: "/api/login",
+};
+
+export const DEFAULT_LOGOUT_OPTIONS = {
+  ...DEFAULT_CUSTOM_CLIENT_OPTIONS,
+
+  endpointLogout: "/api/logout",
 };
 
 /**
@@ -202,22 +217,25 @@ export async function login(
   return jwt;
 }
 
+/**
+ * Logs out a logged-in user.
+ *
+ * @param client - The Skynet client.
+ * @param [customOptions] - The custom logout options.
+ */
+export async function logout(client: SkynetClient, customOptions?: CustomLogoutOptions): Promise<void> {
+  const opts = { ...DEFAULT_LOGOUT_OPTIONS, ...client.customOptions, ...customOptions };
+
+  await client.executeRequest({
+    endpointPath: opts.endpointLogout,
+    method: "POST",
+    subdomain: "account",
+  });
+}
+
 // =======
 // Helpers
 // =======
-
-/**
- * Generates a portal login keypair.
- *
- * @param seed - The user seed.
- * @param email - The email.
- * @returns - The login keypair.
- */
-function genPortalLoginKeypair(seed: Uint8Array, email: string): KeyPair {
-  const hash = hashWithSalt(seed, email);
-
-  return genKeyPairFromHash(hash);
-}
 
 /**
  * Decodes the given JWT and extracts the email, if found.
@@ -264,6 +282,19 @@ function signChallenge(
     response: toHexString(dataBytes),
     signature: toHexString(signatureBytes),
   };
+}
+
+/**
+ * Generates a portal login keypair.
+ *
+ * @param seed - The user seed.
+ * @param email - The email.
+ * @returns - The login keypair.
+ */
+function genPortalLoginKeypair(seed: Uint8Array, email: string): KeyPair {
+  const hash = hashWithSalt(seed, email);
+
+  return genKeyPairFromHash(hash);
 }
 
 /**

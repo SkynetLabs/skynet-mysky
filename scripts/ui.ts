@@ -156,11 +156,10 @@ async function checkBrowserSupported(): Promise<void> {
  * then we display the signin-connect page where the user may connect his email
  * on signin.
  *
- * 5. If we got the email, then we register/login, and set up automatic login on
- * JWT expiry.
+ * 5. If we got the email, then we register/login to set the JWT cookie.
  *
  * 6. If the user provided a new email at some point, then we save it in user
- * settings.
+ * settings, after having successfully connected to a portal account.
  *
  * (7. We return the seed and email and save them in storage in another
  * function, which triggers Main MySky's storage listener.)
@@ -207,7 +206,7 @@ async function getSeedAndEmail(): Promise<[Uint8Array, string | null]> {
     }
   }
 
-  // TODO: Register/login.
+  // Register/login.
   if (email) {
     await connectToPortalAccount(seed, email);
   }
@@ -240,8 +239,18 @@ async function getSeedAndEmailFromProvider(): Promise<SeedProviderResponse> {
  *
  * @returns - The email if found.
  */
-async function getEmailFromSettings(): Promise<string | null> {}
+async function getEmailFromSettings(): Promise<string | null> {
+  return null;
+}
 
+/**
+ * Launch the permissions provider and get any ungranted permissions. Show
+ * permissions to user and get their response.
+ *
+ * @param seed - The user seed.
+ * @param permissions - The full list of permissions requested by the skapp.
+ * @returns - The permissions response.
+ */
 async function getPermissions(seed: Uint8Array, permissions: Permission[]): Promise<CheckPermissionsResponse> {
   // Open the permissions provider.
   log("Calling launchPermissionsProvider");
@@ -271,23 +280,25 @@ async function getPermissions(seed: Uint8Array, permissions: Permission[]): Prom
 
 /**
  * Connects to a portal account by either registering or logging in to an
- * existing account. Also sets up auto-login in MySky UI.
+ * existing account. The resulting cookie will be set on the MySky domain and
+ * takes effect in Main MySky immediate.
+ *
+ * NOTE: Main MySky will register "auto re-login"; we don't have to do that
+ * here.
  *
  * @param seed - The user seed.
  * @param email - The user email.
  */
 async function connectToPortalAccount(seed: Uint8Array, email: string): Promise<void> {
-  // Register and get the JWT.
-  let jwt = null;
+  // Register and get the JWT cookie.
+  //
   // Make requests to login and register in parallel. At most one can succeed,
   // and this saves a lot of time.
   try {
-    jwt = await Promise.any([register(client, seed, email), login(client, seed, email)]);
+    await Promise.any([register(client, seed, email), login(client, seed, email)]);
   } catch (e) {
     throw new Error(`Could not register or login: ${e}`);
   }
-
-  // TODO: Set up auto-login here in the MySky UI.
 }
 
 // TODO
@@ -296,7 +307,9 @@ async function connectToPortalAccount(seed: Uint8Array, email: string): Promise<
  *
  * @returns - An empty promise.
  */
-async function saveEmailInSettings(): Promise<void> {}
+async function saveEmailInSettings(): Promise<void> {
+  return;
+}
 
 /**
  * Gets the user's seed provider display URL if set, or the default.
@@ -421,6 +434,14 @@ async function connectDisplayProvider(childFrame: HTMLIFrameElement): Promise<Co
   return connection;
 }
 
+/**
+ * Sets up and runs a display in a new full-screen iframe. Calls the specified method on the iframe and waits for a response.
+ *
+ * @param displayUrl - The full URL of the display.
+ * @param methodName - The name of the method on the iframe to call over the handshake connection.
+ * @param methodParams - Any parameters to pass to the method on the iframe.
+ * @returns - The response from the display iframe.
+ */
 async function setupAndRunDisplay<T>(displayUrl: string, methodName: string, ...methodParams: unknown[]): Promise<T> {
   // Add error listener.
 
