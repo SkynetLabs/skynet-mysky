@@ -12,7 +12,7 @@ import {
 import { MySky, SkynetClient } from "skynet-js";
 
 import { hashWithSalt } from "../src/crypto";
-import { login, register } from "../src/login";
+import { login, register } from "../src/portal-account";
 import { checkStoredSeed, JWT_STORAGE_KEY, SEED_STORAGE_KEY } from "../src/mysky";
 import {
   getPermissionsProviderUrl,

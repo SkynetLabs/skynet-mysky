@@ -2,7 +2,7 @@ import sign from "jwt-encode";
 import { DEFAULT_SKYNET_PORTAL_URL, SkynetClient } from "skynet-js";
 
 import { phraseToSeed } from "../../src/seed";
-import { login, register, COOKIE_HEADER_NAME, JWTData } from "../../src/login";
+import { login, register, COOKIE_HEADER_NAME, JWTData } from "../../src/portal-account";
 
 const portalUrl = DEFAULT_SKYNET_PORTAL_URL;
 const client = new SkynetClient(portalUrl);

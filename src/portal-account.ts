@@ -44,8 +44,8 @@ type JWTResult = Unreliable<JWTData>;
 /**
  * Custom register options.
  *
- * @property [endpointRegisterRequest] - The relative URL path of the portal endpoint to contact.
  * @property [endpointRegister] - The relative URL path of the portal endpoint to contact for large uploads.
+ * @property [endpointRegisterRequest] - The relative URL path of the portal endpoint to contact.
  */
 export type CustomRegisterOptions = CustomClientOptions & {
   endpointRegister?: string;
@@ -55,8 +55,8 @@ export type CustomRegisterOptions = CustomClientOptions & {
 /**
  * Custom login options.
  *
- * @property [endpointLoginRequest] - The relative URL path of the portal endpoint to contact.
  * @property [endpointLogin] - The relative URL path of the portal endpoint to contact for large uploads.
+ * @property [endpointLoginRequest] - The relative URL path of the portal endpoint to contact.
  */
 export type CustomLoginOptions = CustomClientOptions & {
   endpointLogin?: string;
@@ -77,15 +77,15 @@ const DEFAULT_CUSTOM_CLIENT_OPTIONS = {
 export const DEFAULT_REGISTER_OPTIONS = {
   ...DEFAULT_CUSTOM_CLIENT_OPTIONS,
 
-  endpointRegisterRequest: "/api/register",
   endpointRegister: "/api/register",
+  endpointRegisterRequest: "/api/register",
 };
 
 export const DEFAULT_LOGIN_OPTIONS = {
   ...DEFAULT_CUSTOM_CLIENT_OPTIONS,
 
-  endpointLoginRequest: "/api/login",
   endpointLogin: "/api/login",
+  endpointLoginRequest: "/api/login",
 };
 
 /**
@@ -100,18 +100,9 @@ type ChallengeResponse = {
   signature: string;
 };
 
-/**
- * Generates a portal login keypair.
- *
- * @param seed - The user seed.
- * @param email - The email.
- * @returns - The login keypair.
- */
-function genPortalLoginKeypair(seed: Uint8Array, email: string): KeyPair {
-  const hash = hashWithSalt(seed, email);
-
-  return genKeyPairFromHash(hash);
-}
+// ===
+// API
+// ===
 
 /**
  * Registers a user for the given seed and email.
@@ -169,7 +160,7 @@ export async function register(
  * @param client - The Skynet client.
  * @param seed - The seed.
  * @param email - The user email.
- * @param [customOptions] - The custom register options.
+ * @param [customOptions] - The custom login options.
  * @returns - The JWT token.
  */
 export async function login(
@@ -182,26 +173,26 @@ export async function login(
 
   const { publicKey, privateKey } = genPortalLoginKeypair(seed, email);
 
-  const registerRequestResponse = await client.executeRequest({
+  const loginRequestResponse = await client.executeRequest({
     endpointPath: opts.endpointLoginRequest,
     method: "GET",
     subdomain: "account",
     query: { pubKey: publicKey },
   });
 
-  const challenge = registerRequestResponse.data.challenge;
+  const challenge = loginRequestResponse.data.challenge;
   const portalRecipient = getPortalRecipient(await client.portalUrl());
   const challengeResponse = signChallenge(privateKey, challenge, CHALLENGE_TYPE_LOGIN, portalRecipient);
 
   const data = challengeResponse;
-  const registerResponse = await client.executeRequest({
+  const loginResponse = await client.executeRequest({
     endpointPath: opts.endpointLogin,
     method: "POST",
     subdomain: "account",
     data,
   });
 
-  const jwt = registerResponse.headers[COOKIE_HEADER_NAME];
+  const jwt = loginResponse.headers[COOKIE_HEADER_NAME];
   const decodedEmail = getEmailFromJWT(jwt);
   if (decodedEmail !== email) {
     throw new Error(
@@ -209,6 +200,23 @@ export async function login(
     );
   }
   return jwt;
+}
+
+// =======
+// Helpers
+// =======
+
+/**
+ * Generates a portal login keypair.
+ *
+ * @param seed - The user seed.
+ * @param email - The email.
+ * @returns - The login keypair.
+ */
+function genPortalLoginKeypair(seed: Uint8Array, email: string): KeyPair {
+  const hash = hashWithSalt(seed, email);
+
+  return genKeyPairFromHash(hash);
 }
 
 /**
