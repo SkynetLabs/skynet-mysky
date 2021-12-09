@@ -1,10 +1,14 @@
 import { ChildHandshake, Connection, WindowMessenger } from "post-me";
 import { generatePhrase, phraseToSeed, validatePhrase } from "../src/seed";
 
-const uiSeedSignIn = document.getElementById("seed-sign-in")!;
-const uiSeedSignUp = document.getElementById("seed-sign-up")!;
 const uiErrorMessage = document.getElementById("error-message")!;
 const uiErrorMessageText = document.getElementById("error-message-text")!;
+const uiSeedConfirm = <HTMLInputElement>document.getElementById("seed-confirm")!;
+const uiSigninPage = document.getElementById("signin-page")!;
+const uiSigninPassphraseText = <HTMLInputElement>document.getElementById("signin-passphrase-text")!;
+const uiSignupEmailText = <HTMLInputElement>document.getElementById("signup-email-text")!;
+const uiSignupPage = document.getElementById("signup-page")!;
+const uiSignupPassphraseText = <HTMLInputElement>document.getElementById("signup-passphrase-text")!;
 
 const setErrorMessage = (message: string) => {
   if (message) {
@@ -16,6 +20,8 @@ const setErrorMessage = (message: string) => {
 };
 
 let readySeed: Uint8Array | null = null;
+let readyEmail: string | null = null;
+
 let parentConnection: Connection | null = null;
 
 // ======
@@ -48,42 +54,44 @@ window.onload = async () => {
 
 (window as any).goToSignIn = () => {
   setAllSeedContainersInvisible();
-  uiSeedSignIn.style.removeProperty("display");
+  uiSigninPage.style.removeProperty("display");
 };
 
 (window as any).goToSignUp = () => {
+  // Hide all containers.
   setAllSeedContainersInvisible();
 
+  // Generate the phrase.
   const generatedPhrase = generatePhrase();
-  (<HTMLInputElement>document.getElementById("signup-passphrase-text")).value = generatedPhrase;
+  uiSignupPassphraseText.value = generatedPhrase;
 
-  uiSeedSignUp.style.removeProperty("display");
+  // Show sign up container.
+  uiSignupPage.style.removeProperty("display");
 };
 
 (window as any).signIn = (event: Event) => {
   event.preventDefault();
 
-  const phraseValue = (<HTMLInputElement>document.getElementById("signin-passphrase-text")).value;
-
+  const phraseValue = uiSigninPassphraseText.value;
   if (phraseValue === "") {
     return setErrorMessage("Passphrase cannot be empty");
   }
 
   const [valid, error, seed] = validatePhrase(phraseValue);
-
   if (!valid || !seed) {
     return setErrorMessage(error);
   }
 
-  handleSeed(seed);
+  handleSeedAndEmail(seed, null);
 };
 
 (window as any).signUp = () => {
-  if ((<HTMLInputElement>document.getElementById("seed-confirm")).checked === false) return;
+  if (uiSeedConfirm.checked === false) return;
 
-  const phraseValue = (<HTMLInputElement>document.getElementById("signup-passphrase-text")).value;
+  const seed = phraseToSeed(uiSignupPassphraseText.value);
+  const email = uiSignupEmailText.value;
 
-  handleSeed(phraseToSeed(phraseValue));
+  handleSeedAndEmail(seed, email);
 };
 
 // ==========
@@ -102,7 +110,7 @@ async function init(): Promise<void> {
     remoteOrigin: "*",
   });
   const methods = {
-    getRootSeed,
+    getRootSeedAndEmail,
   };
   parentConnection = await ChildHandshake(messenger, methods);
 }
@@ -112,13 +120,13 @@ async function init(): Promise<void> {
  *
  * @returns - The user seed as bytes.
  */
-async function getRootSeed(): Promise<Uint8Array> {
+async function getRootSeedAndEmail(): Promise<[Uint8Array, string | null]> {
   const checkInterval = 100;
 
   return new Promise((resolve) => {
     const checkFunc = () => {
-      if (readySeed !== null) {
-        resolve(readySeed);
+      if (readySeed) {
+        resolve([readySeed, readyEmail]);
       }
     };
 
@@ -127,11 +135,14 @@ async function getRootSeed(): Promise<Uint8Array> {
 }
 
 /**
- * Handles the seed selected by the user.
+ * Handles the seed and email selected by the user.
  *
- * @param seed - The seed to handle.
+ * @param seed - The seed.
+ * @param email - The email.
  */
-function handleSeed(seed: Uint8Array): void {
+function handleSeedAndEmail(seed: Uint8Array, email: string | null): void {
+  readyEmail = email;
+  // Set `readySeed`, triggering `getRootSeedAndEmail`.
   readySeed = seed;
 }
 
@@ -143,6 +154,6 @@ function handleSeed(seed: Uint8Array): void {
  * Sets all the div containers to be invisible.
  */
 function setAllSeedContainersInvisible(): void {
-  uiSeedSignIn.style.display = "none";
-  uiSeedSignUp.style.display = "none";
+  uiSigninPage.style.display = "none";
+  uiSignupPage.style.display = "none";
 }

@@ -1,5 +1,6 @@
 import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
-import { checkPermissions, createPermissionKey } from "../scripts/permissions";
+
+import { checkPermissions, createPermissionKey } from "../../scripts/permissions";
 
 describe("default checkPermissions", () => {
   const perm1 = new Permission("app.hns/", "app.hns", PermCategory.Discoverable, PermType.Read);

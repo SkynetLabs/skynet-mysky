@@ -1,7 +1,7 @@
 import { deriveEncryptedPathSeed, ENCRYPTION_PATH_SEED_DIRECTORY_LENGTH } from "skynet-js";
 
-import { deriveEncryptedPathSeedForRoot, ENCRYPTION_ROOT_PATH_SEED_BYTES_LENGTH } from "../src/encrypted_files";
-import { toHexString } from "../src/util";
+import { deriveEncryptedPathSeedForRoot, ENCRYPTION_ROOT_PATH_SEED_BYTES_LENGTH } from "../../src/encrypted_files";
+import { toHexString } from "../../src/util";
 
 describe("deriveEncryptedPathSeedForRoot", () => {
   // ====================

@@ -9,15 +9,17 @@ import {
   PUBLIC_KEY_LENGTH,
   PRIVATE_KEY_LENGTH,
 } from "skynet-js";
+
 import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
-import { hash, sign } from "tweetnacl";
-import { genKeyPairFromSeed, sha512 } from "./crypto";
+import { sign } from "tweetnacl";
+import { genKeyPairFromSeed, hashWithSalt, sha512 } from "./crypto";
 import { deriveEncryptedPathSeedForRoot, ENCRYPTION_ROOT_PATH_SEED_BYTES_LENGTH } from "./encrypted_files";
 import { launchPermissionsProvider } from "./provider";
 import { SEED_LENGTH } from "./seed";
 import { fromHexString, log, readablePermission } from "./util";
 
-const SEED_STORAGE_KEY = "seed";
+export const SEED_STORAGE_KEY = "seed";
+export const JWT_STORAGE_KEY = "jwt";
 
 // Descriptive salt that should not be changed.
 const SALT_ENCRYPTED_PATH_SEED = "encrypted filesystem path seed";
@@ -32,35 +34,29 @@ let dev = false;
 dev = true;
 /// #endif
 
-let permissionsProvider: Promise<Connection> | null = null;
+/**
+ * Convenience class containing the permissions provider handshake connection
+ * and worker handle.
+ */
+export class PermissionsProvider {
+  constructor(public connection: Connection, public worker: Worker) {}
 
-// Set up a listener for the storage event. If the seed is set in the UI, it
-// should trigger a load of the permissions provider.
-window.addEventListener("storage", ({ key, newValue }: StorageEvent) => {
-  if (key !== SEED_STORAGE_KEY) {
-    return;
+  close() {
+    this.worker.terminate();
+    this.connection.close();
   }
-  if (!newValue) {
-    // Seed was removed.
-    // TODO: Unload the permissions provider.
-    return;
-  }
-
-  const seed = new Uint8Array(JSON.parse(newValue));
-
-  if (!permissionsProvider) {
-    permissionsProvider = launchPermissionsProvider(seed);
-  }
-});
+}
 
 export class MySky {
   protected parentConnection: Promise<Connection>;
+  protected permissionsProvider: Promise<PermissionsProvider> | null = null;
+  protected jwt: Promise<string> | null = null;
 
   // ============
   // Constructors
   // ============
 
-  constructor(protected client: SkynetClient, protected referrerDomain: string) {
+  constructor(protected client: SkynetClient, protected referrerDomain: string, seed: Uint8Array | null) {
     // Set child methods.
 
     const methods = {
@@ -84,6 +80,12 @@ export class MySky {
       remoteOrigin: "*",
     });
     this.parentConnection = ChildHandshake(messenger, methods);
+
+    // Launch the permissions provider if the seed was given.
+
+    if (seed) {
+      this.permissionsProvider = launchPermissionsProvider(seed);
+    }
   }
 
   static async initialize(): Promise<MySky> {
@@ -97,13 +99,6 @@ export class MySky {
 
     const seed = checkStoredSeed();
 
-    // If seed was found, load the user's permission provider.
-
-    if (seed) {
-      log("Seed found.");
-      permissionsProvider = launchPermissionsProvider(seed);
-    }
-
     // Initialize the Skynet client.
 
     const client = new SkynetClient();
@@ -115,7 +110,11 @@ export class MySky {
     // Create MySky object.
 
     log("Calling new MySky()");
-    const mySky = new MySky(client, referrerDomain);
+    const mySky = new MySky(client, referrerDomain, seed);
+
+    // Set up the storage event listener.
+
+    mySky.setUpStorageEventListener();
 
     return mySky;
   }
@@ -124,6 +123,13 @@ export class MySky {
   // Public API
   // ==========
 
+  /**
+   * Checks whether the user can be automatically logged in (the seed is present
+   * and required permissions are granted).
+   *
+   * @param perms - The requested permissions.
+   * @returns - Whether the seed is present and a list of granted and rejected permissions.
+   */
   async checkLogin(perms: Permission[]): Promise<[boolean, CheckPermissionsResponse]> {
     log("Entered checkLogin");
 
@@ -135,22 +141,29 @@ export class MySky {
       return [false, permissionsResponse];
     }
 
-    // Permissions provider should have been loaded by now.
-    // TODO: Should this be async?
-    if (!permissionsProvider) {
+    // Load of permissions provider should have been triggered by now, either
+    // when initiatializing MySky frame or when setting seed in MySky UI.
+    if (!this.permissionsProvider) {
       throw new Error("Permissions provider not loaded");
     }
 
     // Check given permissions with the permissions provider.
     log("Calling checkPermissions");
-    const connection = await permissionsProvider;
-    const permissionsResponse: CheckPermissionsResponse = await connection
+    const provider = await this.permissionsProvider;
+    const permissionsResponse: CheckPermissionsResponse = await provider.connection
       .remoteHandle()
       .call("checkPermissions", perms, dev);
 
     return [true, permissionsResponse];
   }
 
+  /**
+   * Gets the encrypted path seed for the given path.
+   *
+   * @param path - The given file or directory path.
+   * @param isDirectory - Whether the path corresponds to a directory.
+   * @returns - The hex-encoded encrypted path seed.
+   */
   async getEncryptedPathSeed(path: string, isDirectory: boolean): Promise<string> {
     log("Entered getEncryptedPathSeed");
 
@@ -188,9 +201,9 @@ export class MySky {
   }
 
   /**
-   * signMessage will sign the given data using the MySky user's private key,
-   * this method can be used for MySky user verification as the signature may be
-   * verified against the user's public key, which is the MySky user id.
+   * signs the given data using the MySky user's private key. This method can be
+   * used for MySky user verification as the signature may be verified against
+   * the user's public key, which is the MySky user id.
    *
    * NOTE: verifyMessageSignature is the counter part of this method, and
    * verifies an original message against the signature and the user's public
@@ -225,12 +238,12 @@ export class MySky {
       throw new Error("Private key was not properly hex-encoded");
     }
 
-    // prepend a salt to the message, essentially name spacing it so the
-    // signature is only useful for MySky ID verification
-    const hashed = sha512(new Uint8Array([...sha512(SALT_MESSAGE_SIGNING), ...sha512(message)]));
+    // Prepend a salt to the message, essentially name spacing it so the
+    // signature is only useful for MySky ID verification.
+    const hash = hashWithSalt(message, SALT_MESSAGE_SIGNING);
 
-    // return the signature
-    return sign.detached(hashed, privateKeyBytes);
+    // Return the signature.
+    return sign.detached(hash, privateKeyBytes);
   }
 
   async signRegistryEntry(entry: RegistryEntry, path: string): Promise<Uint8Array> {
@@ -304,6 +317,51 @@ export class MySky {
   // Internal Methods
   // ================
 
+  /**
+   * Set up a listener for the storage event. If the seed is set in the UI, it
+   * should trigger a load of the permissions provider.
+   */
+  setUpStorageEventListener(): void {
+    window.addEventListener("storage", ({ key, newValue }: StorageEvent) => {
+      if (key !== SEED_STORAGE_KEY) {
+        return;
+      }
+
+      if (this.permissionsProvider) {
+        // Unload the old permissions provider. No need to await on this.
+        void this.permissionsProvider.then((provider) => provider.close());
+        this.permissionsProvider = null;
+      }
+
+      if (!newValue) {
+        // Seed was removed.
+        return;
+      }
+
+      // Parse the seed.
+      const seed = new Uint8Array(JSON.parse(newValue));
+
+      // Launch the new permissions provider.
+      this.permissionsProvider = launchPermissionsProvider(seed);
+
+      // If JWT is found, then set it on the client.
+      const jwt = localStorage.getItem(JWT_STORAGE_KEY);
+      if (jwt) {
+        // Clear the stored JWT.
+        //
+        // The JWT can be cleared here because `localStorage` is only used to
+        // marshal the JWT from MySky UI over to the invisible MySky iframe. We
+        // don't clear the seed because we need it in storage so that users are
+        // automatically logged-in, when possible. But for the JWT, it should be
+        // stored on MySky, as the local storage can get cleared, users can move
+        // across browsers etc.
+        localStorage.removeItem(JWT_STORAGE_KEY);
+
+        this.client.customOptions.customCookie = `skynet-jwt=${jwt}`;
+      }
+    });
+  }
+
   async signRegistryEntryHelper(entry: RegistryEntry, path: string, category: PermCategory): Promise<Uint8Array> {
     log("Entered signRegistryEntry");
 
@@ -331,14 +389,16 @@ export class MySky {
   async checkPermission(path: string, category: PermCategory, permType: PermType): Promise<void> {
     // Check for the permissions provider.
 
-    if (!permissionsProvider) {
+    if (!this.permissionsProvider) {
       throw new Error("Permissions provider not loaded");
     }
 
     const perm = new Permission(this.referrerDomain, path, category, permType);
     log(`Checking permission: ${JSON.stringify(perm)}`);
-    const connection = await permissionsProvider;
-    const resp: CheckPermissionsResponse = await connection.remoteHandle().call("checkPermissions", [perm], dev);
+    const provider = await this.permissionsProvider;
+    const resp: CheckPermissionsResponse = await provider.connection
+      .remoteHandle()
+      .call("checkPermissions", [perm], dev);
     if (resp.failedPermissions.length > 0) {
       const readablePerm = readablePermission(perm);
       throw new Error(`Permission was not granted: ${readablePerm}`);
@@ -393,34 +453,4 @@ export function clearStoredSeed(): void {
   }
 
   localStorage.removeItem(SEED_STORAGE_KEY);
-}
-
-/**
- * Stores the root seed in local storage. The seed should only ever be used by retrieving it from storage.
- * NOTE: If ENV == 'dev' the seed is salted before storage.
- *
- * @param seed - The root seed.
- */
-export function saveSeed(seed: Uint8Array): void {
-  if (!localStorage) {
-    console.log("WARNING: localStorage disabled, seed not stored");
-    return;
-  }
-
-  // If in dev mode, salt the seed.
-  if (dev) {
-    seed = saltSeedDevMode(seed);
-  }
-
-  localStorage.setItem(SEED_STORAGE_KEY, JSON.stringify(Array.from(seed)));
-}
-
-/**
- * Salts the given seed for developer mode.
- *
- * @param seed - The seed to salt.
- * @returns - The new seed after being salted.
- */
-function saltSeedDevMode(seed: Uint8Array): Uint8Array {
-  return sha512(new Uint8Array([...sha512("developer mode"), ...hash(seed)])).slice(0, 16);
 }
