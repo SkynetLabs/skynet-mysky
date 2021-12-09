@@ -6,12 +6,10 @@ import { sign } from "tweetnacl";
 import { genKeyPairFromHash, hashWithSalt } from "./crypto";
 import { hexToUint8Array, stringToUint8ArrayUtf8, toHexString, validateHexString, validateUint8ArrayLen } from "./util";
 
-// TODO: This is temporary for testing purposes. This should be changed to
-// `set-cookie` (will only work in the browser).
 /**
- * The name of the response header containing the cookie.
+ * The name of the response header containing the JWT token.
  */
-export const COOKIE_HEADER_NAME = "skynet-token";
+export const JWT_HEADER_NAME = "skynet-token";
 
 /**
  * The size of the expected signature.
@@ -161,7 +159,7 @@ export async function register(
     data,
   });
 
-  const jwt = registerResponse.headers[COOKIE_HEADER_NAME];
+  const jwt = registerResponse.headers[JWT_HEADER_NAME];
   const decodedEmail = getEmailFromJWT(jwt);
   if (decodedEmail !== email) {
     throw new Error("Email not found in JWT or did not match provided email");
@@ -207,7 +205,7 @@ export async function login(
     data,
   });
 
-  const jwt = loginResponse.headers[COOKIE_HEADER_NAME];
+  const jwt = loginResponse.headers[JWT_HEADER_NAME];
   const decodedEmail = getEmailFromJWT(jwt);
   if (decodedEmail !== email) {
     throw new Error(

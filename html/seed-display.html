@@ -192,19 +192,34 @@
     </div>
 
     <script>
+     // Define UI elements so that we are not getting them from the DOM every time.
+     //
+     // Copy seed elements.
+     const uiCopySeedButton = document.getElementById("copy-seed-button");
+     const uiCopySeedCopied = document.getElementById("copy-seed-copied");
+     const uiCopyTooltip = document.getElementById("copy-tooltip");
+     // Show seed elements.
+     const uiShowSeedOff = document.getElementById("show-seed-off");
+     const uiShowSeedOn = document.getElementById("show-seed-on");
+     const uiShowSeedText = document.getElementById("show-seed-text");
+     // Passphrase text elements.
+     const uiSigninPassphraseText = document.getElementById("signin-passphrase-text");
+     const uiSignupPassphraseText = document.getElementById("signup-passphrase-text");
+     // Confirm seed.
+     const uiSeedConfirm = document.getElementById("seed-confirm");
+     // Signup submit button.
+     const uiSignupSubmit = document.getElementById("signup-submit");
+
      function copySeed() {
-         const { value: text } = document.getElementById("signup-passphrase-text")
+         const { value: text } = uiSignupPassphraseText;
 
          navigator.clipboard.writeText(text).then(() => {
-             const button = document.getElementById("copy-seed-button");
-             const copied = document.getElementById("copy-seed-copied");
-
-             button.classList.add("hidden")
-             copied.classList.remove("hidden")
+             uiCopySeedButton.classList.add("hidden")
+             uiCopySeedCopied.classList.remove("hidden")
 
              window.setTimeout(() => {
-                 button.classList.remove("hidden")
-                 copied.classList.add("hidden")
+                 uiCopySeedButton.classList.remove("hidden")
+                 uiCopySeedCopied.classList.add("hidden")
              }, 3000)
          }, (error) => {
              console.error('Async: Could not copy text: ', error);
@@ -212,37 +227,28 @@
      }
 
      function outFunc() {
-         var tooltip = document.getElementById("copy-tooltip");
-         tooltip.innerHTML = "Copy to clipboard";
+         uiCopyTooltip.innerHTML = "Copy to clipboard";
      }
 
      function showPassword() {
-         const seedInput = document.getElementById("signin-passphrase-text");
-         const triggerText = document.getElementById("show-seed-text");
-         const triggerIconOn = document.getElementById("show-seed-on");
-         const triggerIconOff = document.getElementById("show-seed-off");
-
          if (seedInput.type === "password") {
-             seedInput.type = "text";
-             triggerText.textContent = "Hide passphrase"
-             triggerIconOn.classList.add("hidden");
-             triggerIconOff.classList.remove("hidden");
+             uiSigninPassphraseText.type = "text";
+             uiShowSeedText.textContent = "Hide passphrase";
+             uiShowSeedOn.classList.add("hidden");
+             uiShowSeedOff.classList.remove("hidden");
          } else {
-             seedInput.type = "password";
-             triggerText.textContent = "Show passphrase"
-             triggerIconOn.classList.remove("hidden");
-             triggerIconOff.classList.add("hidden");
+             uiSigninPassphraseText.type = "password";
+             uiShowSeedText.textContent = "Show passphrase";
+             uiShowSeedOn.classList.remove("hidden");
+             uiShowSeedOff.classList.add("hidden");
          }
      }
 
      function confirmStoredPassphrase() {
-         const seedConfirm = document.getElementById("seed-confirm");
-         const signupSubmit = document.getElementById("signup-submit");
-
-         if(seedConfirm.checked) {
-             signupSubmit.removeAttribute("disabled")
+         if (seedConfirm.checked) {
+             uiSignupSubmit.removeAttribute("disabled")
          } else {
-             signupSubmit.setAttribute("disabled", "disabled")
+             uiSignupSubmit.setAttribute("disabled", "disabled")
          }
      }
     </script>

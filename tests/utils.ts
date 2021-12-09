@@ -1,6 +1,6 @@
 /**
- * Generates a random lowercase ASCII string using the code points between 0 and
- * 128.
+ * Generates a random lowercase ASCII string (Latin letters [a-z]) using the
+ * code points between 97 and 122.
  *
  * @param length - The length of the string.
  * @returns - The string.
