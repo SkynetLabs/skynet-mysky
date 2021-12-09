@@ -52,16 +52,30 @@ export class PermissionsProvider {
   }
 }
 
+/**
+ * The MySky object containing the parent connection and permissions provider.
+ *
+ * @property client - The associated SkynetClient.
+ * @property referrerDomain - The domain of the parent skapp.
+ * @property originalExecuteRequest - If this is set, it means we modified the `executeRequest` method on the client. This will contain the original `executeRequest` so it can be restored.
+ * @property parentConnection - The handshake connection with the parent window.
+ * @property permissionsProvider - The permissions provider, if it has been loaded.
+ */
 export class MySky {
+  protected originalExecuteRequest: ((config: RequestConfig) => Promise<AxiosResponse>) | null = null;
   protected parentConnection: Promise<Connection>;
   protected permissionsProvider: Promise<PermissionsProvider> | null = null;
-  protected jwt: Promise<string> | null = null;
 
   // ============
   // Constructors
   // ============
 
-  constructor(protected client: SkynetClient, protected referrerDomain: string, seed: Uint8Array | null) {
+  constructor(
+    protected client: SkynetClient,
+    protected referrerDomain: string,
+    seed: Uint8Array | null,
+    email: string | null
+  ) {
     // Set child methods.
 
     const methods = {
@@ -91,6 +105,13 @@ export class MySky {
     if (seed) {
       this.permissionsProvider = launchPermissionsProvider(seed);
     }
+
+    if (seed) {
+      // Set up auto-relogin if the email was found.
+      if (email) {
+        this.setupAutoRelogin(seed, email);
+      }
+    }
   }
 
   static async initialize(): Promise<MySky> {
@@ -118,19 +139,12 @@ export class MySky {
     // Initialize the Skynet client.
     const client = new SkynetClient(portal || undefined);
 
-    if (seed) {
-      // Set up auto-relogin if the email was found.
-      if (email) {
-        setupAutoRelogin(client, seed, email);
-      }
-    }
-
     // Get the referrer.
     const referrerDomain = await client.extractDomain(document.referrer);
 
     // Create MySky object.
     log("Calling new MySky()");
-    const mySky = new MySky(client, referrerDomain, seed);
+    const mySky = new MySky(client, referrerDomain, seed, email);
 
     // Set up the storage event listener.
     mySky.setUpStorageEventListener();
@@ -231,14 +245,21 @@ export class MySky {
     // NOTE: We do this even if we could not find a seed above. The local
     // storage might have been cleared with the JWT token still being active.
     //
-    // NOTE: This will not auto-login on an expired JWT just to logout again.
+    // NOTE: This will not auto-login on an expired JWT just to logout again. If
+    // we get a 401 error, we just return silently without throwing.
     try {
-      await logout(this.client);
+      await logout(this.client, { executeRequest: this.originalExecuteRequest || undefined });
     } catch (e) {
-      errors.push(e);
+      if ((e as ExecuteRequestError).responseStatus !== 401) {
+        errors.push(e);
+      }
     }
 
-    // TODO: Restore original `executeRequest` on logout.
+    // Restore original `executeRequest` on logout.
+    if (this.originalExecuteRequest) {
+      this.client.executeRequest = this.originalExecuteRequest;
+      this.originalExecuteRequest = null;
+    }
 
     // Throw all encountered errors.
     if (errors.length > 0) {
@@ -364,6 +385,45 @@ export class MySky {
   // ================
 
   /**
+   * Sets up auto re-login. It modifies the client's `executeRequest` method to
+   * check if the request failed with `401 Unauthorized Response`. If so, it
+   * will try to login and make the request again.
+   *
+   * NOTE: If the request was a portal account logout, we will not login again
+   * just to logout. We also will not throw an error on 401, instead returning
+   * silently. There is no way for the client to know whether the cookie is set
+   * ahead of time, and an error would not be actionable.
+   *
+   * NOTE: We restore the original `executeRequest` on logout. We do not try to
+   * modify `executeRequest` if it is already modified and throw an error
+   * instead.
+   *
+   * @param seed - The user seed.
+   * @param email - The user email.
+   */
+  setupAutoRelogin(seed: Uint8Array, email: string): void {
+    if (this.originalExecuteRequest) {
+      throw new Error("Tried to setup auto re-login with it already being set up");
+    }
+
+    const executeRequest = this.client.executeRequest;
+    this.originalExecuteRequest = executeRequest;
+    this.client.executeRequest = async function (config: RequestConfig): Promise<AxiosResponse> {
+      try {
+        return await executeRequest(config);
+      } catch (e) {
+        if ((e as ExecuteRequestError).responseStatus === 401) {
+          // Try logging in again.
+          await login(this, seed, email);
+          return await executeRequest(config);
+        } else {
+          throw e;
+        }
+      }
+    };
+  }
+
+  /**
    * Set up a listener for the storage event.
    *
    * If the seed is set in the UI, it should trigger a load of the permissions
@@ -407,7 +467,7 @@ export class MySky {
         localStorage.removeItem(EMAIL_STORAGE_KEY);
 
         // Set up auto re-login on JWT expiry.
-        setupAutoRelogin(this.client, seed, email);
+        this.setupAutoRelogin(seed, email);
       }
     });
   }
@@ -459,38 +519,6 @@ export class MySky {
 // =======
 // Helpers
 // =======
-
-// TODO: Restore original executeRequest on logout.
-/**
- * Sets up auto re-login. It modifies the client's `executeRequest` method to
- * check if the request failed with 401 Unauthorized Response. If so, it will
- * try to login and make the request again.
- *
- * NOTE: If the request was a portal account logout, we will not login again
- * just to logout. We also will not throw an error on 401, instead returning
- * silently. There is no way for the client to know whether the cookie is set
- * ahead of time, and an error would not be actionable.
- *
- * @param client - The Skynet client.
- * @param seed - The user seed.
- * @param email - The user email.
- */
-function setupAutoRelogin(client: SkynetClient, seed: Uint8Array, email: string): void {
-  const executeRequest = client.executeRequest;
-  client.executeRequest = async function (config: RequestConfig): Promise<AxiosResponse> {
-    try {
-      return await executeRequest(config);
-    } catch (e) {
-      if ((e as ExecuteRequestError).responseStatus === 401) {
-        // Try logging in again.
-        await login(this, seed, email);
-        return await executeRequest(config);
-      } else {
-        throw e;
-      }
-    }
-  };
-}
 
 /**
  * Checks for seed stored in local storage from previous sessions.

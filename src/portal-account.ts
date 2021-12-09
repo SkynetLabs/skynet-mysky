@@ -1,5 +1,6 @@
+import { AxiosResponse } from "axios";
 import jwt_decode from "jwt-decode";
-import { KeyPair, SkynetClient } from "skynet-js";
+import { KeyPair, RequestConfig, SkynetClient } from "skynet-js";
 import type { CustomClientOptions } from "skynet-js";
 import { sign } from "tweetnacl";
 
@@ -65,9 +66,12 @@ export type CustomLoginOptions = CustomClientOptions & {
  * Custom logout options.
  *
  * @property [endpointLogout] - The relative URL path of the portal endpoint to contact for large uploads.
+ * @property [executeRequest] - A function to override the client's existing `executeRequest`.
  */
 export type CustomLogoutOptions = CustomClientOptions & {
   endpointLogout?: string;
+
+  executeRequest?: (config: RequestConfig) => Promise<AxiosResponse>;
 };
 
 /**
@@ -99,6 +103,8 @@ export const DEFAULT_LOGOUT_OPTIONS = {
   ...DEFAULT_CUSTOM_CLIENT_OPTIONS,
 
   endpointLogout: "/api/logout",
+
+  executeRequest: undefined,
 };
 
 /**
@@ -224,7 +230,8 @@ export async function login(
 export async function logout(client: SkynetClient, customOptions?: CustomLogoutOptions): Promise<void> {
   const opts = { ...DEFAULT_LOGOUT_OPTIONS, ...client.customOptions, ...customOptions };
 
-  await client.executeRequest({
+  const executeRequest = opts.executeRequest || client.executeRequest;
+  await executeRequest({
     endpointPath: opts.endpointLogout,
     method: "POST",
     subdomain: "account",
