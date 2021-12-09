@@ -1,3 +1,4 @@
+import { AxiosResponse } from "axios";
 import type { Connection } from "post-me";
 import { ChildHandshake, WindowMessenger } from "post-me";
 import {
@@ -8,13 +9,16 @@ import {
   SkynetClient,
   PUBLIC_KEY_LENGTH,
   PRIVATE_KEY_LENGTH,
+  RequestConfig,
+  ExecuteRequestError,
+  JsonData,
 } from "skynet-js";
 
 import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
 import { sign } from "tweetnacl";
 import { genKeyPairFromSeed, hashWithSalt, sha512 } from "./crypto";
 import { deriveEncryptedPathSeedForRoot, ENCRYPTION_ROOT_PATH_SEED_BYTES_LENGTH } from "./encrypted_files";
-import { logout } from "./portal-account";
+import { login, logout } from "./portal-account";
 import { launchPermissionsProvider } from "./provider";
 import { SEED_LENGTH } from "./seed";
 import { fromHexString, log, readablePermission } from "./util";
@@ -97,24 +101,38 @@ export class MySky {
     }
 
     // Check for stored seed in localstorage.
-
     const seed = checkStoredSeed();
 
-    // Initialize the Skynet client.
+    let email = null;
+    let portal = null;
+    if (seed) {
+      const userSettings = await getUserSettings(seed);
 
-    const client = new SkynetClient();
+      // TODO: Check for stored portal and email in user settings.
+      if (userSettings) {
+        email = (userSettings.email as string) || null;
+        portal = (userSettings.portal as string) || null;
+      }
+    }
+
+    // Initialize the Skynet client.
+    const client = new SkynetClient(portal || undefined);
+
+    if (seed) {
+      // Set up auto-relogin if the email was found.
+      if (email) {
+        setupAutoRelogin(client, seed, email);
+      }
+    }
 
     // Get the referrer.
-
     const referrerDomain = await client.extractDomain(document.referrer);
 
     // Create MySky object.
-
     log("Calling new MySky()");
     const mySky = new MySky(client, referrerDomain, seed);
 
     // Set up the storage event listener.
-
     mySky.setUpStorageEventListener();
 
     return mySky;
@@ -191,24 +209,45 @@ export class MySky {
     return deriveEncryptedPathSeedForRoot(rootPathSeedBytes, path, isDirectory);
   }
 
-  // TODO
+  // TODO: Logout from all tabs.
   /**
    * Logs out of MySky.
    */
   async logout(): Promise<void> {
-    // Clear the stored seed.
+    const errors = [];
 
-    clearStoredSeed();
+    // Check if user is logged in.
+    const seed = checkStoredSeed();
+
+    if (seed) {
+      // Clear the stored seed.
+      clearStoredSeed();
+    } else {
+      errors.push(new Error("MySky user is already logged out"));
+    }
 
     // Clear the JWT cookie.
+    //
+    // NOTE: We do this even if we could not find a seed above. The local
+    // storage might have been cleared with the JWT token still being active.
+    //
+    // NOTE: This will not auto-login on an expired JWT just to logout again.
+    try {
+      await logout(this.client);
+    } catch (e) {
+      errors.push(e);
+    }
 
-    // TODO: When auto re-login is implemented, this should not auto-login on an
-    // expired JWT just to logout again.
-    await logout(this.client);
+    // TODO: Restore original `executeRequest` on logout.
+
+    // Throw all encountered errors.
+    if (errors.length > 0) {
+      throw new Error(`Error${errors.length > 1 ? "s" : ""} logging out: ${errors}`);
+    }
   }
 
   /**
-   * signs the given data using the MySky user's private key. This method can be
+   * Signs the given data using the MySky user's private key. This method can be
    * used for MySky user verification as the signature may be verified against
    * the user's public key, which is the MySky user id.
    *
@@ -216,7 +255,7 @@ export class MySky {
    * verifies an original message against the signature and the user's public
    * key
    *
-   * NOTE: this function (internally) adds a salt to the given data array to
+   * NOTE: This function (internally) adds a salt to the given data array to
    * ensure there's no potential overlap with anything else, like registry
    * entries.
    *
@@ -325,8 +364,11 @@ export class MySky {
   // ================
 
   /**
-   * Set up a listener for the storage event. If the seed is set in the UI, it
-   * should trigger a load of the permissions provider.
+   * Set up a listener for the storage event.
+   *
+   * If the seed is set in the UI, it should trigger a load of the permissions
+   * provider. If the email is set, it should set up automatic re-login on JWT
+   * cookie expiry.
    */
   setUpStorageEventListener(): void {
     window.addEventListener("storage", ({ key, newValue }: StorageEvent) => {
@@ -364,7 +406,8 @@ export class MySky {
         // users can move across browsers etc.
         localStorage.removeItem(EMAIL_STORAGE_KEY);
 
-        // TODO: Set up auto-login.
+        // Set up auto re-login on JWT expiry.
+        setupAutoRelogin(this.client, seed, email);
       }
     });
   }
@@ -413,6 +456,42 @@ export class MySky {
   }
 }
 
+// =======
+// Helpers
+// =======
+
+// TODO: Restore original executeRequest on logout.
+/**
+ * Sets up auto re-login. It modifies the client's `executeRequest` method to
+ * check if the request failed with 401 Unauthorized Response. If so, it will
+ * try to login and make the request again.
+ *
+ * NOTE: If the request was a portal account logout, we will not login again
+ * just to logout. We also will not throw an error on 401, instead returning
+ * silently. There is no way for the client to know whether the cookie is set
+ * ahead of time, and an error would not be actionable.
+ *
+ * @param client - The Skynet client.
+ * @param seed - The user seed.
+ * @param email - The user email.
+ */
+function setupAutoRelogin(client: SkynetClient, seed: Uint8Array, email: string): void {
+  const executeRequest = client.executeRequest;
+  client.executeRequest = async function (config: RequestConfig): Promise<AxiosResponse> {
+    try {
+      return await executeRequest(config);
+    } catch (e) {
+      if ((e as ExecuteRequestError).responseStatus === 401) {
+        // Try logging in again.
+        await login(this, seed, email);
+        return await executeRequest(config);
+      } else {
+        throw e;
+      }
+    }
+  };
+}
+
 /**
  * Checks for seed stored in local storage from previous sessions.
  *
@@ -449,7 +528,7 @@ export function checkStoredSeed(): Uint8Array | null {
 }
 
 /**
- *
+ * Clears the stored seed from local storage.
  */
 export function clearStoredSeed(): void {
   log("Entered clearStoredSeed");
@@ -460,4 +539,15 @@ export function clearStoredSeed(): void {
   }
 
   localStorage.removeItem(SEED_STORAGE_KEY);
+}
+
+// TODO
+/**
+ * Gets the user settings stored in the root of the MySky domain.
+ *
+ * @param _seed - The user seed.
+ * @returns - The user settings if found.
+ */
+async function getUserSettings(_seed: Uint8Array): Promise<JsonData | null> {
+  return null;
 }

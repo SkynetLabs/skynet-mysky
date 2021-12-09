@@ -43,6 +43,7 @@
     "testEnvironment": "jsdom"
   },
   "dependencies": {
+    "axios": "^0.24.0",
     "buffer": "^6.0.3",
     "confusables": "^1.0.0",
     "crypto-browserify": "^3.12.0",
