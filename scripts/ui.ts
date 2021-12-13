@@ -181,9 +181,11 @@ async function getSeedAndEmail(): Promise<[Uint8Array, string | null]> {
   }
 
   if (action === "signin") {
-    // Assert that we did not get an email from the signin page.
+    // Assert that we did not get an email from the signin page. (This would
+    // indicate a developer error in the flow -- we only expect an email from
+    // signup.)
     if (emailProvidedByUser) {
-      throw new Error("Aassertion failed: Got email from signin page (developer error)");
+      throw new Error("Assertion failed: Got email from signin page (developer error)");
     }
 
     // We're signing in, try to get the email from saved settings.
