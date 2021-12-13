@@ -70,7 +70,7 @@
     "@types/randombytes": "^2.0.0",
     "@types/url-join": "^4.0.1",
     "@typescript-eslint/eslint-plugin": "^5.5.0",
-    "@typescript-eslint/parser": "^5.5.0",
+    "@typescript-eslint/parser": "^5.6.0",
     "autoprefixer": "^10.4.0",
     "eslint": "^8.4.1",
     "eslint-plugin-jsdoc": "^37.2.0",
