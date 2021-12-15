@@ -3,13 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Default Seed Provider</title>
+    <title>Welcome to MySky!</title>
     <link rel="stylesheet" href="assets/style.css" />
   </head>
 
   <body class="bg-palette-100 min-h-screen">
     <!-- Sign in page -->
     <div id="signin-page" class="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <!-- Header -->
       <div class="sm:mx-auto sm:w-full sm:max-w-md">
         <svg class="mx-auto h-12 w-auto fill-current text-primary" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Skynet</title><path d="m-.0004 6.4602 21.3893 11.297c.561.2935.6633 1.0532.1999 1.4846h-.011a10.0399 10.0399 0 0 1-2.2335 1.5307c-6.912 3.4734-14.9917-1.838-14.5438-9.5605l2.8601 1.9752c.856 4.508 5.6187 7.1094 9.8742 5.3932zm8.6477 3.1509 14.3661 5.6785a.8704.8704 0 0 1 .5197 1.0466v.0182c-.1537.5377-.7668.7938-1.2575.5252zm5.2896-7.4375c2.7093-.2325 6.0946.7869 8.1116 3.3871 1.699 2.1951 2.0497 4.8772 1.9298 7.6465v-.007c-.0478.5874-.6494.9616-1.1975.745l-9.7652-3.8596 9.0656 2.4313a7.296 7.296 0 0 0-1.0677-4.5631c-2.9683-4.7678-9.9847-4.5344-12.6297.4201a7.5048 7.5048 0 0 0-.398.8831L5.5546 7.9614c.069-.1017.1417-.198.2144-.2962.1163-.2416.2417-.487.3798-.7268 1.6118-2.7911 4.3102-4.4338 7.1558-4.6973.2108-.0182.4215-.049.6323-.0672z"/></svg>
         <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
@@ -30,7 +31,7 @@
                 Passphrase
               </label>
               <div class="mt-1">
-                <input id="signin-passphrase-text" name="password" type="password" autocomplete="current-password" required placeholder="word1 word2 word3 word4 · · ·" class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-palette-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
+                <input id="signin-passphrase-text" name="password" type="password" autocomplete="current-password" required placeholder="word1 word2 word3 word4 · · ·" class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-palette-300 focus:outline-none focus:ring-primary focus:border-primary text-xs sm:text-sm">
               </div>
             </div>
 
@@ -158,7 +159,7 @@
                 <span class="text-palette-300 text-sm">optional</span>
               </div>
               <div class="mt-1">
-                <input id="signup-email-text" name="email" type="email" autocomplete="email" placeholder="Enter an email to connect to a portal account" class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-palette-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm">
+                <input id="signup-email-text" name="email" type="email" autocomplete="email" placeholder="Enter an email to connect to a portal account" class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-palette-300 focus:outline-none focus:ring-primary focus:border-primary text-xs sm:text-sm">
               </div>
             </div>
 
@@ -191,19 +192,34 @@
     </div>
 
     <script>
+     // Define UI elements so that we are not getting them from the DOM every time.
+     //
+     // Copy seed elements.
+     const uiCopySeedButton = document.getElementById("copy-seed-button");
+     const uiCopySeedCopied = document.getElementById("copy-seed-copied");
+     const uiCopyTooltip = document.getElementById("copy-tooltip");
+     // Show seed elements.
+     const uiShowSeedOff = document.getElementById("show-seed-off");
+     const uiShowSeedOn = document.getElementById("show-seed-on");
+     const uiShowSeedText = document.getElementById("show-seed-text");
+     // Passphrase text elements.
+     const uiSigninPassphraseText = document.getElementById("signin-passphrase-text");
+     const uiSignupPassphraseText = document.getElementById("signup-passphrase-text");
+     // Confirm seed.
+     const uiSeedConfirm = document.getElementById("seed-confirm");
+     // Signup submit button.
+     const uiSignupSubmit = document.getElementById("signup-submit");
+
      function copySeed() {
-         const { value: text } = document.getElementById("signup-passphrase-text")
+         const { value: text } = uiSignupPassphraseText;
 
          navigator.clipboard.writeText(text).then(() => {
-             const button = document.getElementById("copy-seed-button");
-             const copied = document.getElementById("copy-seed-copied");
-
-             button.classList.add("hidden")
-             copied.classList.remove("hidden")
+             uiCopySeedButton.classList.add("hidden")
+             uiCopySeedCopied.classList.remove("hidden")
 
              window.setTimeout(() => {
-                 button.classList.remove("hidden")
-                 copied.classList.add("hidden")
+                 uiCopySeedButton.classList.remove("hidden")
+                 uiCopySeedCopied.classList.add("hidden")
              }, 3000)
          }, (error) => {
              console.error('Async: Could not copy text: ', error);
@@ -211,37 +227,28 @@
      }
 
      function outFunc() {
-         var tooltip = document.getElementById("copy-tooltip");
-         tooltip.innerHTML = "Copy to clipboard";
+         uiCopyTooltip.innerHTML = "Copy to clipboard";
      }
 
      function showPassword() {
-         const seedInput = document.getElementById("signin-passphrase-text");
-         const triggerText = document.getElementById("show-seed-text");
-         const triggerIconOn = document.getElementById("show-seed-on");
-         const triggerIconOff = document.getElementById("show-seed-off");
-
          if (seedInput.type === "password") {
-             seedInput.type = "text";
-             triggerText.textContent = "Hide passphrase"
-             triggerIconOn.classList.add("hidden");
-             triggerIconOff.classList.remove("hidden");
+             uiSigninPassphraseText.type = "text";
+             uiShowSeedText.textContent = "Hide passphrase";
+             uiShowSeedOn.classList.add("hidden");
+             uiShowSeedOff.classList.remove("hidden");
          } else {
-             seedInput.type = "password";
-             triggerText.textContent = "Show passphrase"
-             triggerIconOn.classList.remove("hidden");
-             triggerIconOff.classList.add("hidden");
+             uiSigninPassphraseText.type = "password";
+             uiShowSeedText.textContent = "Show passphrase";
+             uiShowSeedOn.classList.remove("hidden");
+             uiShowSeedOff.classList.add("hidden");
          }
      }
 
      function confirmStoredPassphrase() {
-         const seedConfirm = document.getElementById("seed-confirm");
-         const signupSubmit = document.getElementById("signup-submit");
-
-         if(seedConfirm.checked) {
-             signupSubmit.removeAttribute("disabled")
+         if (seedConfirm.checked) {
+             uiSignupSubmit.removeAttribute("disabled")
          } else {
-             signupSubmit.setAttribute("disabled", "disabled")
+             uiSignupSubmit.setAttribute("disabled", "disabled")
          }
      }
     </script>

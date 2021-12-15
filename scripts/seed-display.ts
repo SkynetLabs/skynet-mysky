@@ -1,4 +1,6 @@
 import { ChildHandshake, Connection, WindowMessenger } from "post-me";
+
+import { SeedProviderResponse } from "../src/provider";
 import { generatePhrase, phraseToSeed, validatePhrase } from "../src/seed";
 
 const uiErrorMessage = document.getElementById("error-message")!;
@@ -19,8 +21,7 @@ const setErrorMessage = (message: string) => {
   }
 };
 
-let readySeed: Uint8Array | null = null;
-let readyEmail: string | null = null;
+let readyResponse: SeedProviderResponse | null = null;
 
 let parentConnection: Connection | null = null;
 
@@ -82,7 +83,7 @@ window.onload = async () => {
     return setErrorMessage(error);
   }
 
-  handleSeedAndEmail(seed, null);
+  handleResponse({ seed, email: null, action: "signin" });
 };
 
 (window as any).signUp = () => {
@@ -91,7 +92,7 @@ window.onload = async () => {
   const seed = phraseToSeed(uiSignupPassphraseText.value);
   const email = uiSignupEmailText.value;
 
-  handleSeedAndEmail(seed, email);
+  handleResponse({ seed, email, action: "signup" });
 };
 
 // ==========
@@ -110,23 +111,24 @@ async function init(): Promise<void> {
     remoteOrigin: "*",
   });
   const methods = {
-    getRootSeedAndEmail,
+    getSeedProviderResponse,
   };
   parentConnection = await ChildHandshake(messenger, methods);
 }
 
 /**
- * Called by MySky UI. Checks for the ready seed at an interval.
+ * Called by MySky UI. Checks for the ready seed and an optional email at an
+ * interval.
  *
- * @returns - The user seed as bytes.
+ * @returns - The full seed provider response.
  */
-async function getRootSeedAndEmail(): Promise<[Uint8Array, string | null]> {
+async function getSeedProviderResponse(): Promise<SeedProviderResponse> {
   const checkInterval = 100;
 
   return new Promise((resolve) => {
     const checkFunc = () => {
-      if (readySeed) {
-        resolve([readySeed, readyEmail]);
+      if (readyResponse) {
+        resolve(readyResponse);
       }
     };
 
@@ -135,15 +137,13 @@ async function getRootSeedAndEmail(): Promise<[Uint8Array, string | null]> {
 }
 
 /**
- * Handles the seed and email selected by the user.
+ * Handles the values selected by the user.
  *
- * @param seed - The seed.
- * @param email - The email.
+ * @param response - The full seed provider response.
  */
-function handleSeedAndEmail(seed: Uint8Array, email: string | null): void {
-  readyEmail = email;
-  // Set `readySeed`, triggering `getRootSeedAndEmail`.
-  readySeed = seed;
+function handleResponse(response: SeedProviderResponse): void {
+  // Trigger `getSeedProviderResponse`.
+  readyResponse = response;
 }
 
 // ================

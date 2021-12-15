@@ -13,16 +13,19 @@ import { MySky, SkynetClient } from "skynet-js";
 
 import { hashWithSalt } from "../src/crypto";
 import { login, register } from "../src/portal-account";
-import { checkStoredSeed, JWT_STORAGE_KEY, SEED_STORAGE_KEY } from "../src/mysky";
+import { checkStoredSeed, EMAIL_STORAGE_KEY, SEED_STORAGE_KEY } from "../src/mysky";
 import {
   getPermissionsProviderUrl,
   relativePermissionsDisplayUrl,
   defaultSeedDisplayProvider,
   launchPermissionsProvider,
+  SeedProviderAction,
+  SeedProviderResponse,
 } from "../src/provider";
 import { log } from "../src/util";
 
 const RELATIVE_SEED_SELECTION_DISPLAY_URL = "seed-selection.html";
+const RELATIVE_SIGNIN_CONNECT_DISPLAY_URL = "signin-connect.html";
 
 const client = new SkynetClient();
 let parentConnection: Connection | null = null;
@@ -106,57 +109,156 @@ async function init(): Promise<void> {
  */
 async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, CheckPermissionsResponse]> {
   // Before doing anything, check if the browser is supported.
+  await checkBrowserSupported();
 
+  // Get the seed and email.
+  const [seed, email] = await getSeedAndEmail();
+
+  // Save the seed and email in local storage.
+  saveSeedAndEmail(seed, email);
+
+  // Pass in any request permissions and get a permissions response.
+  const permissionsResponse = await getPermissions(seed, permissions);
+
+  // Return remaining failed permissions to skapp.
+  log("Returning permissions response");
+  return [true, permissionsResponse];
+}
+
+// ==========
+// Core Logic
+// ==========
+
+/**
+ * Check if the browser is supported and throw an error if not.
+ *
+ * @throws - Will throw if the browser is not supported.
+ */
+async function checkBrowserSupported(): Promise<void> {
   const [isSupported, reason] = await MySky.isBrowserSupported();
   if (!isSupported) {
     alert(reason);
     throw new Error(reason);
   }
+}
 
-  // Get the seed and email.
-
+/**
+ * Gets the seed and email. The flow is:
+ *
+ * 1. Check for the seed in local storage.
+ *
+ * 2. If the seed is not found, get it and maybe the email from a seed provider.
+ *
+ * 3. If we did not open the provider, or it did not provide the email, then
+ * check for an email in the saved user settings.
+ *
+ * 4. If we still didn't get an email, and the seed provider action was signin,
+ * then we display the signin-connect page where the user may connect his email
+ * on signin.
+ *
+ * 5. If we got the email, then we register/login to set the JWT cookie.
+ *
+ * 6. If the user provided a new email at some point, then we save it in user
+ * settings, after having successfully connected to a portal account.
+ *
+ * (7. We return the seed and email and save them in storage in another
+ * function, which triggers Main MySky's storage listener.)
+ *
+ * @returns - The seed and email.
+ */
+async function getSeedAndEmail(): Promise<[Uint8Array, string | null]> {
   let seed = checkStoredSeed();
+  let email: string | null = null;
+  let action: SeedProviderAction | null = null;
+  let emailProvidedByUser = null;
 
-  // If we don't have a seed, get it from the seed provider. We will also get
+  // If we don't have a seed, get it from the seed provider. We may also get
   // the email if the user is signing up for the first time.
   if (!seed) {
-    // Show seed provider chooser.
-
-    const seedProviderDisplayUrl = await getSeedProviderDisplayUrl();
-
-    // User has chosen seed provider, open seed provider display.
-
-    log("Calling runSeedProviderDisplay");
-    let email = null;
-    [seed, email] = await runSeedProviderDisplay(seedProviderDisplayUrl);
-
-    // Register and get the JWT.
-    let jwt = null;
-    if (email) {
-      try {
-        jwt = await register(client, seed, email);
-      } catch (e1) {
-        try {
-          jwt = await login(client, seed, email);
-        } catch (e2) {
-          throw new Error(`Could not register: ${e1}. Could not login: ${e2}`);
-        }
-      }
-    }
-
-    // Save the seed and jwt in local storage.
-
-    log("Calling saveSeed");
-    saveSeed(seed, jwt);
+    const resp = await getSeedAndEmailFromProvider();
+    [seed, email, action] = [resp.seed, resp.email, resp.action];
+    emailProvidedByUser = email !== null;
   }
 
-  // Open the permissions provider.
+  if (action === "signin") {
+    // Assert that we did not get an email from the signin page. (This would
+    // indicate a developer error in the flow -- we only expect an email from
+    // signup.)
+    if (emailProvidedByUser) {
+      throw new Error("Assertion failed: Got email from signin page (developer error)");
+    }
 
+    // We're signing in, try to get the email from saved settings.
+    let savedEmailFound = false;
+    if (!email) {
+      email = await getEmailFromSettings();
+      savedEmailFound = email !== null;
+    }
+
+    // If the user signed in above and we don't have an email, open the signin
+    // connect display.
+    if (!savedEmailFound) {
+      email = await runSigninConnectDisplay();
+
+      // Update `emailProvided` if we got the email.
+      //
+      // If the email is provided we save it later, once registration/login has
+      // succeeded.
+      emailProvidedByUser = email !== null;
+    }
+  }
+
+  // Register/login.
+  if (email) {
+    await connectToPortalAccount(seed, email);
+  }
+
+  // TODO: Save the new provided email in user settings.
+  if (emailProvidedByUser) {
+    await saveEmailInSettings();
+  }
+
+  return [seed, email];
+}
+
+/**
+ * Tries to get a seed and email from a seed provider.
+ *
+ * @returns - The full seed provider response.
+ */
+async function getSeedAndEmailFromProvider(): Promise<SeedProviderResponse> {
+  // Show seed provider chooser.
+  const seedProviderDisplayUrl = await getSeedProviderDisplayUrl();
+
+  // User has chosen seed provider, open seed provider display.
+  log("Calling runSeedProviderDisplay");
+  return await runSeedProviderDisplay(seedProviderDisplayUrl);
+}
+
+// TODO
+/**
+ * Tries to get the email from the saved user settings.
+ *
+ * @returns - The email if found.
+ */
+async function getEmailFromSettings(): Promise<string | null> {
+  return null;
+}
+
+/**
+ * Launch the permissions provider and get any ungranted permissions. Show
+ * permissions to user and get their response.
+ *
+ * @param seed - The user seed.
+ * @param permissions - The full list of permissions requested by the skapp.
+ * @returns - The permissions response.
+ */
+async function getPermissions(seed: Uint8Array, permissions: Permission[]): Promise<CheckPermissionsResponse> {
+  // Open the permissions provider.
   log("Calling launchPermissionsProvider");
   const permissionsProvider = await launchPermissionsProvider(seed);
 
   // Pass it the requested permissions.
-
   log("Calling checkPermissions on permissions provider");
   let permissionsResponse: CheckPermissionsResponse = await permissionsProvider.connection
     .remoteHandle()
@@ -169,22 +271,47 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
     permissionsResponse = await runPermissionsProviderDisplay(seed, permissionsResponse.failedPermissions);
 
     // Send the permissions provider worker the new and failed permissions.
-
     await permissionsProvider.connection.remoteHandle().call("setPermissions", permissionsResponse.grantedPermissions);
   }
 
   // Terminate the returned permissions worker.
   permissionsProvider.close();
 
-  // Return remaining failed permissions to skapp.
-
-  log("Returning permissions response");
-  return [true, permissionsResponse];
+  return permissionsResponse;
 }
 
-// ==========
-// Core Logic
-// ==========
+/**
+ * Connects to a portal account by either registering or logging in to an
+ * existing account. The resulting cookie will be set on the MySky domain and
+ * takes effect in Main MySky immediate.
+ *
+ * NOTE: Main MySky will register "auto re-login"; we don't have to do that
+ * here.
+ *
+ * @param seed - The user seed.
+ * @param email - The user email.
+ */
+async function connectToPortalAccount(seed: Uint8Array, email: string): Promise<void> {
+  // Register and get the JWT cookie.
+  //
+  // Make requests to login and register in parallel. At most one can succeed,
+  // and this saves a lot of time.
+  try {
+    await Promise.any([register(client, seed, email), login(client, seed, email)]);
+  } catch (e) {
+    throw new Error(`Could not register or login: ${e}`);
+  }
+}
+
+// TODO
+/**
+ * If the email was provided by the user, save it in user settings.
+ *
+ * @returns - An empty promise.
+ */
+async function saveEmailInSettings(): Promise<void> {
+  return;
+}
 
 /**
  * Gets the user's seed provider display URL if set, or the default.
@@ -194,6 +321,7 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
 async function getSeedProviderDisplayUrl(): Promise<string> {
   // Run the seed selection display.
 
+  // REMOVED: Not implemented yet.
   // const seedProvider = await runSeedSelectionDisplay();
   const seedProvider = "default";
 
@@ -203,6 +331,15 @@ async function getSeedProviderDisplayUrl(): Promise<string> {
   }
 
   return await client.getFullDomainUrl(seedProvider);
+}
+
+/**
+ * Gets the signin connect display URL.
+ *
+ * @returns - The URL.
+ */
+async function getSigninConnectDisplayUrl(): Promise<string> {
+  return `${window.location.hostname}/${RELATIVE_SIGNIN_CONNECT_DISPLAY_URL}`;
 }
 
 /**
@@ -219,55 +356,7 @@ async function runPermissionsProviderDisplay(
   const permissionsProviderUrl = await getPermissionsProviderUrl(seed);
   const permissionsProviderDisplayUrl = `${permissionsProviderUrl}/${relativePermissionsDisplayUrl}`;
 
-  // Add error listener.
-
-  const { promise: promiseError, controller: controllerError } = monitorWindowError();
-
-  let permissionsFrame: HTMLIFrameElement;
-  let permissionsConnection: Connection;
-
-  // eslint-disable-next-line no-async-promise-executor
-  const promise: Promise<CheckPermissionsResponse> = new Promise(async (resolve, reject) => {
-    // Make this promise run in the background and reject on window close or any errors.
-    promiseError.catch((err: string) => {
-      reject(err);
-    });
-
-    try {
-      // Launch the full-screen iframe and connection.
-
-      permissionsFrame = launchDisplay(permissionsProviderDisplayUrl);
-      permissionsConnection = await connectProvider(permissionsFrame);
-
-      // Get the response.
-
-      // TODO: This should be a dual-promise that also calls ping() on an interval and rejects if no response was found in a given amount of time.
-      const permissionsResponse = await permissionsConnection
-        .remoteHandle()
-        .call("getPermissions", pendingPermissions, document.referrer);
-
-      resolve(permissionsResponse);
-    } catch (err) {
-      reject(err);
-    }
-  });
-
-  return await promise
-    .catch((err) => {
-      throw err;
-    })
-    .finally(() => {
-      // Close the iframe.
-      if (permissionsFrame) {
-        permissionsFrame.parentNode!.removeChild(permissionsFrame);
-      }
-      // Close the connection.
-      if (permissionsConnection) {
-        permissionsConnection.close();
-      }
-      // Clean up the event listeners and promises.
-      controllerError.cleanup();
-    });
+  return setupAndRunDisplay(permissionsProviderDisplayUrl, "getPermissions", pendingPermissions, document.referrer);
 }
 
 /**
@@ -276,54 +365,8 @@ async function runPermissionsProviderDisplay(
  * @param seedProviderDisplayUrl - The seed provider display URL.
  * @returns - The user seed as bytes and the email.
  */
-async function runSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<[Uint8Array, string | null]> {
-  // Add error listener.
-
-  const { promise: promiseError, controller: controllerError } = monitorWindowError();
-
-  let seedFrame: HTMLIFrameElement;
-  let seedConnection: Connection;
-
-  // eslint-disable-next-line no-async-promise-executor
-  const promise: Promise<[Uint8Array, string | null]> = new Promise(async (resolve, reject) => {
-    // Make this promise run in the background and reject on window close or any errors.
-    promiseError.catch((err: string) => {
-      reject(err);
-    });
-
-    try {
-      // Launch the full-screen iframe and connection.
-
-      seedFrame = launchDisplay(seedProviderDisplayUrl);
-      seedConnection = await connectProvider(seedFrame);
-
-      // Get the response.
-
-      // TODO: This should be a dual-promise that also calls ping() on an interval and rejects if no response was found in a given amount of time.
-      const [seed, email] = await seedConnection.remoteHandle().call("getRootSeedAndEmail");
-
-      resolve([seed, email]);
-    } catch (err) {
-      reject(err);
-    }
-  });
-
-  return await promise
-    .catch((err) => {
-      throw err;
-    })
-    .finally(() => {
-      // Close the iframe.
-      if (seedFrame) {
-        seedFrame.parentNode!.removeChild(seedFrame);
-      }
-      // Close the connection.
-      if (seedConnection) {
-        seedConnection.close();
-      }
-      // Clean up the event listeners and promises.
-      controllerError.cleanup();
-    });
+async function runSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<SeedProviderResponse> {
+  return setupAndRunDisplay(seedProviderDisplayUrl, "getSeedProviderResponse");
 }
 
 /**
@@ -336,53 +379,18 @@ async function _runSeedSelectionDisplay(): Promise<string> {
 
   const seedSelectionDisplayUrl = `${window.location.hostname}/${RELATIVE_SEED_SELECTION_DISPLAY_URL}`;
 
-  // Add error listener.
+  return setupAndRunDisplay(seedSelectionDisplayUrl, "getSeedProvider");
+}
 
-  const { promise: promiseError, controller: controllerError } = monitorWindowError();
+/**
+ * Runs the signin connect display and returns with the email, if provided.
+ *
+ * @returns - The seed provider.
+ */
+async function runSigninConnectDisplay(): Promise<string | null> {
+  const signinConnectDisplayUrl = await getSigninConnectDisplayUrl();
 
-  let seedFrame: HTMLIFrameElement;
-  let seedConnection: Connection;
-
-  // eslint-disable-next-line no-async-promise-executor
-  const promise: Promise<string> = new Promise(async (resolve, reject) => {
-    // Make this promise run in the background and reject on window close or any errors.
-    promiseError.catch((err: string) => {
-      reject(err);
-    });
-
-    try {
-      // Launch the full-screen iframe and connection.
-
-      seedFrame = launchDisplay(seedSelectionDisplayUrl);
-      seedConnection = await connectProvider(seedFrame);
-
-      // Get the response.
-
-      // TODO: This should be a dual-promise that also calls ping() on an interval and rejects if no response was found in a given amount of time.
-      const seed = await seedConnection.remoteHandle().call("getSeedProvider");
-
-      resolve(seed);
-    } catch (err) {
-      reject(err);
-    }
-  });
-
-  return await promise
-    .catch((err) => {
-      throw err;
-    })
-    .finally(() => {
-      // Close the iframe.
-      if (seedFrame) {
-        seedFrame.parentNode!.removeChild(seedFrame);
-      }
-      // Close the connection.
-      if (seedConnection) {
-        seedConnection.close();
-      }
-      // Clean up the event listeners and promises.
-      controllerError.cleanup();
-    });
+  return setupAndRunDisplay(signinConnectDisplayUrl, "getEmail");
 }
 
 /**
@@ -404,7 +412,7 @@ function launchDisplay(displayUrl: string): HTMLIFrameElement {
  * @param childFrame - The iframe to connect.
  * @returns - The connection.
  */
-async function connectProvider(childFrame: HTMLIFrameElement): Promise<Connection> {
+async function connectDisplayProvider(childFrame: HTMLIFrameElement): Promise<Connection> {
   const childWindow = childFrame.contentWindow!;
 
   // Complete handshake with Provider Display window.
@@ -429,6 +437,68 @@ async function connectProvider(childFrame: HTMLIFrameElement): Promise<Connectio
 }
 
 /**
+ * Sets up and runs a display in a new full-screen iframe. Calls the specified method on the iframe and waits for a response.
+ *
+ * @param displayUrl - The full URL of the display.
+ * @param methodName - The name of the method on the iframe to call over the handshake connection.
+ * @param methodParams - Any parameters to pass to the method on the iframe.
+ * @returns - The response from the display iframe.
+ */
+async function setupAndRunDisplay<T>(displayUrl: string, methodName: string, ...methodParams: unknown[]): Promise<T> {
+  // Add error listener.
+
+  const { promise: promiseError, controller: controllerError } = monitorWindowError();
+
+  let frame: HTMLIFrameElement;
+  let connection: Connection;
+
+  // eslint-disable-next-line no-async-promise-executor
+  const promise: Promise<T> = new Promise(async (resolve, reject) => {
+    // Make this promise run in the background and reject on window close or any errors.
+    promiseError.catch((err: string) => {
+      reject(err);
+    });
+
+    try {
+      // Launch the full-screen iframe and connection.
+
+      frame = launchDisplay(displayUrl);
+      connection = await connectDisplayProvider(frame);
+
+      // Get the response.
+
+      // TODO: This should be a dual-promise that also calls ping() on an interval and rejects if no response was found in a given amount of time.
+      const response = await connection.remoteHandle().call(methodName, ...methodParams);
+
+      resolve(response);
+    } catch (err) {
+      reject(err);
+    }
+  });
+
+  return await promise
+    .catch((err) => {
+      throw err;
+    })
+    .finally(() => {
+      // Close the iframe.
+      if (frame) {
+        frame.parentNode!.removeChild(frame);
+      }
+      // Close the connection.
+      if (connection) {
+        connection.close();
+      }
+      // Clean up the event listeners and promises.
+      controllerError.cleanup();
+    });
+}
+
+// =======
+// Helpers
+// =======
+
+/**
  * Catches any errors that occur in the child connection.
  *
  * @param errorMsg - The error message.
@@ -439,15 +509,17 @@ async function catchError(errorMsg: string): Promise<void> {
 }
 
 /**
- * Stores the root seed in local storage. This triggers the storage event
- * listener in the invisible MySky frame.
+ * Stores the root seed and email in local storage. This triggers the storage
+ * event listener in the main invisible MySky frame. Main MySky needs the email
+ * so that it can login again when the JWT cookie expires.
  *
  * NOTE: If ENV == 'dev' the seed is salted before storage.
  *
  * @param seed - The root seed.
- * @param jwt - The jwt.
+ * @param email - The email.
  */
-export function saveSeed(seed: Uint8Array, jwt: string | null): void {
+export function saveSeedAndEmail(seed: Uint8Array, email: string | null): void {
+  log("Called saveSeedAndEmail");
   if (!localStorage) {
     console.log("WARNING: localStorage disabled, seed not stored");
     return;
@@ -458,9 +530,9 @@ export function saveSeed(seed: Uint8Array, jwt: string | null): void {
     seed = saltSeedDevMode(seed);
   }
 
-  // Set the jwt first.
-  if (jwt) {
-    localStorage.setItem(JWT_STORAGE_KEY, jwt);
+  // Set the email first.
+  if (email) {
+    localStorage.setItem(EMAIL_STORAGE_KEY, email);
   }
 
   // Set the seed, triggering the storage event.

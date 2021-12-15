@@ -2,7 +2,7 @@ import sign from "jwt-encode";
 import { DEFAULT_SKYNET_PORTAL_URL, SkynetClient } from "skynet-js";
 
 import { phraseToSeed } from "../../src/seed";
-import { login, register, COOKIE_HEADER_NAME, JWTData } from "../../src/portal-account";
+import { login, register, JWT_HEADER_NAME, JWTData } from "../../src/portal-account";
 
 const portalUrl = DEFAULT_SKYNET_PORTAL_URL;
 const client = new SkynetClient(portalUrl);
@@ -17,7 +17,7 @@ const jwtData: JWTData = {
 };
 const cookie = sign(jwtData, "");
 const headers: Record<string, unknown> = {};
-headers[COOKIE_HEADER_NAME] = cookie;
+headers[JWT_HEADER_NAME] = cookie;
 
 client.executeRequest = jest.fn();
 

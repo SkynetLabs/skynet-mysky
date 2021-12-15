@@ -6,12 +6,10 @@ import { sign } from "tweetnacl";
 import { genKeyPairFromHash, hashWithSalt } from "./crypto";
 import { hexToUint8Array, stringToUint8ArrayUtf8, toHexString, validateHexString, validateUint8ArrayLen } from "./util";
 
-// TODO: This is temporary for testing purposes. This should be changed to
-// `set-cookie` (will only work in the browser).
 /**
- * The name of the response header containing the cookie.
+ * The name of the response header containing the JWT token.
  */
-export const COOKIE_HEADER_NAME = "skynet-token";
+export const JWT_HEADER_NAME = "skynet-token";
 
 /**
  * The size of the expected signature.
@@ -64,6 +62,15 @@ export type CustomLoginOptions = CustomClientOptions & {
 };
 
 /**
+ * Custom logout options.
+ *
+ * @property [endpointLogout] - The relative URL path of the portal endpoint to contact for large uploads.
+ */
+export type CustomLogoutOptions = CustomClientOptions & {
+  endpointLogout?: string;
+};
+
+/**
  * The default custom client options.
  */
 const DEFAULT_CUSTOM_CLIENT_OPTIONS = {
@@ -86,6 +93,12 @@ export const DEFAULT_LOGIN_OPTIONS = {
 
   endpointLogin: "/api/login",
   endpointLoginRequest: "/api/login",
+};
+
+export const DEFAULT_LOGOUT_OPTIONS = {
+  ...DEFAULT_CUSTOM_CLIENT_OPTIONS,
+
+  endpointLogout: "/api/logout",
 };
 
 /**
@@ -146,7 +159,7 @@ export async function register(
     data,
   });
 
-  const jwt = registerResponse.headers[COOKIE_HEADER_NAME];
+  const jwt = registerResponse.headers[JWT_HEADER_NAME];
   const decodedEmail = getEmailFromJWT(jwt);
   if (decodedEmail !== email) {
     throw new Error("Email not found in JWT or did not match provided email");
@@ -192,7 +205,7 @@ export async function login(
     data,
   });
 
-  const jwt = loginResponse.headers[COOKIE_HEADER_NAME];
+  const jwt = loginResponse.headers[JWT_HEADER_NAME];
   const decodedEmail = getEmailFromJWT(jwt);
   if (decodedEmail !== email) {
     throw new Error(
@@ -202,22 +215,25 @@ export async function login(
   return jwt;
 }
 
+/**
+ * Logs out a logged-in user.
+ *
+ * @param client - The Skynet client.
+ * @param [customOptions] - The custom logout options.
+ */
+export async function logout(client: SkynetClient, customOptions?: CustomLogoutOptions): Promise<void> {
+  const opts = { ...DEFAULT_LOGOUT_OPTIONS, ...client.customOptions, ...customOptions };
+
+  await client.executeRequest({
+    endpointPath: opts.endpointLogout,
+    method: "POST",
+    subdomain: "account",
+  });
+}
+
 // =======
 // Helpers
 // =======
-
-/**
- * Generates a portal login keypair.
- *
- * @param seed - The user seed.
- * @param email - The email.
- * @returns - The login keypair.
- */
-function genPortalLoginKeypair(seed: Uint8Array, email: string): KeyPair {
-  const hash = hashWithSalt(seed, email);
-
-  return genKeyPairFromHash(hash);
-}
 
 /**
  * Decodes the given JWT and extracts the email, if found.
@@ -264,6 +280,19 @@ function signChallenge(
     response: toHexString(dataBytes),
     signature: toHexString(signatureBytes),
   };
+}
+
+/**
+ * Generates a portal login keypair.
+ *
+ * @param seed - The user seed.
+ * @param email - The email.
+ * @returns - The login keypair.
+ */
+function genPortalLoginKeypair(seed: Uint8Array, email: string): KeyPair {
+  const hash = hashWithSalt(seed, email);
+
+  return genKeyPairFromHash(hash);
 }
 
 /**
