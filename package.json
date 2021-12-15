@@ -46,6 +46,7 @@
     "axios": "^0.24.0",
     "buffer": "^6.0.3",
     "confusables": "^1.0.0",
+    "core-js-pure": "^3.19.3",
     "crypto-browserify": "^3.12.0",
     "idb-keyval": "^6.0.3",
     "jwt-decode": "^3.1.2",

@@ -1,3 +1,6 @@
+// Provide polyfill for Promise.any for Opera.
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/any#browser_compatibility
+import Promise_any from "core-js-pure/stable/promise/any";
 import { ChildHandshake, Connection, ParentHandshake, WindowMessenger } from "post-me";
 import {
   CheckPermissionsResponse,
@@ -297,7 +300,7 @@ async function connectToPortalAccount(seed: Uint8Array, email: string): Promise<
   // Make requests to login and register in parallel. At most one can succeed,
   // and this saves a lot of time.
   try {
-    await Promise.any([register(client, seed, email), login(client, seed, email)]);
+    await Promise_any([register(client, seed, email), login(client, seed, email)]);
   } catch (e) {
     throw new Error(`Could not register or login: ${e}`);
   }
