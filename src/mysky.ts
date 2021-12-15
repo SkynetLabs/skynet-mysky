@@ -2,8 +2,11 @@ import { AxiosResponse } from "axios";
 import type { Connection } from "post-me";
 import { ChildHandshake, WindowMessenger } from "post-me";
 import {
+  decryptJSONFile,
   deriveDiscoverableFileTweak,
   deriveEncryptedFileTweak,
+  encryptJSONFile,
+  ENCRYPTED_JSON_RESPONSE_VERSION,
   RegistryEntry,
   signEntry,
   SkynetClient,
@@ -12,6 +15,8 @@ import {
   RequestConfig,
   ExecuteRequestError,
   JsonData,
+  deriveEncryptedFileKeyEntropy,
+  EncryptedJSONResponse,
 } from "skynet-js";
 
 import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
@@ -21,10 +26,12 @@ import { deriveEncryptedPathSeedForRoot, ENCRYPTION_ROOT_PATH_SEED_BYTES_LENGTH 
 import { login, logout } from "./portal-account";
 import { launchPermissionsProvider } from "./provider";
 import { SEED_LENGTH } from "./seed";
-import { fromHexString, log, readablePermission } from "./util";
+import { fromHexString, log, readablePermission, validateObject, validateString } from "./util";
 
-export const SEED_STORAGE_KEY = "seed";
 export const EMAIL_STORAGE_KEY = "email";
+export const SEED_STORAGE_KEY = "seed";
+
+const INITIAL_PORTAL = "https://siasky.net";
 
 // Descriptive salt that should not be changed.
 const SALT_ENCRYPTED_PATH_SEED = "encrypted filesystem path seed";
@@ -52,6 +59,7 @@ export class PermissionsProvider {
   }
 }
 
+// TODO: Rename to differentiate from `MySky` in SDK? Perhaps `MainMySky`.
 /**
  * The MySky object containing the parent connection and permissions provider.
  *
@@ -64,7 +72,7 @@ export class PermissionsProvider {
 export class MySky {
   protected originalExecuteRequest: ((config: RequestConfig) => Promise<AxiosResponse>) | null = null;
   protected parentConnection: Promise<Connection>;
-  protected permissionsProvider: Promise<PermissionsProvider> | null = null;
+  protected preferredPortal: string | null = null;
 
   // ============
   // Constructors
@@ -73,47 +81,18 @@ export class MySky {
   constructor(
     protected client: SkynetClient,
     protected referrerDomain: string,
-    seed: Uint8Array | null,
-    email: string | null
-  ) {
-    // Set child methods.
+    protected permissionsProvider: Promise<PermissionsProvider> | null
+  ) {}
 
-    const methods = {
-      checkLogin: this.checkLogin.bind(this),
-      getEncryptedFileSeed: this.getEncryptedPathSeed.bind(this),
-      getEncryptedPathSeed: this.getEncryptedPathSeed.bind(this),
-      logout: this.logout.bind(this),
-      signMessage: this.signMessage.bind(this),
-      signRegistryEntry: this.signRegistryEntry.bind(this),
-      signEncryptedRegistryEntry: this.signEncryptedRegistryEntry.bind(this),
-      userID: this.userID.bind(this),
-      verifyMessageSignature: this.verifyMessageSignature.bind(this),
-    };
-
-    // Enable communication with connector in parent skapp.
-
-    log("Making handshake");
-    const messenger = new WindowMessenger({
-      localWindow: window,
-      remoteWindow: window.parent,
-      remoteOrigin: "*",
-    });
-    this.parentConnection = ChildHandshake(messenger, methods);
-
-    // Launch the permissions provider if the seed was given.
-
-    if (seed) {
-      this.permissionsProvider = launchPermissionsProvider(seed);
-    }
-
-    if (seed) {
-      // Set up auto-relogin if the email was found.
-      if (email) {
-        this.setupAutoRelogin(seed, email);
-      }
-    }
-  }
-
+  /**
+   * Do the asynchronous parts of initialization here before calling the
+   * constructor.
+   *
+   * NOTE: async is not allowed in constructors, which is why the work is split
+   * up like this.
+   *
+   * @returns - The MySky instance.
+   */
   static async initialize(): Promise<MySky> {
     log("Initializing...");
 
@@ -124,30 +103,36 @@ export class MySky {
     // Check for stored seed in localstorage.
     const seed = checkStoredSeed();
 
-    let email = null;
-    let portal = null;
+    // Launch the permissions provider if the seed was given.
+    let permissionsProvider = null;
     if (seed) {
-      const userSettings = await getUserSettings(seed);
-
-      // TODO: Check for stored portal and email in user settings.
-      if (userSettings) {
-        email = (userSettings.email as string) || null;
-        portal = (userSettings.portal as string) || null;
-      }
+      permissionsProvider = launchPermissionsProvider(seed);
     }
 
     // Initialize the Skynet client.
-    const client = new SkynetClient(portal || undefined);
+    //
+    // Always connect to siasky.net first. We may connect to a preferred portal later.
+    const initialClient = new SkynetClient(INITIAL_PORTAL);
 
     // Get the referrer.
-    const referrerDomain = await client.extractDomain(document.referrer);
+    // TODO: Extract domain from actual portal.
+    const referrerClient = new SkynetClient();
+    const referrerDomain = await referrerClient.extractDomain(document.referrer);
 
     // Create MySky object.
     log("Calling new MySky()");
-    const mySky = new MySky(client, referrerDomain, seed, email);
+    const mySky = new MySky(initialClient, referrerDomain, permissionsProvider);
+
+    // Get the preferred portal and stored email.
+    if (seed) {
+      await mySky.setPreferredPortalAndStoredEmail(seed);
+    }
 
     // Set up the storage event listener.
     mySky.setUpStorageEventListener();
+
+    // We are ready to accept requests. Set up the handshake connection.
+    mySky.connectToParent();
 
     return mySky;
   }
@@ -221,6 +206,10 @@ export class MySky {
     // Compute the child path seed.
 
     return deriveEncryptedPathSeedForRoot(rootPathSeedBytes, path, isDirectory);
+  }
+
+  async getPreferredPortal(): Promise<string | null> {
+    return this.preferredPortal;
   }
 
   // TODO: Logout from all tabs.
@@ -383,6 +372,144 @@ export class MySky {
   // ================
   // Internal Methods
   // ================
+
+  /**
+   * Sets up the handshake connection with the parent.
+   */
+  connectToParent(): void {
+    // Set child methods.
+
+    const methods = {
+      checkLogin: this.checkLogin.bind(this),
+      getEncryptedFileSeed: this.getEncryptedPathSeed.bind(this),
+      getEncryptedPathSeed: this.getEncryptedPathSeed.bind(this),
+      getPreferredPortal: this.getPreferredPortal.bind(this),
+      logout: this.logout.bind(this),
+      signMessage: this.signMessage.bind(this),
+      signRegistryEntry: this.signRegistryEntry.bind(this),
+      signEncryptedRegistryEntry: this.signEncryptedRegistryEntry.bind(this),
+      userID: this.userID.bind(this),
+      verifyMessageSignature: this.verifyMessageSignature.bind(this),
+    };
+
+    // Enable communication with connector in parent skapp.
+
+    log("Making handshake");
+    const messenger = new WindowMessenger({
+      localWindow: window,
+      remoteWindow: window.parent,
+      remoteOrigin: "*",
+    });
+    this.parentConnection = ChildHandshake(messenger, methods);
+  }
+
+  /**
+   * Checks for the preferred portal and stored email in user settings, and sets
+   * them if found.
+   *
+   * @param seed - The user seed.
+   */
+  async setPreferredPortalAndStoredEmail(seed: Uint8Array): Promise<void> {
+    let email = null,
+      portal = null;
+
+    // Check for stored portal and email in user settings.
+    const userSettings = await this.getUserSettings();
+    if (userSettings) {
+      email = (userSettings.email as string) || null;
+      portal = (userSettings.portal as string) || null;
+    }
+
+    // TODO: Connect to the preferred portal if it was found.
+    if (portal) {
+      this.client = new SkynetClient(portal);
+    }
+
+    // Set up auto-relogin if the email was found.
+    if (email) {
+      this.setupAutoRelogin(seed, email);
+    }
+  }
+
+  /**
+   * Gets Encrypted JSON at the given path through MySky, if the user has given
+   * Hidden Read permissions to do so.
+   *
+   * @param path - The data path.
+   * @returns - An object containing the decrypted json data.
+   * @throws - Will throw if the user does not have Hidden Read permission on the path.
+   */
+  async getJSONEncrypted(path: string): Promise<EncryptedJSONResponse> {
+    validateString("path", path, "parameter");
+
+    // Call MySky which checks for read permissions on the path.
+    const [publicKey, pathSeed] = await Promise.all([this.userID(), this.getEncryptedPathSeed(path, false)]);
+
+    // Fetch the raw encrypted JSON data.
+    const dataKey = deriveEncryptedFileTweak(pathSeed);
+    const { data } = await this.client.db.getRawBytes(publicKey, dataKey);
+    if (data === null) {
+      return { data: null };
+    }
+
+    const encryptionKey = deriveEncryptedFileKeyEntropy(pathSeed);
+    const json = decryptJSONFile(data, encryptionKey);
+
+    return { data: json };
+  }
+
+  // TODO
+  /**
+   * Sets Encrypted JSON at the given path through MySky, if the user has given
+   * Hidden Write permissions to do so.
+   *
+   * @param path - The data path.
+   * @param json - The json to encrypt and set.
+   * @param [customOptions] - Additional settings that can optionally be set.
+   * @returns - An object containing the original json data.
+   * @throws - Will throw if the user does not have Hidden Write permission on the path.
+   */
+  async setJSONEncrypted(path: string, json: JsonData): Promise<EncryptedJSONResponse> {
+    validateString("path", path, "parameter");
+    validateObject("json", json, "parameter");
+
+    const opts = { hashedDataKeyHex: true };
+
+    // Call MySky which checks for read permissions on the path.
+    const [publicKey, pathSeed] = await Promise.all([this.userID(), this.getEncryptedPathSeed(path, false)]);
+    const dataKey = deriveEncryptedFileTweak(pathSeed);
+    const encryptionKey = deriveEncryptedFileKeyEntropy(pathSeed);
+
+    // Pad and encrypt json file.
+    const data = encryptJSONFile(json, { version: ENCRYPTED_JSON_RESPONSE_VERSION }, encryptionKey);
+
+    const entry = await getOrCreateRawBytesRegistryEntry(this.client, publicKey, dataKey, data, opts);
+
+    // Call MySky which checks for write permissions on the path.
+    const signature = await this.signEncryptedRegistryEntry(entry, path);
+
+    await this.client.registry.postSignedEntry(publicKey, entry, signature);
+
+    return { data: json };
+  }
+
+  // TODO
+  /**
+   * Gets the user settings stored in the root of the MySky domain.
+   *
+   * @returns - The user settings if found.
+   */
+  async getUserSettings(): Promise<JsonData | null> {
+    // TODO: Get the settings path for the MySky domain.
+    const path = await this.getUserSettingsPath();
+
+    return await this.getJSONEncrypted(path);
+  }
+
+  async getUserSettingsPath(): Promise<string> {
+    const domain = await this.client.extractDomain(window.location.href);
+    return `${domain}/settings.json`;
+  }
 
   /**
    * Sets up auto re-login. It modifies the client's `executeRequest` method to
@@ -567,15 +694,4 @@ export function clearStoredSeed(): void {
   }
 
   localStorage.removeItem(SEED_STORAGE_KEY);
-}
-
-// TODO
-/**
- * Gets the user settings stored in the root of the MySky domain.
- *
- * @param _seed - The user seed.
- * @returns - The user settings if found.
- */
-async function getUserSettings(_seed: Uint8Array): Promise<JsonData | null> {
-  return null;
 }

@@ -91,6 +91,23 @@ export function toHexString(byteArray: Uint8Array): string {
 // ====================
 
 /**
+ * Validates the given value as an object.
+ *
+ * @param name - The name of the value.
+ * @param value - The actual value.
+ * @param valueKind - The kind of value that is being checked (e.g. "parameter", "response field", etc.)
+ * @throws - Will throw if not a valid object.
+ */
+export function validateObject(name: string, value: unknown, valueKind: string): void {
+  if (typeof value !== "object") {
+    throwValidationError(name, value, valueKind, "type 'object'");
+  }
+  if (value === null) {
+    throwValidationError(name, value, valueKind, "non-null");
+  }
+}
+
+/**
  * Validates the given value as a string.
  *
  * @param name - The name of the value.
