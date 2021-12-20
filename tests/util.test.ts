@@ -1,5 +1,6 @@
-import { fromHexString, toHexString } from "../src/util";
+import { hexToUint8Array, toHexString } from "../src/util";
 
+// TODO: Move these tests along with utils to a shared `skynet-utils` library.
 describe("util", () => {
   // random MySky public key bytes
   const publicKeyBytes = new Uint8Array([
@@ -14,13 +15,17 @@ describe("util", () => {
 
   it("should properly converted a hex string to a uint8array", () => {
     // assert the hex string matches our public key bytes
-    const byteArray = fromHexString("89853b253327ebc7f4ce92bc18def6af0dd2ae7344141cd4100af38c38e9c7a8");
+    const byteArray = hexToUint8Array("89853b253327ebc7f4ce92bc18def6af0dd2ae7344141cd4100af38c38e9c7a8");
     expect(byteArray).toEqual(publicKeyBytes);
 
     // assert it returns null if the input is empty
-    expect(fromHexString("")).toBeNull();
+    expect(() => hexToUint8Array("")).toThrowError(
+      `Expected parameter 'str' to be a hex-encoded string, was type 'string', value ''`
+    );
 
     // assert it returns null if the input is invalid hex (note the 'g')
-    expect(fromHexString("g9853b253327ebc7f4ce92bc18def6af0dd2ae7344141cd4100af38c38e9c7a8")).toBeNull();
+    expect(() => hexToUint8Array("g9853b253327ebc7f4ce92bc18def6af0dd2ae7344141cd4100af38c38e9c7a8")).toThrowError(
+      `Expected parameter 'str' to be a hex-encoded string, was type 'string', value 'g9853b253327ebc7f4ce92bc18def6af0dd2ae7344141cd4100af38c38e9c7a8'`
+    );
   });
 });

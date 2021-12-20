@@ -17,7 +17,7 @@ import { deriveEncryptedPathSeedForRoot, ENCRYPTION_ROOT_PATH_SEED_BYTES_LENGTH 
 import { logout } from "./portal-account";
 import { launchPermissionsProvider } from "./provider";
 import { SEED_LENGTH } from "./seed";
-import { fromHexString, log, readablePermission } from "./util";
+import { hexToUint8Array, log, readablePermission } from "./util";
 
 export const SEED_STORAGE_KEY = "seed";
 export const EMAIL_STORAGE_KEY = "email";
@@ -40,23 +40,47 @@ dev = true;
  * and worker handle.
  */
 export class PermissionsProvider {
+  /**
+   * Creates the `PermissionsProvider`.
+   *
+   * @param connection - The handshake connection to the permissions provider.
+   * @param worker - The permissiosn provider worker handle.
+   */
   constructor(public connection: Connection, public worker: Worker) {}
 
+  /**
+   * Terminates the permissions provider worker script and then closes the
+   * connection.
+   */
   close() {
     this.worker.terminate();
     this.connection.close();
   }
 }
 
+/**
+ * The class responsible for holding MySky-related data and connections and for
+ * communicating with skapps and with the permissions provider.
+ */
 export class MySky {
+  /* The handshake connection with the skapp. */
   protected parentConnection: Promise<Connection>;
+  /* The permissions provider handle. */
   protected permissionsProvider: Promise<PermissionsProvider> | null = null;
+  /* The user's JWT token. */
   protected jwt: Promise<string> | null = null;
 
   // ============
   // Constructors
   // ============
 
+  /**
+   * Creates the `MySky` instance.
+   *
+   * @param client - The Skynet Client.
+   * @param referrerDomain - The domain that referred us here (i.e. of the host skapp).
+   * @param seed - The user seed, if found.
+   */
   constructor(protected client: SkynetClient, protected referrerDomain: string, seed: Uint8Array | null) {
     // Set child methods.
 
@@ -89,6 +113,12 @@ export class MySky {
     }
   }
 
+  /**
+   * Initializes MySky and returns a handle to the `MySky` instance.
+   *
+   * @returns - The `MySky` instance.
+   * @throws - Will throw if the browser does not support web strorage.
+   */
   static async initialize(): Promise<MySky> {
     log("Initializing...");
 
@@ -240,7 +270,7 @@ export class MySky {
     }
 
     // convert it to bytes
-    const privateKeyBytes = fromHexString(privateKey);
+    const privateKeyBytes = hexToUint8Array(privateKey);
     if (!privateKeyBytes) {
       throw new Error("Private key was not properly hex-encoded");
     }
@@ -253,6 +283,13 @@ export class MySky {
     return sign.detached(hash, privateKeyBytes);
   }
 
+  /**
+   * Signs the non-encrypted registry entry.
+   *
+   * @param entry - The non-encrypted registry entry.
+   * @param path - The MySky path.
+   * @returns - The signature.
+   */
   async signRegistryEntry(entry: RegistryEntry, path: string): Promise<Uint8Array> {
     // Check that the entry data key corresponds to the right path.
 
@@ -264,6 +301,13 @@ export class MySky {
     return this.signRegistryEntryHelper(entry, path, PermCategory.Discoverable);
   }
 
+  /**
+   * Signs the encrypted registry entry.
+   *
+   * @param entry - The encrypted registry entry.
+   * @param path - The MySky path.
+   * @returns - The signature.
+   */
   async signEncryptedRegistryEntry(entry: RegistryEntry, path: string): Promise<Uint8Array> {
     // Check that the entry data key corresponds to the right path.
 
@@ -277,6 +321,11 @@ export class MySky {
     return this.signRegistryEntryHelper(entry, path, PermCategory.Hidden);
   }
 
+  /**
+   * Returns the user ID (i.e. same as the user's public key).
+   *
+   * @returns - The hex-encoded user ID.
+   */
   async userID(): Promise<string> {
     // Get the seed.
 
@@ -308,7 +357,7 @@ export class MySky {
     }
 
     // convert it to bytes
-    const publicKeyBytes = fromHexString(publicKey);
+    const publicKeyBytes = hexToUint8Array(publicKey);
     if (!publicKeyBytes) {
       throw new Error("Public key was not properly hex-encoded");
     }
@@ -369,6 +418,15 @@ export class MySky {
     });
   }
 
+  /**
+   * Helper for `signRegistryEntry*` methods. This is where we check for
+   * permissions and do the signing.
+   *
+   * @param entry - The encrypted registry entry.
+   * @param path - The MySky path.
+   * @param category - The permission category.
+   * @returns - The signature.
+   */
   async signRegistryEntryHelper(entry: RegistryEntry, path: string, category: PermCategory): Promise<Uint8Array> {
     log("Entered signRegistryEntry");
 
@@ -393,6 +451,15 @@ export class MySky {
     return signature;
   }
 
+  /**
+   * Checks for permission for the given path, permission category, and
+   * permission type.
+   *
+   * @param path - The MySky path.
+   * @param category - The permission category.
+   * @param permType - The permission type.
+   * @throws - Will throw if the user doesn't have the required permission.
+   */
   async checkPermission(path: string, category: PermCategory, permType: PermType): Promise<void> {
     // Check for the permissions provider.
 
@@ -449,7 +516,7 @@ export function checkStoredSeed(): Uint8Array | null {
 }
 
 /**
- *
+ * Clears the seed stored in local storage.
  */
 export function clearStoredSeed(): void {
   log("Entered clearStoredSeed");

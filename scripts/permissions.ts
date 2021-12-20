@@ -209,6 +209,7 @@ function createPermissionBitfield(category: number, permType: number): number {
  * @param requestor - The permission requestor.
  * @param path - The permission path.
  * @returns - The permission key.
+ * @throws - Will throw if the requestor or path are invalid.
  */
 export function createPermissionKey(requestor: string, path: string): string {
   const sanitizedRequestor = sanitizePath(requestor);
