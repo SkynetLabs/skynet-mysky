@@ -825,12 +825,18 @@ export function checkStoredSeed(): Uint8Array | null {
   return seed;
 }
 
+/**
+ * Clears the stored email from local storage.
+ */
 function clearStoredEmail(): void {
   log("Entered clearStoredEmail");
 
   localStorage.removeItem(EMAIL_STORAGE_KEY);
 }
 
+/**
+ * Clears the stored preferred portal from local storage.
+ */
 function clearStoredPreferredPortal(): void {
   log("Entered clearStoredPreferredPortal");
 
