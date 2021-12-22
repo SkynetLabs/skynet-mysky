@@ -1,6 +1,3 @@
-// Provide polyfill for Promise.any for Opera.
-// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/any#browser_compatibility
-import Promise_any from "core-js-pure/stable/promise/any";
 import { ChildHandshake, Connection, ParentHandshake, WindowMessenger } from "post-me";
 import {
   CheckPermissionsResponse,
@@ -15,7 +12,6 @@ import {
 import { MySky, SkynetClient } from "skynet-js";
 
 import { hashWithSalt } from "../src/crypto";
-import { login, register } from "../src/portal-account";
 import { checkStoredSeed, EMAIL_STORAGE_KEY, SEED_STORAGE_KEY } from "../src/mysky";
 import {
   getPermissionsProviderUrl,
@@ -159,12 +155,7 @@ async function checkBrowserSupported(): Promise<void> {
  * then we display the signin-connect page where the user may connect his email
  * on signin.
  *
- * 5. If we got the email, then we register/login to set the JWT cookie.
- *
- * 6. If the user provided a new email at some point, then we save it in user
- * settings, after having successfully connected to a portal account.
- *
- * (7. We return the seed and email and save them in storage in another
+ * (5. We return the seed and email and save them in storage in another
  * function, which triggers Main MySky's storage listener.)
  *
  * @returns - The seed and email.
@@ -209,16 +200,6 @@ async function getSeedAndEmail(): Promise<[Uint8Array, string | null]> {
       // succeeded.
       emailProvidedByUser = email !== null;
     }
-  }
-
-  // Register/login.
-  if (email) {
-    await connectToPortalAccount(seed, email);
-  }
-
-  // TODO: Save the new provided email in user settings.
-  if (emailProvidedByUser) {
-    await saveEmailInSettings();
   }
 
   return [seed, email];
@@ -281,39 +262,6 @@ async function getPermissions(seed: Uint8Array, permissions: Permission[]): Prom
   permissionsProvider.close();
 
   return permissionsResponse;
-}
-
-/**
- * Connects to a portal account by either registering or logging in to an
- * existing account. The resulting cookie will be set on the MySky domain and
- * takes effect in Main MySky immediate.
- *
- * NOTE: Main MySky will register "auto re-login"; we don't have to do that
- * here.
- *
- * @param seed - The user seed.
- * @param email - The user email.
- */
-async function connectToPortalAccount(seed: Uint8Array, email: string): Promise<void> {
-  // Register and get the JWT cookie.
-  //
-  // Make requests to login and register in parallel. At most one can succeed,
-  // and this saves a lot of time.
-  try {
-    await Promise_any([register(client, seed, email), login(client, seed, email)]);
-  } catch (e) {
-    throw new Error(`Could not register or login: ${e}`);
-  }
-}
-
-// TODO
-/**
- * If the email was provided by the user, save it in user settings.
- *
- * @returns - An empty promise.
- */
-async function saveEmailInSettings(): Promise<void> {
-  return;
 }
 
 /**
@@ -513,8 +461,9 @@ async function catchError(errorMsg: string): Promise<void> {
 
 /**
  * Stores the root seed and email in local storage. This triggers the storage
- * event listener in the main invisible MySky frame. Main MySky needs the email
- * so that it can login again when the JWT cookie expires.
+ * event listener in the main invisible MySky frame. This switches to the
+ * preferred portal, registers or logs in to the portal account and sets up
+ * login again when the JWT cookie expires. See `setUpStorageEventListener`.
  *
  * NOTE: If ENV == 'dev' the seed is salted before storage.
  *

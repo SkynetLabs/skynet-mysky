@@ -6,7 +6,12 @@ const opts = {
 };
 
 module.exports = {
-  entry: "./src/index.ts",
+  entry: [
+    // Provide polyfill for Promise.any for Opera.
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/any#browser_compatibility
+    "core-js/stable/promise/any",
+    "./src/index.ts",
+  ],
   mode: "production",
 
   devtool: "inline-source-map",

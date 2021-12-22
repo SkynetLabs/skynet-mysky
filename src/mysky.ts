@@ -18,17 +18,20 @@ import {
   deriveEncryptedFileKeyEntropy,
   EncryptedJSONResponse,
 } from "skynet-js";
+// TODO: Either remove after get/setJSON rework or export it from SDK.
+import { getOrCreateRawBytesRegistryEntry } from "skynet-js/dist/cjs/skydb";
 
 import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
 import { sign } from "tweetnacl";
 import { genKeyPairFromSeed, hashWithSalt, sha512 } from "./crypto";
 import { deriveEncryptedPathSeedForRoot, ENCRYPTION_ROOT_PATH_SEED_BYTES_LENGTH } from "./encrypted_files";
-import { login, logout } from "./portal-account";
+import { login, logout, register } from "./portal-account";
 import { launchPermissionsProvider } from "./provider";
 import { SEED_LENGTH } from "./seed";
 import { fromHexString, log, readablePermission, validateObject, validateString } from "./util";
 
 export const EMAIL_STORAGE_KEY = "email";
+export const PORTAL_STORAGE_KEY = "portal";
 export const SEED_STORAGE_KEY = "seed";
 
 const INITIAL_PORTAL = "https://siasky.net";
@@ -45,6 +48,14 @@ let dev = false;
 /// #if ENV == 'dev'
 dev = true;
 /// #endif
+
+/**
+ * Settings associated with a user's MySky account.
+ *
+ * @property portal - The user's preferred portal. We redirect a skapp to this portal, if it is set.
+ * @property email - The user's portal account email. We connect to their portal account if this is set.
+ */
+type UserSettings = { portal: string | null; email: string | null };
 
 /**
  * Convenience class containing the permissions provider handshake connection
@@ -71,8 +82,7 @@ export class PermissionsProvider {
  */
 export class MySky {
   protected originalExecuteRequest: ((config: RequestConfig) => Promise<AxiosResponse>) | null = null;
-  protected parentConnection: Promise<Connection>;
-  protected preferredPortal: string | null = null;
+  protected parentConnection: Promise<Connection> | null = null;
 
   // ============
   // Constructors
@@ -80,8 +90,10 @@ export class MySky {
 
   constructor(
     protected client: SkynetClient,
+    protected mySkyDomain: string,
     protected referrerDomain: string,
-    protected permissionsProvider: Promise<PermissionsProvider> | null
+    protected permissionsProvider: Promise<PermissionsProvider> | null,
+    protected preferredPortal: string | null
   ) {}
 
   /**
@@ -91,6 +103,9 @@ export class MySky {
    * NOTE: async is not allowed in constructors, which is why the work is split
    * up like this.
    *
+   * For the preferred portal flow, see "Load MySky redirect flow" on
+   * `redirectIfNotOnPreferredPortal` in the SDK.
+   *
    * @returns - The MySky instance.
    */
   static async initialize(): Promise<MySky> {
@@ -99,8 +114,11 @@ export class MySky {
     if (typeof Storage == "undefined") {
       throw new Error("Browser does not support web storage");
     }
+    if (!localStorage) {
+      throw new Error("localStorage disabled");
+    }
 
-    // Check for stored seed in localstorage.
+    // Check for the stored seed in localstorage.
     const seed = checkStoredSeed();
 
     // Launch the permissions provider if the seed was given.
@@ -109,27 +127,49 @@ export class MySky {
       permissionsProvider = launchPermissionsProvider(seed);
     }
 
+    // Check for the preferred portal in localstorage.
+    let preferredPortal = checkStoredPreferredPortal();
+
     // Initialize the Skynet client.
     //
-    // Always connect to siasky.net first. We may connect to a preferred portal later.
-    const initialClient = new SkynetClient(INITIAL_PORTAL);
+    // Connect to the preferred portal if it was found, otherwise connect to
+    // siasky.net if the seed was found, otherwise connect to the current
+    // portal.
+    const initialPortal = seed ? INITIAL_PORTAL : undefined;
+    const initialClient = new SkynetClient(preferredPortal || initialPortal);
 
-    // Get the referrer.
-    // TODO: Extract domain from actual portal.
-    const referrerClient = new SkynetClient();
-    const referrerDomain = await referrerClient.extractDomain(document.referrer);
+    // Get the referrer and MySky domains.
+    const actualPortalClient = new SkynetClient();
+    // Get the MySky domain (i.e. `skynet-mysky.hns or sandbridge.hns`).
+    const mySkyDomain = await actualPortalClient.extractDomain(window.location.href);
+    // Extract skapp domain from actual portal.
+    // NOTE: The skapp should have opened MySky on the same portal as itself.
+    const referrerDomain = await actualPortalClient.extractDomain(document.referrer);
 
     // Create MySky object.
     log("Calling new MySky()");
-    const mySky = new MySky(initialClient, referrerDomain, permissionsProvider);
+    const mySky = new MySky(initialClient, mySkyDomain, referrerDomain, permissionsProvider, preferredPortal);
 
-    // Get the preferred portal and stored email.
-    if (seed) {
-      await mySky.setPreferredPortalAndStoredEmail(seed);
+    // Get email from local storage.
+    let storedEmail = checkStoredEmail();
+
+    // Get the preferred portal and stored email from user settings.
+    if (seed && !preferredPortal) {
+      const { portal, email } = await mySky.getUserSettings(seed);
+      preferredPortal = portal;
+      storedEmail = email;
+    }
+
+    // Set the portal.
+    mySky.setPortal(preferredPortal);
+
+    // Set up auto-relogin if the email was found.
+    if (seed && storedEmail) {
+      mySky.setupAutoRelogin(seed, storedEmail);
     }
 
     // Set up the storage event listener.
-    mySky.setUpStorageEventListener();
+    mySky.setupStorageEventListener();
 
     // We are ready to accept requests. Set up the handshake connection.
     mySky.connectToParent();
@@ -228,6 +268,10 @@ export class MySky {
     } else {
       errors.push(new Error("MySky user is already logged out"));
     }
+
+    // Clear other stored values.
+    clearStoredEmail();
+    clearStoredPreferredPortal();
 
     // Clear the JWT cookie.
     //
@@ -376,7 +420,7 @@ export class MySky {
   /**
    * Sets up the handshake connection with the parent.
    */
-  connectToParent(): void {
+  protected connectToParent(): void {
     // Set child methods.
 
     const methods = {
@@ -404,31 +448,56 @@ export class MySky {
   }
 
   /**
+   * Connects to a portal account by either registering or logging in to an
+   * existing account. The resulting cookie will be set on the MySky domain.
+   *
+   * NOTE: We will register "auto re-login" in a separate function.
+   *
+   * @param seed - The user seed.
+   * @param email - The user email.
+   */
+  protected async connectToPortalAccount(seed: Uint8Array, email: string): Promise<void> {
+    // Register and get the JWT cookie.
+    //
+    // Make requests to login and register in parallel. At most one can succeed,
+    // and this saves a lot of time.
+    try {
+      await Promise.any([register(this.client, seed, email), login(this.client, seed, email)]);
+    } catch (e) {
+      throw new Error(`Could not register or login: ${e}`);
+    }
+  }
+
+  /**
    * Checks for the preferred portal and stored email in user settings, and sets
    * them if found.
    *
-   * @param seed - The user seed.
+   * @param _seed - The user seed.
+   * @returns - The portal and email, if found.
    */
-  async setPreferredPortalAndStoredEmail(seed: Uint8Array): Promise<void> {
+  protected async getUserSettings(_seed: Uint8Array): Promise<UserSettings> {
     let email = null,
       portal = null;
 
+    // Get the settings path for the MySky domain.
+    const path = await this.getUserSettingsPath();
+
     // Check for stored portal and email in user settings.
-    const userSettings = await this.getUserSettings();
+    const { data: userSettings } = await this.getJSONEncrypted(path);
     if (userSettings) {
       email = (userSettings.email as string) || null;
       portal = (userSettings.portal as string) || null;
     }
 
-    // TODO: Connect to the preferred portal if it was found.
-    if (portal) {
-      this.client = new SkynetClient(portal);
-    }
+    return { portal, email };
+  }
 
-    // Set up auto-relogin if the email was found.
-    if (email) {
-      this.setupAutoRelogin(seed, email);
-    }
+  protected async setUserSettings(_seed: Uint8Array, settings: UserSettings): Promise<void> {
+    // Get the settings path for the MySky domain.
+    const path = await this.getUserSettingsPath();
+
+    // Set preferred portal and email in user settings.
+    await this.setJSONEncrypted(path, settings);
   }
 
   /**
@@ -439,7 +508,7 @@ export class MySky {
    * @returns - An object containing the decrypted json data.
    * @throws - Will throw if the user does not have Hidden Read permission on the path.
    */
-  async getJSONEncrypted(path: string): Promise<EncryptedJSONResponse> {
+  protected async getJSONEncrypted(path: string): Promise<EncryptedJSONResponse> {
     validateString("path", path, "parameter");
 
     // Call MySky which checks for read permissions on the path.
@@ -465,11 +534,10 @@ export class MySky {
    *
    * @param path - The data path.
    * @param json - The json to encrypt and set.
-   * @param [customOptions] - Additional settings that can optionally be set.
    * @returns - An object containing the original json data.
    * @throws - Will throw if the user does not have Hidden Write permission on the path.
    */
-  async setJSONEncrypted(path: string, json: JsonData): Promise<EncryptedJSONResponse> {
+  protected async setJSONEncrypted(path: string, json: JsonData): Promise<EncryptedJSONResponse> {
     validateString("path", path, "parameter");
     validateObject("json", json, "parameter");
 
@@ -493,22 +561,30 @@ export class MySky {
     return { data: json };
   }
 
-  // TODO
   /**
-   * Gets the user settings stored in the root of the MySky domain.
+   * Get the path to the user settings stored in the root MySky domain.
    *
-   * @returns - The user settings if found.
+   * @returns - The user settings path.
    */
-  async getUserSettings(): Promise<JsonData | null> {
-    // TODO: Get the settings path for the MySky domain.
-    const path = await this.getUserSettingsPath();
-
-    return await this.getJSONEncrypted(path);
+  protected async getUserSettingsPath(): Promise<string> {
+    return `${this.mySkyDomain}/settings.json`;
   }
 
-  async getUserSettingsPath(): Promise<string> {
-    const domain = await this.client.extractDomain(window.location.href);
-    return `${domain}/settings.json`;
+  /**
+   * Sets the portal, either the preferred portal if given or the current portal
+   * otherwise.
+   *
+   * @param preferredPortal - The user's preferred portal
+   */
+  protected setPortal(preferredPortal: string | null): void {
+    if (preferredPortal) {
+      // Connect to the preferred portal if it was found.
+      this.client = new SkynetClient(preferredPortal);
+      this.preferredPortal = preferredPortal;
+    } else {
+      // Else, connect to the current portal as opposed to siasky.net.
+      this.client = new SkynetClient();
+    }
   }
 
   /**
@@ -528,7 +604,7 @@ export class MySky {
    * @param seed - The user seed.
    * @param email - The user email.
    */
-  setupAutoRelogin(seed: Uint8Array, email: string): void {
+  protected setupAutoRelogin(seed: Uint8Array, email: string): void {
     if (this.originalExecuteRequest) {
       throw new Error("Tried to setup auto re-login with it already being set up");
     }
@@ -550,22 +626,46 @@ export class MySky {
     };
   }
 
+  // TODO: Figure out how to get stored data to persist across redirect.
+  // TODO: Signal to MySky UI that we are done.
   /**
-   * Set up a listener for the storage event.
+   * Set up a listener for the storage event. Triggered when the seed is set.
+   * Unloads the permission provider to disable MySky functionality until the
+   * permission provider is loaded again at the end.
    *
-   * If the seed is set in the UI, it should trigger a load of the permissions
-   * provider. If the email is set, it should set up automatic re-login on JWT
+   * For the preferred portal flow, see "Load MySky redirect flow" on
+   * `redirectIfNotOnPreferredPortal` in the SDK.
+   *
+   * The login flow:
+   *
+   * 0. Unload the permissions provider and seed if stored.
+   *
+   * 1. Always use siasky.net first.
+   *
+   * 2. Get the preferred portal and switch to it (`setPortal`), or if not found
+   * switch to current portal.
+   *
+   * 3. If we got the email, then we register/login to set the JWT cookie
+   * (`connectToPortalAccount`).
+   *
+   * 4. If the email is set, it should set up automatic re-login on JWT
    * cookie expiry.
+   *
+   * 5. Save the email in user settings.
+   *
+   * 6. Trigger a load of the permissions provider.
    */
-  setUpStorageEventListener(): void {
-    window.addEventListener("storage", ({ key, newValue }: StorageEvent) => {
+  protected setupStorageEventListener(): void {
+    window.addEventListener("storage", async ({ key, newValue }: StorageEvent) => {
       if (key !== SEED_STORAGE_KEY) {
         return;
       }
 
       if (this.permissionsProvider) {
-        // Unload the old permissions provider. No need to await on this.
-        void this.permissionsProvider.then((provider) => provider.close());
+        // Unload the old permissions provider first. This makes sure that MySky
+        // can't respond to more requests until the new permissions provider is
+        // loaded at the end of this function.
+        await this.permissionsProvider.then((provider) => provider.close());
         this.permissionsProvider = null;
       }
 
@@ -577,29 +677,53 @@ export class MySky {
       // Parse the seed.
       const seed = new Uint8Array(JSON.parse(newValue));
 
-      // Launch the new permissions provider.
-      this.permissionsProvider = launchPermissionsProvider(seed);
+      // =====
+      // LOGIN
+      // TODO: Refactor into a function? Reuse in MySky initialization?
 
-      // If the email is found, then set up auto-login on Main MySky.
-      const email = localStorage.getItem(EMAIL_STORAGE_KEY);
-      if (email) {
-        // Clear the stored email.
-        //
-        // The email can be cleared here because `localStorage` is only used to
-        // marshal the email from MySky UI over to the invisible MySky iframe.
-        // We don't clear the seed because we need it in storage so that users
-        // are automatically logged-in, when possible. But for the email, it
-        // should be stored on MySky, as the local storage can get cleared,
-        // users can move across browsers etc.
-        localStorage.removeItem(EMAIL_STORAGE_KEY);
+      // Connect to siasky.net first.
+      this.client = new SkynetClient(INITIAL_PORTAL);
+
+      // Get the preferred portal and switch to it.
+      const { portal: preferredPortal, email } = await this.getUserSettings(seed);
+      let storedEmail = email;
+
+      // Set the portal
+      this.setPortal(preferredPortal);
+
+      // The email wasn't in the user settings but the user might have just
+      // signed up with it -- check local storage. We don't need to do this if
+      // the email was already found.
+      // TODO: Add dedicated flow(s) for changing the email after it's set.
+      let providedEmail = false;
+      if (!storedEmail) {
+        storedEmail = checkStoredEmail();
+        providedEmail = storedEmail !== null;
+      }
+
+      if (storedEmail) {
+        // Register/login to get the JWT cookie.
+        await this.connectToPortalAccount(seed, storedEmail);
 
         // Set up auto re-login on JWT expiry.
-        this.setupAutoRelogin(seed, email);
+        this.setupAutoRelogin(seed, storedEmail);
+
+        // Save the email in user settings.
+        if (providedEmail) {
+          await this.setUserSettings(seed, { portal: preferredPortal, email: storedEmail });
+        }
       }
+
+      // Launch the new permissions provider.
+      this.permissionsProvider = launchPermissionsProvider(seed);
     });
   }
 
-  async signRegistryEntryHelper(entry: RegistryEntry, path: string, category: PermCategory): Promise<Uint8Array> {
+  protected async signRegistryEntryHelper(
+    entry: RegistryEntry,
+    path: string,
+    category: PermCategory
+  ): Promise<Uint8Array> {
     log("Entered signRegistryEntry");
 
     // Check with the permissions provider that we have permission for this request.
@@ -623,7 +747,7 @@ export class MySky {
     return signature;
   }
 
-  async checkPermission(path: string, category: PermCategory, permType: PermType): Promise<void> {
+  protected async checkPermission(path: string, category: PermCategory, permType: PermType): Promise<void> {
     // Check for the permissions provider.
 
     if (!this.permissionsProvider) {
@@ -648,17 +772,36 @@ export class MySky {
 // =======
 
 /**
+ * Checks for email stored in local storage.
+ *
+ * @returns - The email, or null if not found.
+ */
+export function checkStoredEmail(): string | null {
+  log("Entered checkStoredEmail");
+
+  const email = localStorage.getItem(EMAIL_STORAGE_KEY);
+  return email || null;
+}
+
+/**
+ * Checks for preferred portal stored in local storage.
+ *
+ * @returns - The preferred portal, or null if not found.
+ */
+export function checkStoredPreferredPortal(): string | null {
+  log("Entered checkStoredPreferredPortal");
+
+  const portal = localStorage.getItem(PORTAL_STORAGE_KEY);
+  return portal || null;
+}
+
+/**
  * Checks for seed stored in local storage from previous sessions.
  *
  * @returns - The seed, or null if not found.
  */
 export function checkStoredSeed(): Uint8Array | null {
   log("Entered checkStoredSeed");
-
-  if (!localStorage) {
-    console.log("WARNING: localStorage disabled");
-    return null;
-  }
 
   const seedStr = localStorage.getItem(SEED_STORAGE_KEY);
   if (!seedStr) {
@@ -682,16 +825,23 @@ export function checkStoredSeed(): Uint8Array | null {
   return seed;
 }
 
+function clearStoredEmail(): void {
+  log("Entered clearStoredEmail");
+
+  localStorage.removeItem(EMAIL_STORAGE_KEY);
+}
+
+function clearStoredPreferredPortal(): void {
+  log("Entered clearStoredPreferredPortal");
+
+  localStorage.removeItem(PORTAL_STORAGE_KEY);
+}
+
 /**
  * Clears the stored seed from local storage.
  */
 export function clearStoredSeed(): void {
   log("Entered clearStoredSeed");
-
-  if (!localStorage) {
-    console.log("WARNING: localStorage disabled");
-    return;
-  }
 
   localStorage.removeItem(SEED_STORAGE_KEY);
 }
