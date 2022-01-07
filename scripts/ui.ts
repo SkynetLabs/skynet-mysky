@@ -448,6 +448,9 @@ async function setupAndRunDisplay<T>(displayUrl: string, methodName: string, ...
     });
 }
 
+/**
+ * Waits for portal login on Main MySky to complete.
+ */
 async function waitForMySkyPortalLogin(): Promise<void> {
   return new Promise((resolve, reject) =>
     window.addEventListener("storage", async ({ key, newValue }: StorageEvent) => {

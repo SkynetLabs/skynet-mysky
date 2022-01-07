@@ -132,7 +132,7 @@ export class MySky {
     // Check for the preferred portal in localstorage.
     let preferredPortal = checkStoredPreferredPortal();
 
-    let initialClient = getLoginClient(seed, preferredPortal);
+    const initialClient = getLoginClient(seed, preferredPortal);
 
     // Get the referrer and MySky domains.
     const actualPortalClient = new SkynetClient();
@@ -880,6 +880,10 @@ export function clearStoredSeed(): void {
  * Connect to the preferred portal if it was found, otherwise connect to
  * siasky.net if the seed was found, otherwise connect to the current
  * portal.
+ *
+ * @param seed - The user seed, if given.
+ * @param preferredPortal - The user's preferred portal, if found.
+ * @returns - The Skynet client to be used for logging in to the portal.
  */
 function getLoginClient(seed: Uint8Array | null, preferredPortal: string | null): SkynetClient {
   const initialPortal = seed ? INITIAL_PORTAL : undefined;
