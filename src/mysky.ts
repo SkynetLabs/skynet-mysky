@@ -34,6 +34,8 @@ export const EMAIL_STORAGE_KEY = "email";
 export const PORTAL_STORAGE_KEY = "portal";
 export const SEED_STORAGE_KEY = "seed";
 
+export const PORTAL_LOGIN_COMPLETE_SENTINEL_KEY = "portal-login-complete";
+
 const INITIAL_PORTAL = "https://siasky.net";
 
 // Descriptive salt that should not be changed.
@@ -130,13 +132,7 @@ export class MySky {
     // Check for the preferred portal in localstorage.
     let preferredPortal = checkStoredPreferredPortal();
 
-    // Initialize the Skynet client.
-    //
-    // Connect to the preferred portal if it was found, otherwise connect to
-    // siasky.net if the seed was found, otherwise connect to the current
-    // portal.
-    const initialPortal = seed ? INITIAL_PORTAL : undefined;
-    const initialClient = new SkynetClient(preferredPortal || initialPortal);
+    let initialClient = getLoginClient(seed, preferredPortal);
 
     // Get the referrer and MySky domains.
     const actualPortalClient = new SkynetClient();
@@ -150,22 +146,25 @@ export class MySky {
     log("Calling new MySky()");
     const mySky = new MySky(initialClient, mySkyDomain, referrerDomain, permissionsProvider, preferredPortal);
 
-    // Get email from local storage.
-    let storedEmail = checkStoredEmail();
+    // Login to portal.
+    {
+      // Get email from local storage.
+      let storedEmail = checkStoredEmail();
 
-    // Get the preferred portal and stored email from user settings.
-    if (seed && !preferredPortal) {
-      const { portal, email } = await mySky.getUserSettings(seed);
-      preferredPortal = portal;
-      storedEmail = email;
-    }
+      // Get the preferred portal and stored email from user settings.
+      if (seed && !preferredPortal) {
+        const { portal, email } = await mySky.getUserSettings(seed);
+        preferredPortal = portal;
+        storedEmail = email;
+      }
 
-    // Set the portal.
-    mySky.setPortal(preferredPortal);
+      // Set the portal.
+      mySky.setPortal(preferredPortal);
 
-    // Set up auto-relogin if the email was found.
-    if (seed && storedEmail) {
-      mySky.setupAutoRelogin(seed, storedEmail);
+      // Set up auto-relogin if the email was found.
+      if (seed && storedEmail) {
+        mySky.setupAutoRelogin(seed, storedEmail);
+      }
     }
 
     // Set up the storage event listener.
@@ -674,48 +673,59 @@ export class MySky {
         return;
       }
 
-      // Parse the seed.
-      const seed = new Uint8Array(JSON.parse(newValue));
+      try {
+        // Parse the seed.
+        const seed = new Uint8Array(JSON.parse(newValue));
 
-      // =====
-      // LOGIN
-      // TODO: Refactor into a function? Reuse in MySky initialization?
+        // Connect to siasky.net first.
+        //
+        // NOTE: Don't use the stored preferred portal here because we are just
+        // logging into a new account and need to get the user settings for the
+        // first time. Always use siasky.net.
+        this.client = getLoginClient(seed, null);
 
-      // Connect to siasky.net first.
-      this.client = new SkynetClient(INITIAL_PORTAL);
+        // Login to portal.
+        {
+          // Get the preferred portal and switch to it.
+          const { portal: preferredPortal, email } = await this.getUserSettings(seed);
+          let storedEmail = email;
 
-      // Get the preferred portal and switch to it.
-      const { portal: preferredPortal, email } = await this.getUserSettings(seed);
-      let storedEmail = email;
+          // Set the portal
+          this.setPortal(preferredPortal);
 
-      // Set the portal
-      this.setPortal(preferredPortal);
+          // The email wasn't in the user settings but the user might have just
+          // signed up with it -- check local storage. We don't need to do this if
+          // the email was already found.
+          // TODO: Add dedicated flow(s) for changing the email after it's set.
+          let providedEmail = false;
+          if (!storedEmail) {
+            storedEmail = checkStoredEmail();
+            providedEmail = storedEmail !== null;
+          }
 
-      // The email wasn't in the user settings but the user might have just
-      // signed up with it -- check local storage. We don't need to do this if
-      // the email was already found.
-      // TODO: Add dedicated flow(s) for changing the email after it's set.
-      let providedEmail = false;
-      if (!storedEmail) {
-        storedEmail = checkStoredEmail();
-        providedEmail = storedEmail !== null;
-      }
+          if (storedEmail) {
+            // Register/login to get the JWT cookie.
+            await this.connectToPortalAccount(seed, storedEmail);
 
-      if (storedEmail) {
-        // Register/login to get the JWT cookie.
-        await this.connectToPortalAccount(seed, storedEmail);
+            // Set up auto re-login on JWT expiry.
+            this.setupAutoRelogin(seed, storedEmail);
 
-        // Set up auto re-login on JWT expiry.
-        this.setupAutoRelogin(seed, storedEmail);
-
-        // Save the email in user settings.
-        if (providedEmail) {
-          await this.setUserSettings(seed, { portal: preferredPortal, email: storedEmail });
+            // Save the email in user settings.
+            if (providedEmail) {
+              await this.setUserSettings(seed, { portal: preferredPortal, email: storedEmail });
+            }
+          }
         }
-      }
 
-      // Launch the new permissions provider.
-      this.permissionsProvider = launchPermissionsProvider(seed);
+        // Launch the new permissions provider.
+        this.permissionsProvider = launchPermissionsProvider(seed);
+
+        // Signal to MySky UI that we are done.
+        localStorage.setItem(PORTAL_LOGIN_COMPLETE_SENTINEL_KEY, "");
+      } catch (e) {
+        // Send error to MySky UI.
+        localStorage.setItem(PORTAL_LOGIN_COMPLETE_SENTINEL_KEY, (e as Error).message);
+      }
     });
   }
 
@@ -850,4 +860,16 @@ export function clearStoredSeed(): void {
   log("Entered clearStoredSeed");
 
   localStorage.removeItem(SEED_STORAGE_KEY);
+}
+
+/**
+ * Initialize the Skynet client.
+ *
+ * Connect to the preferred portal if it was found, otherwise connect to
+ * siasky.net if the seed was found, otherwise connect to the current
+ * portal.
+ */
+function getLoginClient(seed: Uint8Array | null, preferredPortal: string | null): SkynetClient {
+  const initialPortal = seed ? INITIAL_PORTAL : undefined;
+  return new SkynetClient(preferredPortal || initialPortal);
 }

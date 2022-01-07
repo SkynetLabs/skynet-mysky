@@ -12,7 +12,7 @@ import {
 import { MySky, SkynetClient } from "skynet-js";
 
 import { hashWithSalt } from "../src/crypto";
-import { checkStoredSeed, EMAIL_STORAGE_KEY, SEED_STORAGE_KEY } from "../src/mysky";
+import { checkStoredSeed, EMAIL_STORAGE_KEY, PORTAL_LOGIN_COMPLETE_SENTINEL_KEY, SEED_STORAGE_KEY } from "../src/mysky";
 import {
   getPermissionsProviderUrl,
   relativePermissionsDisplayUrl,
@@ -115,6 +115,9 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
 
   // Save the seed and email in local storage.
   saveSeedAndEmail(seed, email);
+
+  // Wait for Main MySky to login successfully.
+  await waitForMySkyPortalLogin();
 
   // Pass in any request permissions and get a permissions response.
   const permissionsResponse = await getPermissions(seed, permissions);
@@ -443,6 +446,23 @@ async function setupAndRunDisplay<T>(displayUrl: string, methodName: string, ...
       // Clean up the event listeners and promises.
       controllerError.cleanup();
     });
+}
+
+async function waitForMySkyPortalLogin(): Promise<void> {
+  return new Promise((resolve, reject) =>
+    window.addEventListener("storage", async ({ key, newValue }: StorageEvent) => {
+      if (key !== PORTAL_LOGIN_COMPLETE_SENTINEL_KEY) {
+        return;
+      }
+
+      // Check for errors from Main MySky.
+      if (newValue !== "") {
+        reject(newValue);
+      }
+
+      resolve();
+    })
+  );
 }
 
 // =======
