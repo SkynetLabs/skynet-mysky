@@ -7,6 +7,7 @@ import {
   deriveEncryptedFileTweak,
   encryptJSONFile,
   ENCRYPTED_JSON_RESPONSE_VERSION,
+  getOrCreateSkyDBRegistryEntry,
   RegistryEntry,
   signEntry,
   SkynetClient,
@@ -17,9 +18,8 @@ import {
   JsonData,
   deriveEncryptedFileKeyEntropy,
   EncryptedJSONResponse,
+  MAX_REVISION,
 } from "skynet-js";
-// TODO: Either remove after get/setJSON rework or export it from SDK.
-import { getOrCreateRawBytesRegistryEntry } from "skynet-js/dist/cjs/skydb";
 
 import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
 import { sign } from "tweetnacl";
@@ -545,19 +545,31 @@ export class MySky {
     // Call MySky which checks for read permissions on the path.
     const [publicKey, pathSeed] = await Promise.all([this.userID(), this.getEncryptedPathSeed(path, false)]);
     const dataKey = deriveEncryptedFileTweak(pathSeed);
-    const encryptionKey = deriveEncryptedFileKeyEntropy(pathSeed);
 
-    // Pad and encrypt json file.
-    const data = encryptJSONFile(json, { version: ENCRYPTED_JSON_RESPONSE_VERSION }, encryptionKey);
+    // Immediately fail if the mutex is not available.
+    return await this.client.db.revisionNumberCache.withCachedEntryLock(
+      publicKey,
+      dataKey,
+      async (cachedRevisionEntry) => {
+        // Get the cached revision number before doing anything else.
+        const newRevision = incrementRevision(cachedRevisionEntry.revision);
 
-    const entry = await getOrCreateRawBytesRegistryEntry(this.client, publicKey, dataKey, data, opts);
+        // Derive the key.
+        const encryptionKey = deriveEncryptedFileKeyEntropy(pathSeed);
 
-    // Call MySky which checks for write permissions on the path.
-    const signature = await this.signEncryptedRegistryEntry(entry, path);
+        // Pad and encrypt json file.
+        const data = encryptJSONFile(json, { version: ENCRYPTED_JSON_RESPONSE_VERSION }, encryptionKey);
 
-    await this.client.registry.postSignedEntry(publicKey, entry, signature);
+        const [entry] = await getOrCreateSkyDBRegistryEntry(this.client, dataKey, data, newRevision, opts);
 
-    return { data: json };
+        // Call MySky which checks for write permissions on the path.
+        const signature = await this.signEncryptedRegistryEntry(entry, path);
+
+        await this.client.registry.postSignedEntry(publicKey, entry, signature);
+
+        return { data: json };
+      }
+    );
   }
 
   /**
@@ -872,4 +884,23 @@ export function clearStoredSeed(): void {
 function getLoginClient(seed: Uint8Array | null, preferredPortal: string | null): SkynetClient {
   const initialPortal = seed ? INITIAL_PORTAL : undefined;
   return new SkynetClient(preferredPortal || initialPortal);
+}
+
+/**
+ * Increments the given revision number and checks to make sure it is not
+ * greater than the maximum revision.
+ *
+ * @param revision - The given revision number.
+ * @returns - The incremented revision number.
+ * @throws - Will throw if the incremented revision number is greater than the maximum revision.
+ */
+function incrementRevision(revision: bigint): bigint {
+  revision = revision + BigInt(1);
+
+  // Throw if the revision is already the maximum value.
+  if (revision > MAX_REVISION) {
+    throw new Error("Current entry already has maximum allowed revision, could not update the entry");
+  }
+
+  return revision;
 }
