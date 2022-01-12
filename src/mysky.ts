@@ -709,10 +709,10 @@ export class MySky {
           // signed up with it -- check local storage. We don't need to do this if
           // the email was already found.
           // TODO: Add dedicated flow(s) for changing the email after it's set.
-          let providedEmail = false;
+          let isEmailProvided = false;
           if (!storedEmail) {
             storedEmail = checkStoredEmail();
-            providedEmail = storedEmail !== null;
+            isEmailProvided = storedEmail !== null;
           }
 
           if (storedEmail) {
@@ -723,7 +723,7 @@ export class MySky {
             this.setupAutoRelogin(seed, storedEmail);
 
             // Save the email in user settings.
-            if (providedEmail) {
+            if (isEmailProvided) {
               await this.setUserSettings(seed, { portal: preferredPortal, email: storedEmail });
             }
           }

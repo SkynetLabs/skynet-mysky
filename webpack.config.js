@@ -1,4 +1,5 @@
 const path = require("path");
+const process = require("process");
 
 // define preprocessor variables
 const opts = {
@@ -22,8 +23,8 @@ module.exports = {
         exclude: /node_modules/,
         // prettier-ignore
         use: [
-          { loader: "ifdef-loader", options: opts },
           { loader: "ts-loader" },
+          { loader: "ifdef-loader", options: opts },
         ],
       },
     ],

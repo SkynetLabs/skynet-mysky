@@ -17,8 +17,8 @@ module.exports = {
         test: /\.tsx?$/,
         exclude: /node_modules/,
         use: [
-          { loader: "ifdef-loader", options: opts },
           { loader: "ts-loader", options: { configFile: "tsconfig.scripts.json" } },
+          { loader: "ifdef-loader", options: opts },
         ],
         include: [path.resolve(__dirname, "src"), path.resolve(__dirname, `scripts/${name}.ts`)],
       },

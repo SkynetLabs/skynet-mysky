@@ -31,6 +31,9 @@ let parentConnection: Connection | null = null;
 
 // Set value of dev on load.
 let dev = false;
+/// #if ENV == 'dev'
+dev = true;
+/// #endif
 
 // ======
 // Events
@@ -64,10 +67,6 @@ window.onerror = function (error: any) {
 // TODO: Wrap in a try-catch block? Does onerror handler catch thrown errors?
 // Code that runs on page load.
 window.onload = () => {
-  /// #if ENV == 'dev'
-  dev = true;
-  /// #endif
-
   void init();
 };
 
