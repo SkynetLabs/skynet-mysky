@@ -26,6 +26,8 @@ import { log } from "../src/util";
 const RELATIVE_SEED_SELECTION_DISPLAY_URL = "seed-selection.html";
 const RELATIVE_SIGNIN_CONNECT_DISPLAY_URL = "signin-connect.html";
 
+const MYSKY_PORTAL_LOGIN_TIMEOUT = 30000;
+
 const client = new SkynetClient();
 let parentConnection: Connection | null = null;
 
@@ -116,7 +118,7 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
   saveSeedAndEmail(seed, email);
 
   // Wait for Main MySky to login successfully.
-  await waitForMySkyPortalLogin();
+  await resolveOnMySkyPortalLogin();
 
   // Pass in any request permissions and get a permissions response.
   const permissionsResponse = await getPermissions(seed, permissions);
@@ -448,23 +450,28 @@ async function setupAndRunDisplay<T>(displayUrl: string, methodName: string, ...
 }
 
 /**
- * Waits for portal login on Main MySky to complete.
+ * Resolves when portal login on Main MySky completes.
+ *
+ * @returns - An empty promise.
  */
-async function waitForMySkyPortalLogin(): Promise<void> {
-  return new Promise((resolve, reject) =>
-    window.addEventListener("storage", async ({ key, newValue }: StorageEvent) => {
-      if (key !== PORTAL_LOGIN_COMPLETE_SENTINEL_KEY) {
-        return;
-      }
+async function resolveOnMySkyPortalLogin(): Promise<void> {
+  return Promise.race([
+    new Promise<void>((resolve, reject) =>
+      window.addEventListener("storage", async ({ key, newValue }: StorageEvent) => {
+        if (key !== PORTAL_LOGIN_COMPLETE_SENTINEL_KEY) {
+          return;
+        }
 
-      // Check for errors from Main MySky.
-      if (newValue !== "") {
-        reject(newValue);
-      }
+        // Check for errors from Main MySky.
+        if (newValue !== "") {
+          reject(newValue);
+        }
 
-      resolve();
-    })
-  );
+        resolve();
+      })
+    ),
+    new Promise<void>((_, reject) => setTimeout(reject, MYSKY_PORTAL_LOGIN_TIMEOUT)),
+  ]);
 }
 
 // =======

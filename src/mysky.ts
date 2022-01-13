@@ -424,6 +424,9 @@ export class MySky {
 
     const methods = {
       checkLogin: this.checkLogin.bind(this),
+      // NOTE: `getEncryptedFileSeed` was renamed to `getEncryptedPathSeed`, but
+      // we still expose `getEncryptedFileSeed` in the API for backwards
+      // compatibility.
       getEncryptedFileSeed: this.getEncryptedPathSeed.bind(this),
       getEncryptedPathSeed: this.getEncryptedPathSeed.bind(this),
       getPreferredPortal: this.getPreferredPortal.bind(this),
@@ -437,7 +440,7 @@ export class MySky {
 
     // Enable communication with connector in parent skapp.
 
-    log("Making handshake");
+    log("Performing handshake");
     const messenger = new WindowMessenger({
       localWindow: window,
       remoteWindow: window.parent,
@@ -471,10 +474,9 @@ export class MySky {
    * Checks for the preferred portal and stored email in user settings, and sets
    * them if found.
    *
-   * @param _seed - The user seed.
    * @returns - The portal and email, if found.
    */
-  protected async getUserSettings(_seed: Uint8Array): Promise<UserSettings> {
+  protected async getUserSettings(): Promise<UserSettings> {
     let email = null,
       portal = null;
 
@@ -491,7 +493,12 @@ export class MySky {
     return { portal, email };
   }
 
-  protected async setUserSettings(_seed: Uint8Array, settings: UserSettings): Promise<void> {
+  /**
+   * Sets the user settings.
+   *
+   * @param settings - The given user settings.
+   */
+  protected async setUserSettings(settings: UserSettings): Promise<void> {
     // Get the settings path for the MySky domain.
     const path = await this.getUserSettingsPath();
 
@@ -526,7 +533,6 @@ export class MySky {
     return { data: json };
   }
 
-  // TODO
   /**
    * Sets Encrypted JSON at the given path through MySky, if the user has given
    * Hidden Write permissions to do so.
@@ -637,8 +643,6 @@ export class MySky {
     };
   }
 
-  // TODO: Figure out how to get stored data to persist across redirect.
-  // TODO: Signal to MySky UI that we are done.
   /**
    * Set up a listener for the storage event. Triggered when the seed is set.
    * Unloads the permission provider to disable MySky functionality until the
@@ -699,7 +703,7 @@ export class MySky {
         // Login to portal.
         {
           // Get the preferred portal and switch to it.
-          const { portal: preferredPortal, email } = await this.getUserSettings(seed);
+          const { portal: preferredPortal, email } = await this.getUserSettings();
           let storedEmail = email;
 
           // Set the portal
@@ -709,10 +713,10 @@ export class MySky {
           // signed up with it -- check local storage. We don't need to do this if
           // the email was already found.
           // TODO: Add dedicated flow(s) for changing the email after it's set.
-          let isEmailProvided = false;
+          let isEmailProvidedByUser = false;
           if (!storedEmail) {
             storedEmail = checkStoredEmail();
-            isEmailProvided = storedEmail !== null;
+            isEmailProvidedByUser = storedEmail !== null;
           }
 
           if (storedEmail) {
@@ -722,9 +726,10 @@ export class MySky {
             // Set up auto re-login on JWT expiry.
             this.setupAutoRelogin(seed, storedEmail);
 
-            // Save the email in user settings.
-            if (isEmailProvided) {
-              await this.setUserSettings(seed, { portal: preferredPortal, email: storedEmail });
+            // Save the email in user settings. Do this after we've connected to
+            // the portal account so we know that the email is valid.
+            if (isEmailProvidedByUser) {
+              await this.setUserSettings({ portal: preferredPortal, email: storedEmail });
             }
           }
         }
