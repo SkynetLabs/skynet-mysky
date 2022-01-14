@@ -153,7 +153,7 @@ export class MySky {
 
       // Get the preferred portal and stored email from user settings.
       if (seed && !preferredPortal) {
-        const { portal, email } = await mySky.getUserSettings(seed);
+        const { portal, email } = await mySky.getUserSettings();
         preferredPortal = portal;
         storedEmail = email;
       }
