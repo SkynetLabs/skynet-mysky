@@ -242,6 +242,8 @@ async function getEmailFromSettings(): Promise<string | null> {
  * @returns - The permissions response.
  */
 async function getPermissions(seed: Uint8Array, permissions: Permission[]): Promise<CheckPermissionsResponse> {
+  log("Called getPermissions");
+
   // Open the permissions provider.
   log("Calling launchPermissionsProvider");
   const permissionsProvider = await launchPermissionsProvider(seed);
@@ -455,6 +457,8 @@ async function setupAndRunDisplay<T>(displayUrl: string, methodName: string, ...
  * @returns - An empty promise.
  */
 async function resolveOnMySkyPortalLogin(): Promise<void> {
+  log("Called resolveOnMySkyPortalLogin");
+
   return Promise.race([
     new Promise<void>((resolve, reject) =>
       window.addEventListener("storage", async ({ key, newValue }: StorageEvent) => {
@@ -500,7 +504,8 @@ async function catchError(errorMsg: string): Promise<void> {
  * @param email - The email.
  */
 export function saveSeedAndEmail(seed: Uint8Array, email: string | null): void {
-  log("Called saveSeedAndEmail");
+  log("Entered saveSeedAndEmail");
+
   if (!localStorage) {
     console.log("WARNING: localStorage disabled, seed not stored");
     return;
@@ -515,6 +520,10 @@ export function saveSeedAndEmail(seed: Uint8Array, email: string | null): void {
   if (email) {
     localStorage.setItem(EMAIL_STORAGE_KEY, email);
   }
+
+  // Clear the seed, or if we set it to a value that's already set it will not
+  // trigger the even listener.
+  localStorage.removeItem(SEED_STORAGE_KEY);
 
   // Set the seed, triggering the storage event.
   localStorage.setItem(SEED_STORAGE_KEY, JSON.stringify(Array.from(seed)));

@@ -1,4 +1,3 @@
-import { AxiosResponse } from "axios";
 import type { Connection } from "post-me";
 import { ChildHandshake, WindowMessenger } from "post-me";
 import {
@@ -13,7 +12,6 @@ import {
   SkynetClient,
   PUBLIC_KEY_LENGTH,
   PRIVATE_KEY_LENGTH,
-  RequestConfig,
   ExecuteRequestError,
   JsonData,
   deriveEncryptedFileKeyEntropy,
@@ -78,12 +76,10 @@ export class PermissionsProvider {
  *
  * @property client - The associated SkynetClient.
  * @property referrerDomain - The domain of the parent skapp.
- * @property originalExecuteRequest - If this is set, it means we modified the `executeRequest` method on the client. This will contain the original `executeRequest` so it can be restored.
  * @property parentConnection - The handshake connection with the parent window.
  * @property permissionsProvider - The permissions provider, if it has been loaded.
  */
 export class MySky {
-  protected originalExecuteRequest: ((config: RequestConfig) => Promise<AxiosResponse>) | null = null;
   protected parentConnection: Promise<Connection> | null = null;
 
   // ============
@@ -153,7 +149,7 @@ export class MySky {
 
       // Get the preferred portal and stored email from user settings.
       if (seed && !preferredPortal) {
-        const { portal, email } = await mySky.getUserSettings();
+        const { portal, email } = await mySky.getUserSettings(seed);
         preferredPortal = portal;
         storedEmail = email;
       }
@@ -225,25 +221,18 @@ export class MySky {
     log("Entered getEncryptedPathSeed");
 
     // Check with the permissions provider that we have permission for this request.
-
     await this.checkPermission(path, PermCategory.Hidden, PermType.Read);
 
     // Get the seed.
-
     const seed = checkStoredSeed();
     if (!seed) {
       throw new Error("User seed not found");
     }
 
     // Compute the root path seed.
-
-    const bytes = new Uint8Array([...sha512(SALT_ENCRYPTED_PATH_SEED), ...sha512(seed)]);
-    // NOTE: Truncate to 32 bytes instead of the 64 bytes for a directory path
-    // seed. This is a historical artifact left for backwards compatibility.
-    const rootPathSeedBytes = sha512(bytes).slice(0, ENCRYPTION_ROOT_PATH_SEED_BYTES_LENGTH);
+    const rootPathSeedBytes = deriveRootPathSeed(seed);
 
     // Compute the child path seed.
-
     return deriveEncryptedPathSeedForRoot(rootPathSeedBytes, path, isDirectory);
   }
 
@@ -272,25 +261,23 @@ export class MySky {
     clearStoredEmail();
     clearStoredPreferredPortal();
 
+    // Restore original `executeRequest`.
+    this.client.customOptions.loginFn = undefined;
+
     // Clear the JWT cookie.
     //
     // NOTE: We do this even if we could not find a seed above. The local
     // storage might have been cleared with the JWT token still being active.
     //
-    // NOTE: This will not auto-login on an expired JWT just to logout again. If
-    // we get a 401 error, we just return silently without throwing.
+    // NOTE: This will not auto-relogin on an expired JWT, just to logout again.
+    // If we get a 401 error, we just return silently without throwing.
     try {
-      await logout(this.client, { executeRequest: this.originalExecuteRequest || undefined });
+      log("Calling logout");
+      await logout(this.client);
     } catch (e) {
       if ((e as ExecuteRequestError).responseStatus !== 401) {
         errors.push(e);
       }
-    }
-
-    // Restore original `executeRequest` on logout.
-    if (this.originalExecuteRequest) {
-      this.client.executeRequest = this.originalExecuteRequest;
-      this.originalExecuteRequest = null;
     }
 
     // Throw all encountered errors.
@@ -459,6 +446,8 @@ export class MySky {
    * @param email - The user email.
    */
   protected async connectToPortalAccount(seed: Uint8Array, email: string): Promise<void> {
+    log("Entered connectToPortalAccount");
+
     // Register and get the JWT cookie.
     //
     // Make requests to login and register in parallel. At most one can succeed,
@@ -471,12 +460,32 @@ export class MySky {
   }
 
   /**
+   * Gets the encrypted path seed for the given path without requiring
+   * permissions. This should NOT be exported - for internal use only.
+   *
+   * @param seed - The user seed.
+   * @param path - The given file or directory path.
+   * @param isDirectory - Whether the path corresponds to a directory.
+   * @returns - The hex-encoded encrypted path seed.
+   */
+  async getEncryptedPathSeedInternal(seed: Uint8Array, path: string, isDirectory: boolean): Promise<string> {
+    log("Entered getEncryptedPathSeedInternal");
+
+    // Compute the root path seed.
+    const rootPathSeedBytes = deriveRootPathSeed(seed);
+
+    // Compute the child path seed.
+    return deriveEncryptedPathSeedForRoot(rootPathSeedBytes, path, isDirectory);
+  }
+
+  /**
    * Checks for the preferred portal and stored email in user settings, and sets
    * them if found.
    *
+   * @param seed - The user seed.
    * @returns - The portal and email, if found.
    */
-  protected async getUserSettings(): Promise<UserSettings> {
+  protected async getUserSettings(seed: Uint8Array): Promise<UserSettings> {
     let email = null,
       portal = null;
 
@@ -484,7 +493,7 @@ export class MySky {
     const path = await this.getUserSettingsPath();
 
     // Check for stored portal and email in user settings.
-    const { data: userSettings } = await this.getJSONEncrypted(path);
+    const { data: userSettings } = await this.getJSONEncrypted(seed, path);
     if (userSettings) {
       email = (userSettings.email as string) || null;
       portal = (userSettings.portal as string) || null;
@@ -496,29 +505,34 @@ export class MySky {
   /**
    * Sets the user settings.
    *
+   * @param seed - The user seed.
    * @param settings - The given user settings.
    */
-  protected async setUserSettings(settings: UserSettings): Promise<void> {
+  protected async setUserSettings(seed: Uint8Array, settings: UserSettings): Promise<void> {
     // Get the settings path for the MySky domain.
     const path = await this.getUserSettingsPath();
 
     // Set preferred portal and email in user settings.
-    await this.setJSONEncrypted(path, settings);
+    await this.setJSONEncrypted(seed, path, settings);
   }
 
   /**
    * Gets Encrypted JSON at the given path through MySky, if the user has given
    * Hidden Read permissions to do so.
    *
+   * @param seed - The user seed.
    * @param path - The data path.
    * @returns - An object containing the decrypted json data.
    * @throws - Will throw if the user does not have Hidden Read permission on the path.
    */
-  protected async getJSONEncrypted(path: string): Promise<EncryptedJSONResponse> {
+  protected async getJSONEncrypted(seed: Uint8Array, path: string): Promise<EncryptedJSONResponse> {
     validateString("path", path, "parameter");
 
     // Call MySky which checks for read permissions on the path.
-    const [publicKey, pathSeed] = await Promise.all([this.userID(), this.getEncryptedPathSeed(path, false)]);
+    const [publicKey, pathSeed] = await Promise.all([
+      this.userID(),
+      this.getEncryptedPathSeedInternal(seed, path, false),
+    ]);
 
     // Fetch the raw encrypted JSON data.
     const dataKey = deriveEncryptedFileTweak(pathSeed);
@@ -537,19 +551,23 @@ export class MySky {
    * Sets Encrypted JSON at the given path through MySky, if the user has given
    * Hidden Write permissions to do so.
    *
+   * @param seed - The user seed.
    * @param path - The data path.
    * @param json - The json to encrypt and set.
    * @returns - An object containing the original json data.
    * @throws - Will throw if the user does not have Hidden Write permission on the path.
    */
-  protected async setJSONEncrypted(path: string, json: JsonData): Promise<EncryptedJSONResponse> {
+  protected async setJSONEncrypted(seed: Uint8Array, path: string, json: JsonData): Promise<EncryptedJSONResponse> {
     validateString("path", path, "parameter");
     validateObject("json", json, "parameter");
 
     const opts = { hashedDataKeyHex: true };
 
     // Call MySky which checks for read permissions on the path.
-    const [publicKey, pathSeed] = await Promise.all([this.userID(), this.getEncryptedPathSeed(path, false)]);
+    const [publicKey, pathSeed] = await Promise.all([
+      this.userID(),
+      this.getEncryptedPathSeedInternal(seed, path, false),
+    ]);
     const dataKey = deriveEncryptedFileTweak(pathSeed);
 
     // Immediately fail if the mutex is not available.
@@ -569,7 +587,7 @@ export class MySky {
         const [entry] = await getOrCreateSkyDBRegistryEntry(this.client, dataKey, data, newRevision, opts);
 
         // Call MySky which checks for write permissions on the path.
-        const signature = await this.signEncryptedRegistryEntry(entry, path);
+        const signature = await this.signEncryptedRegistryEntryInternal(seed, entry, path);
 
         await this.client.registry.postSignedEntry(publicKey, entry, signature);
 
@@ -588,12 +606,85 @@ export class MySky {
   }
 
   /**
+   * Logs in from MySky UI.
+   *
+   * Flow:
+   *
+   * 0. Unload the permissions provider and seed if stored. (Done in
+   * `setupStorageEventListener`.)
+   *
+   * 1. Always use siasky.net first.
+   *
+   * 2. Get the preferred portal and switch to it (`setPortal`), or if not found
+   * switch to current portal.
+   *
+   * 3. If we got the email, then we register/login to set the JWT cookie
+   * (`connectToPortalAccount`).
+   *
+   * 4. If the email is set, it should set up automatic re-login on JWT
+   * cookie expiry.
+   *
+   * 5. Save the email in user settings.
+   *
+   * 6. Trigger a load of the permissions provider.
+   *
+   * @param seed - The user seed.
+   */
+  protected async loginFromUi(seed: Uint8Array): Promise<void> {
+    // Connect to siasky.net first.
+    //
+    // NOTE: Don't use the stored preferred portal here because we are just
+    // logging into a new account and need to get the user settings for the
+    // first time. Always use siasky.net.
+    this.client = getLoginClient(seed, null);
+
+    // Login to portal.
+    {
+      // Get the preferred portal and switch to it.
+      const { portal: preferredPortal, email } = await this.getUserSettings(seed);
+      let storedEmail = email;
+
+      // Set the portal
+      this.setPortal(preferredPortal);
+
+      // The email wasn't in the user settings but the user might have just
+      // signed up with it -- check local storage. We don't need to do this if
+      // the email was already found.
+      // TODO: Add dedicated flow(s) for changing the email after it's set.
+      let isEmailProvidedByUser = false;
+      if (!storedEmail) {
+        storedEmail = checkStoredEmail();
+        isEmailProvidedByUser = storedEmail !== null;
+      }
+
+      if (storedEmail) {
+        // Register/login to get the JWT cookie.
+        await this.connectToPortalAccount(seed, storedEmail);
+
+        // Set up auto re-login on JWT expiry.
+        this.setupAutoRelogin(seed, storedEmail);
+
+        // Save the email in user settings. Do this after we've connected to
+        // the portal account so we know that the email is valid.
+        if (isEmailProvidedByUser) {
+          await this.setUserSettings(seed, { portal: preferredPortal, email: storedEmail });
+        }
+      }
+    }
+
+    // Launch the new permissions provider.
+    this.permissionsProvider = launchPermissionsProvider(seed);
+  }
+
+  /**
    * Sets the portal, either the preferred portal if given or the current portal
    * otherwise.
    *
    * @param preferredPortal - The user's preferred portal
    */
   protected setPortal(preferredPortal: string | null): void {
+    log("Entered setPortal");
+
     if (preferredPortal) {
       // Connect to the preferred portal if it was found.
       this.client = new SkynetClient(preferredPortal);
@@ -622,24 +713,14 @@ export class MySky {
    * @param email - The user email.
    */
   protected setupAutoRelogin(seed: Uint8Array, email: string): void {
-    if (this.originalExecuteRequest) {
+    log("Entered setupAutoRelogin");
+
+    if (this.client.customOptions.loginFn) {
       throw new Error("Tried to setup auto re-login with it already being set up");
     }
 
-    const executeRequest = this.client.executeRequest;
-    this.originalExecuteRequest = executeRequest;
-    this.client.executeRequest = async function (config: RequestConfig): Promise<AxiosResponse> {
-      try {
-        return await executeRequest(config);
-      } catch (e) {
-        if ((e as ExecuteRequestError).responseStatus === 401) {
-          // Try logging in again.
-          await login(this, seed, email);
-          return await executeRequest(config);
-        } else {
-          throw e;
-        }
-      }
+    this.client.customOptions.loginFn = async () => {
+      await login(this.client, seed, email);
     };
   }
 
@@ -650,31 +731,16 @@ export class MySky {
    *
    * For the preferred portal flow, see "Load MySky redirect flow" on
    * `redirectIfNotOnPreferredPortal` in the SDK.
-   *
-   * The login flow:
-   *
-   * 0. Unload the permissions provider and seed if stored.
-   *
-   * 1. Always use siasky.net first.
-   *
-   * 2. Get the preferred portal and switch to it (`setPortal`), or if not found
-   * switch to current portal.
-   *
-   * 3. If we got the email, then we register/login to set the JWT cookie
-   * (`connectToPortalAccount`).
-   *
-   * 4. If the email is set, it should set up automatic re-login on JWT
-   * cookie expiry.
-   *
-   * 5. Save the email in user settings.
-   *
-   * 6. Trigger a load of the permissions provider.
    */
   protected setupStorageEventListener(): void {
+    log("Entered setupStorageEventListener");
+
     window.addEventListener("storage", async ({ key, newValue }: StorageEvent) => {
       if (key !== SEED_STORAGE_KEY) {
         return;
       }
+
+      log("Entered storage event listener with seed storage key");
 
       if (this.permissionsProvider) {
         // Unload the old permissions provider first. This makes sure that MySky
@@ -693,49 +759,7 @@ export class MySky {
         // Parse the seed.
         const seed = new Uint8Array(JSON.parse(newValue));
 
-        // Connect to siasky.net first.
-        //
-        // NOTE: Don't use the stored preferred portal here because we are just
-        // logging into a new account and need to get the user settings for the
-        // first time. Always use siasky.net.
-        this.client = getLoginClient(seed, null);
-
-        // Login to portal.
-        {
-          // Get the preferred portal and switch to it.
-          const { portal: preferredPortal, email } = await this.getUserSettings();
-          let storedEmail = email;
-
-          // Set the portal
-          this.setPortal(preferredPortal);
-
-          // The email wasn't in the user settings but the user might have just
-          // signed up with it -- check local storage. We don't need to do this if
-          // the email was already found.
-          // TODO: Add dedicated flow(s) for changing the email after it's set.
-          let isEmailProvidedByUser = false;
-          if (!storedEmail) {
-            storedEmail = checkStoredEmail();
-            isEmailProvidedByUser = storedEmail !== null;
-          }
-
-          if (storedEmail) {
-            // Register/login to get the JWT cookie.
-            await this.connectToPortalAccount(seed, storedEmail);
-
-            // Set up auto re-login on JWT expiry.
-            this.setupAutoRelogin(seed, storedEmail);
-
-            // Save the email in user settings. Do this after we've connected to
-            // the portal account so we know that the email is valid.
-            if (isEmailProvidedByUser) {
-              await this.setUserSettings({ portal: preferredPortal, email: storedEmail });
-            }
-          }
-        }
-
-        // Launch the new permissions provider.
-        this.permissionsProvider = launchPermissionsProvider(seed);
+        await this.loginFromUi(seed);
 
         // Signal to MySky UI that we are done.
         localStorage.setItem(PORTAL_LOGIN_COMPLETE_SENTINEL_KEY, "");
@@ -744,6 +768,28 @@ export class MySky {
         localStorage.setItem(PORTAL_LOGIN_COMPLETE_SENTINEL_KEY, (e as Error).message);
       }
     });
+  }
+
+  /**
+   * Signs the encrypted registry entry without requiring permissions. For
+   * internal use only.
+   *
+   * @param seed - The user seed.
+   * @param entry - The encrypted registry entry.
+   * @param path - The MySky path.
+   * @returns - The signature.
+   */
+  async signEncryptedRegistryEntryInternal(seed: Uint8Array, entry: RegistryEntry, path: string): Promise<Uint8Array> {
+    // Check that the entry data key corresponds to the right path.
+
+    // Use `isDirectory: false` because registry entries can only correspond to files right now.
+    const pathSeed = await this.getEncryptedPathSeedInternal(seed, path, false);
+    const dataKey = deriveEncryptedFileTweak(pathSeed);
+    if (entry.dataKey !== dataKey) {
+      throw new Error("Path does not match the data key in the encrypted registry entry.");
+    }
+
+    return this.signRegistryEntryHelper(entry, path, PermCategory.Hidden);
   }
 
   protected async signRegistryEntryHelper(
@@ -877,6 +923,19 @@ export function clearStoredSeed(): void {
   log("Entered clearStoredSeed");
 
   localStorage.removeItem(SEED_STORAGE_KEY);
+}
+
+/**
+ * Derives the root path seed.
+ *
+ * @param seed - The user seed.
+ * @returns - The root path seed.
+ */
+function deriveRootPathSeed(seed: Uint8Array): Uint8Array {
+  const bytes = new Uint8Array([...sha512(SALT_ENCRYPTED_PATH_SEED), ...sha512(seed)]);
+  // NOTE: Truncate to 32 bytes instead of the 64 bytes for a directory path
+  // seed. This is a historical artifact left for backwards compatibility.
+  return sha512(bytes).slice(0, ENCRYPTION_ROOT_PATH_SEED_BYTES_LENGTH);
 }
 
 /**

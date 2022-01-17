@@ -1,5 +1,4 @@
-import { AxiosResponse } from "axios";
-import { KeyPair, RequestConfig, SkynetClient } from "skynet-js";
+import { KeyPair, SkynetClient } from "skynet-js";
 import type { CustomClientOptions } from "skynet-js";
 import { sign } from "tweetnacl";
 
@@ -53,8 +52,6 @@ export type CustomLoginOptions = CustomClientOptions & {
  */
 export type CustomLogoutOptions = CustomClientOptions & {
   endpointLogout?: string;
-
-  executeRequest?: (config: RequestConfig) => Promise<AxiosResponse>;
 };
 
 /**
@@ -197,8 +194,7 @@ export async function login(
 export async function logout(client: SkynetClient, customOptions?: CustomLogoutOptions): Promise<void> {
   const opts = { ...DEFAULT_LOGOUT_OPTIONS, ...client.customOptions, ...customOptions };
 
-  const executeRequest = opts.executeRequest || client.executeRequest;
-  await executeRequest({
+  await client.executeRequest({
     endpointPath: opts.endpointLogout,
     method: "POST",
     subdomain: "account",
