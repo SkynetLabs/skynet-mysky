@@ -1,6 +1,7 @@
 import { Connection, ParentHandshake, WorkerMessenger } from "post-me";
 import { defaultHandshakeAttemptsInterval, defaultHandshakeMaxAttempts, ensureUrl } from "skynet-mysky-utils";
 import { PermissionsProvider } from "./mysky";
+import { log } from "./util";
 
 export const relativePermissionsWorkerUrl = "permissions.js";
 export const relativePermissionsDisplayUrl = "permissions-display.html";
@@ -48,7 +49,7 @@ export async function getPermissionsProviderUrl(_seed: Uint8Array): Promise<stri
  * @returns - The handshake connection with the provider.
  */
 export async function launchPermissionsProvider(seed: Uint8Array): Promise<PermissionsProvider> {
-  console.log("Entered launchPermissionsProvider");
+  log("Entered launchPermissionsProvider");
 
   const permissionsProviderUrl = await getPermissionsProviderUrl(seed);
 

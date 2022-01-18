@@ -5,6 +5,7 @@ import {
   defaultHandshakeAttemptsInterval,
   defaultHandshakeMaxAttempts,
   dispatchedErrorEvent,
+  ensureUrl,
   errorWindowClosed,
   monitorWindowError,
   Permission,
@@ -216,7 +217,7 @@ async function getSeedAndEmail(): Promise<[Uint8Array, string | null]> {
  */
 async function getSeedAndEmailFromProvider(): Promise<SeedProviderResponse> {
   // Show seed provider chooser.
-  const seedProviderDisplayUrl = await getSeedProviderDisplayUrl();
+  const seedProviderDisplayUrl = ensureUrl(await getSeedProviderDisplayUrl());
 
   // User has chosen seed provider, open seed provider display.
   log("Calling runSeedProviderDisplay");
@@ -242,7 +243,7 @@ async function getEmailFromSettings(): Promise<string | null> {
  * @returns - The permissions response.
  */
 async function getPermissions(seed: Uint8Array, permissions: Permission[]): Promise<CheckPermissionsResponse> {
-  log("Called getPermissions");
+  log("Entered getPermissions");
 
   // Open the permissions provider.
   log("Calling launchPermissionsProvider");
@@ -296,7 +297,7 @@ async function getSeedProviderDisplayUrl(): Promise<string> {
  * @returns - The URL.
  */
 async function getSigninConnectDisplayUrl(): Promise<string> {
-  return `${window.location.hostname}/${RELATIVE_SIGNIN_CONNECT_DISPLAY_URL}`;
+  return ensureUrl(`${window.location.hostname}/${RELATIVE_SIGNIN_CONNECT_DISPLAY_URL}`);
 }
 
 /**
@@ -311,7 +312,7 @@ async function runPermissionsProviderDisplay(
   pendingPermissions: Permission[]
 ): Promise<CheckPermissionsResponse> {
   const permissionsProviderUrl = await getPermissionsProviderUrl(seed);
-  const permissionsProviderDisplayUrl = `${permissionsProviderUrl}/${relativePermissionsDisplayUrl}`;
+  const permissionsProviderDisplayUrl = ensureUrl(`${permissionsProviderUrl}/${relativePermissionsDisplayUrl}`);
 
   return setupAndRunDisplay(permissionsProviderDisplayUrl, "getPermissions", pendingPermissions, document.referrer);
 }
@@ -334,7 +335,7 @@ async function runSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<S
 async function _runSeedSelectionDisplay(): Promise<string> {
   // Get the display URL.
 
-  const seedSelectionDisplayUrl = `${window.location.hostname}/${RELATIVE_SEED_SELECTION_DISPLAY_URL}`;
+  const seedSelectionDisplayUrl = ensureUrl(`${window.location.hostname}/${RELATIVE_SEED_SELECTION_DISPLAY_URL}`);
 
   return setupAndRunDisplay(seedSelectionDisplayUrl, "getSeedProvider");
 }
@@ -402,6 +403,11 @@ async function connectDisplayProvider(childFrame: HTMLIFrameElement): Promise<Co
  * @returns - The response from the display iframe.
  */
 async function setupAndRunDisplay<T>(displayUrl: string, methodName: string, ...methodParams: unknown[]): Promise<T> {
+  // Add debug parameter to the URL.
+  const displayUrlObject = new URL(displayUrl);
+  displayUrlObject.search = window.location.search;
+  displayUrl = displayUrlObject.toString();
+
   // Add error listener.
 
   const { promise: promiseError, controller: controllerError } = monitorWindowError();
@@ -457,7 +463,7 @@ async function setupAndRunDisplay<T>(displayUrl: string, methodName: string, ...
  * @returns - An empty promise.
  */
 async function resolveOnMySkyPortalLogin(): Promise<void> {
-  log("Called resolveOnMySkyPortalLogin");
+  log("Entered resolveOnMySkyPortalLogin");
 
   return Promise.race([
     new Promise<void>((resolve, reject) =>
@@ -467,7 +473,7 @@ async function resolveOnMySkyPortalLogin(): Promise<void> {
         }
 
         // Check for errors from Main MySky.
-        if (newValue !== "") {
+        if (newValue !== "1") {
           reject(newValue);
         }
 

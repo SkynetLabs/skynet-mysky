@@ -486,6 +486,8 @@ export class MySky {
    * @returns - The portal and email, if found.
    */
   protected async getUserSettings(seed: Uint8Array): Promise<UserSettings> {
+    log("Entered getUserSettings");
+
     let email = null,
       portal = null;
 
@@ -493,7 +495,7 @@ export class MySky {
     const path = await this.getUserSettingsPath();
 
     // Check for stored portal and email in user settings.
-    const { data: userSettings } = await this.getJSONEncrypted(seed, path);
+    const { data: userSettings } = await this.getJSONEncryptedInternal(seed, path);
     if (userSettings) {
       email = (userSettings.email as string) || null;
       portal = (userSettings.portal as string) || null;
@@ -513,19 +515,20 @@ export class MySky {
     const path = await this.getUserSettingsPath();
 
     // Set preferred portal and email in user settings.
-    await this.setJSONEncrypted(seed, path, settings);
+    await this.setJSONEncryptedInternal(seed, path, settings);
   }
 
   /**
-   * Gets Encrypted JSON at the given path through MySky, if the user has given
-   * Hidden Read permissions to do so.
+   * Gets Encrypted JSON at the given path through MySky.
    *
    * @param seed - The user seed.
    * @param path - The data path.
    * @returns - An object containing the decrypted json data.
    * @throws - Will throw if the user does not have Hidden Read permission on the path.
    */
-  protected async getJSONEncrypted(seed: Uint8Array, path: string): Promise<EncryptedJSONResponse> {
+  protected async getJSONEncryptedInternal(seed: Uint8Array, path: string): Promise<EncryptedJSONResponse> {
+    log("Entered getJSONEncryptedInternal");
+
     validateString("path", path, "parameter");
 
     // Call MySky which checks for read permissions on the path.
@@ -536,6 +539,7 @@ export class MySky {
 
     // Fetch the raw encrypted JSON data.
     const dataKey = deriveEncryptedFileTweak(pathSeed);
+    log("Calling getRawBytes");
     const { data } = await this.client.db.getRawBytes(publicKey, dataKey);
     if (data === null) {
       return { data: null };
@@ -548,8 +552,7 @@ export class MySky {
   }
 
   /**
-   * Sets Encrypted JSON at the given path through MySky, if the user has given
-   * Hidden Write permissions to do so.
+   * Sets Encrypted JSON at the given path through MySky.
    *
    * @param seed - The user seed.
    * @param path - The data path.
@@ -557,7 +560,13 @@ export class MySky {
    * @returns - An object containing the original json data.
    * @throws - Will throw if the user does not have Hidden Write permission on the path.
    */
-  protected async setJSONEncrypted(seed: Uint8Array, path: string, json: JsonData): Promise<EncryptedJSONResponse> {
+  protected async setJSONEncryptedInternal(
+    seed: Uint8Array,
+    path: string,
+    json: JsonData
+  ): Promise<EncryptedJSONResponse> {
+    log("Entered setJSONEncryptedInternal");
+
     validateString("path", path, "parameter");
     validateObject("json", json, "parameter");
 
@@ -631,6 +640,8 @@ export class MySky {
    * @param seed - The user seed.
    */
   protected async loginFromUi(seed: Uint8Array): Promise<void> {
+    log("Entered loginFromUi");
+
     // Connect to siasky.net first.
     //
     // NOTE: Don't use the stored preferred portal here because we are just
@@ -658,7 +669,8 @@ export class MySky {
       }
 
       if (storedEmail) {
-        // Register/login to get the JWT cookie.
+        // Register/login to ensure the email is valid and get the JWT (in case
+        // we don't redirect to a preferred portal).
         await this.connectToPortalAccount(seed, storedEmail);
 
         // Set up auto re-login on JWT expiry.
@@ -762,8 +774,10 @@ export class MySky {
         await this.loginFromUi(seed);
 
         // Signal to MySky UI that we are done.
-        localStorage.setItem(PORTAL_LOGIN_COMPLETE_SENTINEL_KEY, "");
+        localStorage.setItem(PORTAL_LOGIN_COMPLETE_SENTINEL_KEY, "1");
       } catch (e) {
+        log(`Error in storage event listener: ${e}`);
+
         // Send error to MySky UI.
         localStorage.setItem(PORTAL_LOGIN_COMPLETE_SENTINEL_KEY, (e as Error).message);
       }
@@ -950,6 +964,8 @@ function deriveRootPathSeed(seed: Uint8Array): Uint8Array {
  * @returns - The Skynet client to be used for logging in to the portal.
  */
 function getLoginClient(seed: Uint8Array | null, preferredPortal: string | null): SkynetClient {
+  log("Entered getLoginClient");
+
   const initialPortal = seed ? INITIAL_PORTAL : undefined;
   return new SkynetClient(preferredPortal || initialPortal);
 }
