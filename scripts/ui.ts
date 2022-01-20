@@ -13,7 +13,14 @@ import {
 import { MySky, SkynetClient } from "skynet-js";
 
 import { hashWithSalt } from "../src/crypto";
-import { checkStoredSeed, EMAIL_STORAGE_KEY, PORTAL_LOGIN_COMPLETE_SENTINEL_KEY, SEED_STORAGE_KEY } from "../src/mysky";
+import {
+  checkStoredSeed,
+  EMAIL_STORAGE_KEY,
+  getCurrentAndReferrerDomains,
+  INITIAL_PORTAL,
+  PORTAL_LOGIN_COMPLETE_SENTINEL_KEY,
+  SEED_STORAGE_KEY,
+} from "../src/mysky";
 import {
   getPermissionsProviderUrl,
   relativePermissionsDisplayUrl,
@@ -23,12 +30,14 @@ import {
   SeedProviderResponse,
 } from "../src/provider";
 import { log } from "../src/util";
+import { getUserSettings } from "../src/user_settings";
 
 const RELATIVE_SEED_SELECTION_DISPLAY_URL = "seed-selection.html";
 const RELATIVE_SIGNIN_CONNECT_DISPLAY_URL = "signin-connect.html";
 
 const MYSKY_PORTAL_LOGIN_TIMEOUT = 30000;
 
+// Create a client on the current portal.
 const client = new SkynetClient();
 let parentConnection: Connection | null = null;
 
@@ -190,7 +199,10 @@ async function getSeedAndEmail(): Promise<[Uint8Array, string | null]> {
     // We're signing in, try to get the email from saved settings.
     let savedEmailFound = false;
     if (!email) {
-      email = await getEmailFromSettings();
+      const siaskyClient = new SkynetClient(INITIAL_PORTAL);
+      const { currentDomain } = await getCurrentAndReferrerDomains();
+      const { email: receivedEmail } = await getUserSettings(siaskyClient, seed, currentDomain);
+      email = receivedEmail;
       savedEmailFound = email !== null;
     }
 
@@ -222,16 +234,6 @@ async function getSeedAndEmailFromProvider(): Promise<SeedProviderResponse> {
   // User has chosen seed provider, open seed provider display.
   log("Calling runSeedProviderDisplay");
   return await runSeedProviderDisplay(seedProviderDisplayUrl);
-}
-
-// TODO
-/**
- * Tries to get the email from the saved user settings.
- *
- * @returns - The email if found.
- */
-async function getEmailFromSettings(): Promise<string | null> {
-  return null;
 }
 
 /**

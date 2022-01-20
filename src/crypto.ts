@@ -2,8 +2,25 @@ import { hash, sign } from "tweetnacl";
 import { KeyPair, stringToUint8ArrayUtf8 } from "skynet-js";
 
 import { toHexString } from "./util";
+import { ENCRYPTION_ROOT_PATH_SEED_BYTES_LENGTH } from "./encrypted_files";
+
+// Descriptive salt that should not be changed.
+const SALT_ENCRYPTED_PATH_SEED = "encrypted filesystem path seed";
 
 const SALT_ROOT_DISCOVERABLE_KEY = "root discoverable key";
+
+/**
+ * Derives the root path seed.
+ *
+ * @param seed - The user seed.
+ * @returns - The root path seed.
+ */
+export function deriveRootPathSeed(seed: Uint8Array): Uint8Array {
+  const bytes = new Uint8Array([...sha512(SALT_ENCRYPTED_PATH_SEED), ...sha512(seed)]);
+  // NOTE: Truncate to 32 bytes instead of the 64 bytes for a directory path
+  // seed. This is a historical artifact left for backwards compatibility.
+  return sha512(bytes).slice(0, ENCRYPTION_ROOT_PATH_SEED_BYTES_LENGTH);
+}
 
 /**
  * Hashes the given message with the given salt applied.

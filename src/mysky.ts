@@ -1,32 +1,25 @@
 import type { Connection } from "post-me";
 import { ChildHandshake, WindowMessenger } from "post-me";
 import {
-  decryptJSONFile,
   deriveDiscoverableFileTweak,
   deriveEncryptedFileTweak,
-  encryptJSONFile,
-  ENCRYPTED_JSON_RESPONSE_VERSION,
-  getOrCreateSkyDBRegistryEntry,
   RegistryEntry,
   signEntry,
   SkynetClient,
   PUBLIC_KEY_LENGTH,
   PRIVATE_KEY_LENGTH,
   ExecuteRequestError,
-  JsonData,
-  deriveEncryptedFileKeyEntropy,
-  EncryptedJSONResponse,
-  MAX_REVISION,
 } from "skynet-js";
-
 import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
 import { sign } from "tweetnacl";
-import { genKeyPairFromSeed, hashWithSalt, sha512 } from "./crypto";
-import { deriveEncryptedPathSeedForRoot, ENCRYPTION_ROOT_PATH_SEED_BYTES_LENGTH } from "./encrypted_files";
-import { login, logout, register } from "./portal-account";
+
+import { deriveRootPathSeed, genKeyPairFromSeed, hashWithSalt, sha512 } from "./crypto";
+import { deriveEncryptedPathSeedForRoot } from "./encrypted_files";
+import { login, logout, register } from "./portal_account";
 import { launchPermissionsProvider } from "./provider";
 import { SEED_LENGTH } from "./seed";
-import { fromHexString, log, readablePermission, validateObject, validateString } from "./util";
+import { getUserSettings, setUserSettings } from "./user_settings";
+import { fromHexString, log, readablePermission } from "./util";
 
 export const EMAIL_STORAGE_KEY = "email";
 export const PORTAL_STORAGE_KEY = "portal";
@@ -34,10 +27,7 @@ export const SEED_STORAGE_KEY = "seed";
 
 export const PORTAL_LOGIN_COMPLETE_SENTINEL_KEY = "portal-login-complete";
 
-const INITIAL_PORTAL = "https://siasky.net";
-
-// Descriptive salt that should not be changed.
-const SALT_ENCRYPTED_PATH_SEED = "encrypted filesystem path seed";
+export const INITIAL_PORTAL = "https://siasky.net";
 
 // SALT_MESSAGE_SIGNING is the prefix with which we salt the data that MySky
 // signs in order to be able to prove ownership of the MySky id.
@@ -48,14 +38,6 @@ let dev = false;
 /// #if ENV == 'dev'
 dev = true;
 /// #endif
-
-/**
- * Settings associated with a user's MySky account.
- *
- * @property portal - The user's preferred portal. We redirect a skapp to this portal, if it is set.
- * @property email - The user's portal account email. We connect to their portal account if this is set.
- */
-type UserSettings = { portal: string | null; email: string | null };
 
 /**
  * Convenience class containing the permissions provider handshake connection
@@ -130,17 +112,14 @@ export class MySky {
 
     const initialClient = getLoginClient(seed, preferredPortal);
 
-    // Get the referrer and MySky domains.
-    const actualPortalClient = new SkynetClient();
-    // Get the MySky domain (i.e. `skynet-mysky.hns or sandbridge.hns`).
-    const mySkyDomain = await actualPortalClient.extractDomain(window.location.href);
-    // Extract skapp domain from actual portal.
-    // NOTE: The skapp should have opened MySky on the same portal as itself.
-    const referrerDomain = await actualPortalClient.extractDomain(document.referrer);
+    const { currentDomain, referrerDomain } = await getCurrentAndReferrerDomains();
+    if (!referrerDomain) {
+      throw new Error("Referrer not found");
+    }
 
     // Create MySky object.
     log("Calling new MySky()");
-    const mySky = new MySky(initialClient, mySkyDomain, referrerDomain, permissionsProvider, preferredPortal);
+    const mySky = new MySky(initialClient, currentDomain, referrerDomain, permissionsProvider, preferredPortal);
 
     // Login to portal.
     {
@@ -149,7 +128,7 @@ export class MySky {
 
       // Get the preferred portal and stored email from user settings.
       if (seed && !preferredPortal) {
-        const { portal, email } = await mySky.getUserSettings(seed);
+        const { portal, email } = await getUserSettings(initialClient, seed, currentDomain);
         preferredPortal = portal;
         storedEmail = email;
       }
@@ -460,160 +439,6 @@ export class MySky {
   }
 
   /**
-   * Gets the encrypted path seed for the given path without requiring
-   * permissions. This should NOT be exported - for internal use only.
-   *
-   * @param seed - The user seed.
-   * @param path - The given file or directory path.
-   * @param isDirectory - Whether the path corresponds to a directory.
-   * @returns - The hex-encoded encrypted path seed.
-   */
-  async getEncryptedPathSeedInternal(seed: Uint8Array, path: string, isDirectory: boolean): Promise<string> {
-    log("Entered getEncryptedPathSeedInternal");
-
-    // Compute the root path seed.
-    const rootPathSeedBytes = deriveRootPathSeed(seed);
-
-    // Compute the child path seed.
-    return deriveEncryptedPathSeedForRoot(rootPathSeedBytes, path, isDirectory);
-  }
-
-  /**
-   * Checks for the preferred portal and stored email in user settings, and sets
-   * them if found.
-   *
-   * @param seed - The user seed.
-   * @returns - The portal and email, if found.
-   */
-  protected async getUserSettings(seed: Uint8Array): Promise<UserSettings> {
-    log("Entered getUserSettings");
-
-    let email = null,
-      portal = null;
-
-    // Get the settings path for the MySky domain.
-    const path = await this.getUserSettingsPath();
-
-    // Check for stored portal and email in user settings.
-    const { data: userSettings } = await this.getJSONEncryptedInternal(seed, path);
-    if (userSettings) {
-      email = (userSettings.email as string) || null;
-      portal = (userSettings.portal as string) || null;
-    }
-
-    return { portal, email };
-  }
-
-  /**
-   * Sets the user settings.
-   *
-   * @param seed - The user seed.
-   * @param settings - The given user settings.
-   */
-  protected async setUserSettings(seed: Uint8Array, settings: UserSettings): Promise<void> {
-    log("Entered setUserSettings");
-
-    // Get the settings path for the MySky domain.
-    const path = await this.getUserSettingsPath();
-
-    // Set preferred portal and email in user settings.
-    await this.setJSONEncryptedInternal(seed, path, settings);
-  }
-
-  /**
-   * Gets Encrypted JSON at the given path through MySky.
-   *
-   * @param seed - The user seed.
-   * @param path - The data path.
-   * @returns - An object containing the decrypted json data.
-   * @throws - Will throw if the user does not have Hidden Read permission on the path.
-   */
-  protected async getJSONEncryptedInternal(seed: Uint8Array, path: string): Promise<EncryptedJSONResponse> {
-    log("Entered getJSONEncryptedInternal");
-
-    validateString("path", path, "parameter");
-
-    const { publicKey } = genKeyPairFromSeed(seed);
-    const pathSeed = await this.getEncryptedPathSeedInternal(seed, path, false);
-
-    // Fetch the raw encrypted JSON data.
-    const dataKey = deriveEncryptedFileTweak(pathSeed);
-    log("Calling getRawBytes");
-    const { data } = await this.client.db.getRawBytes(publicKey, dataKey);
-    if (data === null) {
-      return { data: null };
-    }
-
-    const encryptionKey = deriveEncryptedFileKeyEntropy(pathSeed);
-    const json = decryptJSONFile(data, encryptionKey);
-
-    return { data: json };
-  }
-
-  /**
-   * Sets Encrypted JSON at the given path through MySky.
-   *
-   * @param seed - The user seed.
-   * @param path - The data path.
-   * @param json - The json to encrypt and set.
-   * @returns - An object containing the original json data.
-   * @throws - Will throw if the user does not have Hidden Write permission on the path.
-   */
-  protected async setJSONEncryptedInternal(
-    seed: Uint8Array,
-    path: string,
-    json: JsonData
-  ): Promise<EncryptedJSONResponse> {
-    log("Entered setJSONEncryptedInternal");
-
-    validateString("path", path, "parameter");
-    validateObject("json", json, "parameter");
-
-    const { publicKey } = genKeyPairFromSeed(seed);
-    const pathSeed = await this.getEncryptedPathSeedInternal(seed, path, false);
-    const dataKey = deriveEncryptedFileTweak(pathSeed);
-    const opts = { hashedDataKeyHex: true };
-
-    // Immediately fail if the mutex is not available.
-    return await this.client.db.revisionNumberCache.withCachedEntryLock(
-      publicKey,
-      dataKey,
-      async (cachedRevisionEntry) => {
-        // Get the cached revision number before doing anything else.
-        const newRevision = incrementRevision(cachedRevisionEntry.revision);
-
-        // Derive the key.
-        const encryptionKey = deriveEncryptedFileKeyEntropy(pathSeed);
-
-        // Pad and encrypt json file.
-        log("Calling encryptJSONFile");
-        const data = encryptJSONFile(json, { version: ENCRYPTED_JSON_RESPONSE_VERSION }, encryptionKey);
-
-        log("Calling getOrCreateSkyDBRegistryEntry");
-        const [entry] = await getOrCreateSkyDBRegistryEntry(this.client, dataKey, data, newRevision, opts);
-
-        // Sign the entry.
-        log("Calling signEncryptedRegistryEntryInternal");
-        const signature = await this.signEncryptedRegistryEntryInternal(seed, entry, path);
-
-        log("Calling postSignedEntry");
-        await this.client.registry.postSignedEntry(publicKey, entry, signature, opts);
-
-        return { data: json };
-      }
-    );
-  }
-
-  /**
-   * Get the path to the user settings stored in the root MySky domain.
-   *
-   * @returns - The user settings path.
-   */
-  protected async getUserSettingsPath(): Promise<string> {
-    return `${this.mySkyDomain}/settings.json`;
-  }
-
-  /**
    * Logs in from MySky UI.
    *
    * Flow:
@@ -651,7 +476,7 @@ export class MySky {
     // Login to portal.
     {
       // Get the preferred portal and switch to it.
-      const { portal: preferredPortal, email } = await this.getUserSettings(seed);
+      const { portal: preferredPortal, email } = await getUserSettings(this.client, seed, this.mySkyDomain);
       let storedEmail = email;
 
       // Set the portal
@@ -678,7 +503,7 @@ export class MySky {
         // Save the email in user settings. Do this after we've connected to
         // the portal account so we know that the email is valid.
         if (isEmailProvidedByUser) {
-          await this.setUserSettings(seed, { portal: preferredPortal, email: storedEmail });
+          await setUserSettings(this.client, seed, this.mySkyDomain, { portal: preferredPortal, email: storedEmail });
         }
       }
     }
@@ -787,30 +612,6 @@ export class MySky {
     });
   }
 
-  /**
-   * Signs the encrypted registry entry without requiring permissions. For
-   * internal use only.
-   *
-   * @param seed - The user seed.
-   * @param entry - The encrypted registry entry.
-   * @param path - The MySky path.
-   * @returns - The signature.
-   */
-  async signEncryptedRegistryEntryInternal(seed: Uint8Array, entry: RegistryEntry, path: string): Promise<Uint8Array> {
-    log("Entered signEncryptedRegistryEntryInternal");
-
-    // Check that the entry data key corresponds to the right path.
-    //
-    // Use `isDirectory: false` because registry entries can only correspond to files right now.
-    const pathSeed = await this.getEncryptedPathSeedInternal(seed, path, false);
-    const dataKey = deriveEncryptedFileTweak(pathSeed);
-    if (entry.dataKey !== dataKey) {
-      throw new Error("Path does not match the data key in the encrypted registry entry.");
-    }
-
-    return this.signRegistryEntryHelperInternal(seed, entry);
-  }
-
   protected async signRegistryEntryHelper(
     entry: RegistryEntry,
     path: string,
@@ -826,18 +627,6 @@ export class MySky {
     if (!seed) {
       throw new Error("User seed not found");
     }
-
-    // Get the private key.
-    const { privateKey } = genKeyPairFromSeed(seed);
-
-    // Sign the entry.
-    const signature = await signEntry(privateKey, entry, true);
-
-    return signature;
-  }
-
-  protected async signRegistryEntryHelperInternal(seed: Uint8Array, entry: RegistryEntry): Promise<Uint8Array> {
-    log("Entered signRegistryEntryHelperInternal");
 
     // Get the private key.
     const { privateKey } = genKeyPairFromSeed(seed);
@@ -953,16 +742,26 @@ export function clearStoredSeed(): void {
 }
 
 /**
- * Derives the root path seed.
+ * Gets the current and referrer domains.
  *
- * @param seed - The user seed.
- * @returns - The root path seed.
+ * @returns - The current and referrer domains.
  */
-function deriveRootPathSeed(seed: Uint8Array): Uint8Array {
-  const bytes = new Uint8Array([...sha512(SALT_ENCRYPTED_PATH_SEED), ...sha512(seed)]);
-  // NOTE: Truncate to 32 bytes instead of the 64 bytes for a directory path
-  // seed. This is a historical artifact left for backwards compatibility.
-  return sha512(bytes).slice(0, ENCRYPTION_ROOT_PATH_SEED_BYTES_LENGTH);
+export async function getCurrentAndReferrerDomains(): Promise<{
+  currentDomain: string;
+  referrerDomain: string | null;
+}> {
+  // Get the referrer and MySky domains.
+  const actualPortalClient = new SkynetClient();
+  // Get the MySky domain (i.e. `skynet-mysky.hns or sandbridge.hns`).
+  const currentDomain = await actualPortalClient.extractDomain(window.location.href);
+  // Extract skapp domain from actual portal.
+  // NOTE: The skapp should have opened MySky on the same portal as itself.
+  let referrerDomain = null;
+  if (document.referrer) {
+    referrerDomain = await actualPortalClient.extractDomain(document.referrer);
+  }
+
+  return { currentDomain, referrerDomain };
 }
 
 /**
@@ -981,23 +780,4 @@ function getLoginClient(seed: Uint8Array | null, preferredPortal: string | null)
 
   const initialPortal = seed ? INITIAL_PORTAL : undefined;
   return new SkynetClient(preferredPortal || initialPortal);
-}
-
-/**
- * Increments the given revision number and checks to make sure it is not
- * greater than the maximum revision.
- *
- * @param revision - The given revision number.
- * @returns - The incremented revision number.
- * @throws - Will throw if the incremented revision number is greater than the maximum revision.
- */
-function incrementRevision(revision: bigint): bigint {
-  revision = revision + BigInt(1);
-
-  // Throw if the revision is already the maximum value.
-  if (revision > MAX_REVISION) {
-    throw new Error("Current entry already has maximum allowed revision, could not update the entry");
-  }
-
-  return revision;
 }

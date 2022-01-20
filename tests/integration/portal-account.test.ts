@@ -2,7 +2,7 @@ import { DEFAULT_SKYNET_PORTAL_URL, SkynetClient } from "skynet-js";
 
 import { randomAsciiString } from "../utils";
 import { generatePhrase, phraseToSeed } from "../../src/seed";
-import { login, register } from "../../src/portal-account";
+import { login, register } from "../../src/portal_account";
 
 const portalUrl = DEFAULT_SKYNET_PORTAL_URL;
 const client = new SkynetClient(portalUrl);
