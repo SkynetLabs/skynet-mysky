@@ -348,7 +348,13 @@ async function _runSeedSelectionDisplay(): Promise<string> {
 async function runSigninConnectDisplay(): Promise<string | null> {
   const signinConnectDisplayUrl = await getSigninConnectDisplayUrl();
 
-  return setupAndRunDisplay(signinConnectDisplayUrl, "getEmail");
+  return setupAndRunDisplay<string>(signinConnectDisplayUrl, "getEmail").then(
+    // Convert "" to null. In signin-connect.ts we use "" to signify no email
+    // was given.
+    (email: string) => {
+      return email === "" ? null : email;
+    }
+  );
 }
 
 /**
@@ -409,7 +415,6 @@ async function setupAndRunDisplay<T>(displayUrl: string, methodName: string, ...
   displayUrl = displayUrlObject.toString();
 
   // Add error listener.
-
   const { promise: promiseError, controller: controllerError } = monitorWindowError();
 
   let frame: HTMLIFrameElement;
@@ -424,13 +429,13 @@ async function setupAndRunDisplay<T>(displayUrl: string, methodName: string, ...
 
     try {
       // Launch the full-screen iframe and connection.
-
       frame = launchDisplay(displayUrl);
       connection = await connectDisplayProvider(frame);
 
       // Get the response.
-
+      //
       // TODO: This should be a dual-promise that also calls ping() on an interval and rejects if no response was found in a given amount of time.
+      log(`Calling method ${methodName} in iframe`);
       const response = await connection.remoteHandle().call(methodName, ...methodParams);
 
       resolve(response);
@@ -469,6 +474,11 @@ async function resolveOnMySkyPortalLogin(): Promise<void> {
     new Promise<void>((resolve, reject) =>
       window.addEventListener("storage", async ({ key, newValue }: StorageEvent) => {
         if (key !== PORTAL_LOGIN_COMPLETE_SENTINEL_KEY) {
+          return;
+        }
+
+        if (!newValue) {
+          // Key was removed.
           return;
         }
 

@@ -511,6 +511,8 @@ export class MySky {
    * @param settings - The given user settings.
    */
   protected async setUserSettings(seed: Uint8Array, settings: UserSettings): Promise<void> {
+    log("Entered setUserSettings");
+
     // Get the settings path for the MySky domain.
     const path = await this.getUserSettingsPath();
 
@@ -531,11 +533,8 @@ export class MySky {
 
     validateString("path", path, "parameter");
 
-    // Call MySky which checks for read permissions on the path.
-    const [publicKey, pathSeed] = await Promise.all([
-      this.userID(),
-      this.getEncryptedPathSeedInternal(seed, path, false),
-    ]);
+    const { publicKey } = genKeyPairFromSeed(seed);
+    const pathSeed = await this.getEncryptedPathSeedInternal(seed, path, false);
 
     // Fetch the raw encrypted JSON data.
     const dataKey = deriveEncryptedFileTweak(pathSeed);
@@ -570,14 +569,10 @@ export class MySky {
     validateString("path", path, "parameter");
     validateObject("json", json, "parameter");
 
-    const opts = { hashedDataKeyHex: true };
-
-    // Call MySky which checks for read permissions on the path.
-    const [publicKey, pathSeed] = await Promise.all([
-      this.userID(),
-      this.getEncryptedPathSeedInternal(seed, path, false),
-    ]);
+    const { publicKey } = genKeyPairFromSeed(seed);
+    const pathSeed = await this.getEncryptedPathSeedInternal(seed, path, false);
     const dataKey = deriveEncryptedFileTweak(pathSeed);
+    const opts = { hashedDataKeyHex: true };
 
     // Immediately fail if the mutex is not available.
     return await this.client.db.revisionNumberCache.withCachedEntryLock(
@@ -591,14 +586,18 @@ export class MySky {
         const encryptionKey = deriveEncryptedFileKeyEntropy(pathSeed);
 
         // Pad and encrypt json file.
+        log("Calling encryptJSONFile");
         const data = encryptJSONFile(json, { version: ENCRYPTED_JSON_RESPONSE_VERSION }, encryptionKey);
 
+        log("Calling getOrCreateSkyDBRegistryEntry");
         const [entry] = await getOrCreateSkyDBRegistryEntry(this.client, dataKey, data, newRevision, opts);
 
-        // Call MySky which checks for write permissions on the path.
+        // Sign the entry.
+        log("Calling signEncryptedRegistryEntryInternal");
         const signature = await this.signEncryptedRegistryEntryInternal(seed, entry, path);
 
-        await this.client.registry.postSignedEntry(publicKey, entry, signature);
+        log("Calling postSignedEntry");
+        await this.client.registry.postSignedEntry(publicKey, entry, signature, opts);
 
         return { data: json };
       }
@@ -767,6 +766,10 @@ export class MySky {
         return;
       }
 
+      // Clear any existing value to make sure the storage event is triggered
+      // when we set the key.
+      localStorage.removeItem(PORTAL_LOGIN_COMPLETE_SENTINEL_KEY);
+
       try {
         // Parse the seed.
         const seed = new Uint8Array(JSON.parse(newValue));
@@ -794,8 +797,10 @@ export class MySky {
    * @returns - The signature.
    */
   async signEncryptedRegistryEntryInternal(seed: Uint8Array, entry: RegistryEntry, path: string): Promise<Uint8Array> {
-    // Check that the entry data key corresponds to the right path.
+    log("Entered signEncryptedRegistryEntryInternal");
 
+    // Check that the entry data key corresponds to the right path.
+    //
     // Use `isDirectory: false` because registry entries can only correspond to files right now.
     const pathSeed = await this.getEncryptedPathSeedInternal(seed, path, false);
     const dataKey = deriveEncryptedFileTweak(pathSeed);
@@ -803,7 +808,7 @@ export class MySky {
       throw new Error("Path does not match the data key in the encrypted registry entry.");
     }
 
-    return this.signRegistryEntryHelper(entry, path, PermCategory.Hidden);
+    return this.signRegistryEntryHelperInternal(seed, entry);
   }
 
   protected async signRegistryEntryHelper(
@@ -811,32 +816,40 @@ export class MySky {
     path: string,
     category: PermCategory
   ): Promise<Uint8Array> {
-    log("Entered signRegistryEntry");
+    log("Entered signRegistryEntryHelper");
 
     // Check with the permissions provider that we have permission for this request.
-
     await this.checkPermission(path, category, PermType.Write);
 
     // Get the seed.
-
     const seed = checkStoredSeed();
     if (!seed) {
       throw new Error("User seed not found");
     }
 
     // Get the private key.
-
     const { privateKey } = genKeyPairFromSeed(seed);
 
     // Sign the entry.
-
     const signature = await signEntry(privateKey, entry, true);
+
+    return signature;
+  }
+
+  protected async signRegistryEntryHelperInternal(seed: Uint8Array, entry: RegistryEntry): Promise<Uint8Array> {
+    log("Entered signRegistryEntryHelperInternal");
+
+    // Get the private key.
+    const { privateKey } = genKeyPairFromSeed(seed);
+
+    // Sign the entry.
+    const signature = await signEntry(privateKey, entry, true);
+
     return signature;
   }
 
   protected async checkPermission(path: string, category: PermCategory, permType: PermType): Promise<void> {
     // Check for the permissions provider.
-
     if (!this.permissionsProvider) {
       throw new Error("Permissions provider not loaded");
     }
@@ -904,7 +917,7 @@ export function checkStoredSeed(): Uint8Array | null {
       throw new Error("Bad seed length");
     }
   } catch (err) {
-    log(err as string);
+    log(`Error getting stored seed: ${err as string}`);
     clearStoredSeed();
     return null;
   }

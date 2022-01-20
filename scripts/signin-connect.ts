@@ -39,7 +39,7 @@ window.onload = async () => {
 };
 
 (window as any).continue = () => {
-  handleEmail(null);
+  handleEmail("");
 };
 
 // ==========
@@ -71,11 +71,13 @@ async function init(): Promise<void> {
  * @returns - The email, if set.
  */
 async function getEmail(): Promise<string | null> {
+  log("Entered getEmail");
+
   const checkInterval = 100;
 
   return new Promise((resolve) => {
     const checkFunc = () => {
-      if (readyEmail) {
+      if (readyEmail !== null) {
         resolve(readyEmail);
       }
     };
@@ -89,9 +91,7 @@ async function getEmail(): Promise<string | null> {
  *
  * @param email - The email.
  */
-function handleEmail(email: string | null): void {
-  log(`Entered handleEmail with email: ${email}`);
-
+function handleEmail(email: string): void {
   // Set `readyEmail`, triggering `getEmail`.
   readyEmail = email;
 }
