@@ -64,6 +64,9 @@ export class PermissionsProvider {
 export class MySky {
   protected parentConnection: Promise<Connection> | null = null;
 
+  protected email: string | null = null;
+  protected preferredPortal: string | null = null;
+
   // ============
   // Constructors
   // ============
@@ -72,8 +75,7 @@ export class MySky {
     protected client: SkynetClient,
     protected mySkyDomain: string,
     protected referrerDomain: string,
-    protected permissionsProvider: Promise<PermissionsProvider> | null,
-    protected preferredPortal: string | null
+    protected permissionsProvider: Promise<PermissionsProvider> | null
   ) {}
 
   /**
@@ -119,7 +121,7 @@ export class MySky {
 
     // Create MySky object.
     log("Calling new MySky()");
-    const mySky = new MySky(initialClient, currentDomain, referrerDomain, permissionsProvider, preferredPortal);
+    const mySky = new MySky(initialClient, currentDomain, referrerDomain, permissionsProvider);
 
     // Login to portal.
     {
@@ -138,6 +140,7 @@ export class MySky {
 
       // Set up auto-relogin if the email was found.
       if (seed && storedEmail) {
+        mySky.email = storedEmail;
         mySky.setupAutoRelogin(seed, storedEmail);
       }
     }
@@ -187,6 +190,18 @@ export class MySky {
       .call("checkPermissions", perms, dev);
 
     return [true, permissionsResponse];
+  }
+
+  /**
+   * Checks whether the user can be automatically logged in to the portal (the
+   * user email was found).
+   *
+   * @returns - Whether the email was found.
+   */
+  async checkPortalLogin(): Promise<boolean> {
+    log("Entered checkPortalLogin");
+
+    return this.email !== null;
   }
 
   /**
@@ -265,6 +280,22 @@ export class MySky {
     }
   }
 
+  async portalLogin(): Promise<void> {
+    // Get the seed.
+    const seed = checkStoredSeed();
+    if (!seed) {
+      throw new Error("User seed not found");
+    }
+
+    // Get the email.
+    const email = this.email;
+    if (!email) {
+      throw new Error("Email not found");
+    }
+
+    await login(this.client, seed, email);
+  }
+
   /**
    * Signs the given data using the MySky user's private key. This method can be
    * used for MySky user verification as the signature may be verified against
@@ -337,14 +368,12 @@ export class MySky {
 
   async userID(): Promise<string> {
     // Get the seed.
-
     const seed = checkStoredSeed();
     if (!seed) {
       throw new Error("User seed not found");
     }
 
     // Get the public key.
-
     const { publicKey } = genKeyPairFromSeed(seed);
     return publicKey;
   }
@@ -390,6 +419,7 @@ export class MySky {
 
     const methods = {
       checkLogin: this.checkLogin.bind(this),
+      checkPortalLogin: this.checkPortalLogin.bind(this),
       // NOTE: `getEncryptedFileSeed` was renamed to `getEncryptedPathSeed`, but
       // we still expose `getEncryptedFileSeed` in the API for backwards
       // compatibility.
@@ -397,6 +427,7 @@ export class MySky {
       getEncryptedPathSeed: this.getEncryptedPathSeed.bind(this),
       getPreferredPortal: this.getPreferredPortal.bind(this),
       logout: this.logout.bind(this),
+      portalLogin: this.portalLogin.bind(this),
       signMessage: this.signMessage.bind(this),
       signRegistryEntry: this.signRegistryEntry.bind(this),
       signEncryptedRegistryEntry: this.signEncryptedRegistryEntry.bind(this),
@@ -496,6 +527,8 @@ export class MySky {
         // Register/login to ensure the email is valid and get the JWT (in case
         // we don't redirect to a preferred portal).
         await this.connectToPortalAccount(seed, storedEmail);
+
+        this.email = storedEmail;
 
         // Set up auto re-login on JWT expiry.
         this.setupAutoRelogin(seed, storedEmail);
