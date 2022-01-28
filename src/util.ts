@@ -2,7 +2,9 @@ import { Buffer } from "buffer";
 import { permCategoryToString, Permission, permTypeToString } from "skynet-mysky-utils";
 
 const urlParams = new URLSearchParams(window.location.search);
-const DEBUG_ENABLED = urlParams.get("debug") === "true";
+export const ALPHA_ENABLED = urlParams.get("alpha") === "true";
+export const DEBUG_ENABLED = urlParams.get("debug") === "true";
+export const DEV_ENABLED = urlParams.get("dev") === "true";
 
 /**
  * Converts a hex encoded string to a uint8 array.

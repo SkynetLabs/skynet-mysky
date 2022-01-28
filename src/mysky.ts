@@ -19,7 +19,7 @@ import { login, logout, register } from "./portal_account";
 import { launchPermissionsProvider } from "./provider";
 import { SEED_LENGTH } from "./seed";
 import { getUserSettings, setUserSettings } from "./user_settings";
-import { fromHexString, log, readablePermission } from "./util";
+import { ALPHA_ENABLED, DEV_ENABLED, fromHexString, log, readablePermission } from "./util";
 
 export const EMAIL_STORAGE_KEY = "email";
 export const PORTAL_STORAGE_KEY = "portal";
@@ -783,15 +783,40 @@ export async function getCurrentAndReferrerDomains(): Promise<{
   currentDomain: string;
   referrerDomain: string | null;
 }> {
+  // Get the MySky domain (i.e. `skynet-mysky.hns or sandbridge.hns`). Use
+  // hard-coded values since we don't expect official MySky to be hosted
+  // anywhere else for now.
+  let currentDomain;
+  if (ALPHA_ENABLED && DEV_ENABLED) {
+    throw new Error("Alpha and dev modes cannot both be enbaled");
+  } else if (ALPHA_ENABLED) {
+    currentDomain = "sandbridge.hns";
+  } else if (DEV_ENABLED) {
+    currentDomain = "skynet-mysky-dev.hns";
+  } else {
+    currentDomain = "skynet-mysky.hns";
+  }
+
   // Get the referrer and MySky domains.
   const actualPortalClient = new SkynetClient();
-  // Get the MySky domain (i.e. `skynet-mysky.hns or sandbridge.hns`).
-  const currentDomain = await actualPortalClient.extractDomain(window.location.href);
   // Extract skapp domain from actual portal.
   // NOTE: The skapp should have opened MySky on the same portal as itself.
   let referrerDomain = null;
   if (document.referrer) {
-    referrerDomain = await actualPortalClient.extractDomain(document.referrer);
+    const referrerUrlObj = new URL(document.referrer);
+    referrerDomain = await actualPortalClient.extractDomain(referrerUrlObj.hostname);
+  }
+
+  // Sanity check that the current domain as extracted from the URL is
+  // equivalent to the hard-coded domain we got above.
+  {
+    // Extract the MySky domain from the current URL.
+    const currentDomainExtracted = await actualPortalClient.extractDomain(window.location.hostname);
+    if (currentDomainExtracted !== currentDomain) {
+      throw new Error(
+        `Extracted current domain '${currentDomainExtracted}' is different from the expected domain '${currentDomain}'`
+      );
+    }
   }
 
   return { currentDomain, referrerDomain };
