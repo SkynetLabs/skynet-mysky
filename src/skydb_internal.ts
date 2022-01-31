@@ -40,8 +40,9 @@ export async function getJSONEncryptedInternal(
 
   // Fetch the raw encrypted JSON data.
   const dataKey = deriveEncryptedFileTweak(pathSeed);
+  const opts = { hashedDataKeyHex: true };
   log("Calling getRawBytes");
-  const { data } = await client.db.getRawBytes(publicKey, dataKey);
+  const { data } = await client.db.getRawBytes(publicKey, dataKey, opts);
   if (data === null) {
     return { data: null };
   }

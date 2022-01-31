@@ -231,6 +231,8 @@ export class MySky {
   }
 
   async getPreferredPortal(): Promise<string | null> {
+    log("Entered getPreferredPortal");
+
     return this.preferredPortal;
   }
 
@@ -552,7 +554,7 @@ export class MySky {
    * @param preferredPortal - The user's preferred portal
    */
   protected setPortal(preferredPortal: string | null): void {
-    log("Entered setPortal");
+    log(`Entered setPortal with portal: ${preferredPortal}`);
 
     if (preferredPortal) {
       // Connect to the preferred portal if it was found.
