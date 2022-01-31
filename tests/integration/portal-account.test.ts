@@ -1,11 +1,10 @@
-import { SkynetClient } from "skynet-js";
+import { DEFAULT_SKYNET_PORTAL_URL, SkynetClient } from "skynet-js";
 
 import { randomAsciiString } from "../utils";
 import { generatePhrase, phraseToSeed } from "../../src/seed";
 import { getEmailFromJWT, login, register } from "../../src/portal-account";
 
-// TODO: Remove hard-coded URL.
-const portalUrl = "https://siasky.xyz";
+const portalUrl = DEFAULT_SKYNET_PORTAL_URL;
 const client = new SkynetClient(portalUrl);
 const phrase = generatePhrase();
 const seed = phraseToSeed(phrase);
