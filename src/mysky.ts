@@ -800,18 +800,19 @@ export async function getCurrentAndReferrerDomains(): Promise<{
   }
 
   // Get the referrer and MySky domains.
-  const actualPortalClient = new SkynetClient();
   // Extract skapp domain from actual portal.
   // NOTE: The skapp should have opened MySky on the same portal as itself.
   let referrerDomain = null;
   if (document.referrer) {
+    const referrerClient = new SkynetClient(document.referrer);
     const referrerUrlObj = new URL(document.referrer);
-    referrerDomain = await actualPortalClient.extractDomain(referrerUrlObj.hostname);
+    referrerDomain = await referrerClient.extractDomain(referrerUrlObj.hostname);
   }
 
   // Sanity check that the current domain as extracted from the URL is
   // equivalent to the hard-coded domain we got above.
   {
+    const actualPortalClient = new SkynetClient();
     // Extract the MySky domain from the current URL.
     const currentDomainExtracted = await actualPortalClient.extractDomain(window.location.hostname);
     if (currentDomainExtracted !== currentDomain) {
