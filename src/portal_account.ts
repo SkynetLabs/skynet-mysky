@@ -110,7 +110,7 @@ type ChallengeResponse = {
  * @param seed - The seed.
  * @param email - The user email.
  * @param [customOptions] - The custom register options.
- * @returns - The JWT token.
+ * @returns - An empty promise.
  */
 export async function register(
   client: SkynetClient,
@@ -153,7 +153,7 @@ export async function register(
  * @param seed - The seed.
  * @param email - The user email.
  * @param [customOptions] - The custom login options.
- * @returns - The JWT token.
+ * @returns - An empty promise.
  */
 export async function login(
   client: SkynetClient,
@@ -259,12 +259,13 @@ function genPortalLoginKeypair(seed: Uint8Array, email: string): KeyPair {
  * => https://siasky.net, https://dev1.siasky.dev => https://siasky.dev.
  *
  * @param portalUrl - The full portal URL.
- * @returns - The shortened portal recipient name.
+ * @returns - The shortened portal recipient URL.
  */
 export function getPortalRecipient(portalUrl: string): string {
   const url = new URL(portalUrl);
 
   // Get last two portions of the hostname.
-  const domain = url.hostname.split(".").slice(-2).join(".");
-  return `https://${domain}`;
+  url.hostname = url.hostname.split(".").slice(-2).join(".");
+
+  return url.toString();
 }
