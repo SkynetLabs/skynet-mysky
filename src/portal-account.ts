@@ -1,4 +1,3 @@
-import jwt_decode from "jwt-decode";
 import { KeyPair, SkynetClient } from "skynet-js";
 import type { CustomClientOptions } from "skynet-js";
 import { sign } from "tweetnacl";
@@ -27,17 +26,6 @@ const CHALLENGE_TYPE_LOGIN = "skynet-portal-login";
  * The type of the registration challenge.
  */
 const CHALLENGE_TYPE_REGISTER = "skynet-portal-register";
-
-export type JWTData = { session: { identity: { traits: { email: string } } } };
-
-/**
- * Hack that allows us to use ?. optional chaining on unknown types in Typescript.
- *
- * See https://github.com/microsoft/TypeScript/issues/37700#issuecomment-940865298
- */
-type Unreliable<T> = { [P in keyof T]?: Unreliable<T[P]> } | undefined;
-
-type JWTResult = Unreliable<JWTData>;
 
 /**
  * Custom register options.
@@ -124,14 +112,14 @@ type ChallengeResponse = {
  * @param seed - The seed.
  * @param email - The user email.
  * @param [customOptions] - The custom register options.
- * @returns - The JWT token.
+ * @returns - An empty promise.
  */
 export async function register(
   client: SkynetClient,
   seed: Uint8Array,
   email: string,
   customOptions?: CustomRegisterOptions
-): Promise<string> {
+): Promise<void> {
   const opts = { ...DEFAULT_REGISTER_OPTIONS, ...client.customOptions, ...customOptions };
 
   const { publicKey, privateKey } = genPortalLoginKeypair(seed, email);
@@ -152,19 +140,12 @@ export async function register(
     signature: challengeResponse.signature,
     email,
   };
-  const registerResponse = await client.executeRequest({
+  await client.executeRequest({
     endpointPath: opts.endpointRegister,
     method: "POST",
     subdomain: "account",
     data,
   });
-
-  const jwt = registerResponse.headers[JWT_HEADER_NAME];
-  const decodedEmail = getEmailFromJWT(jwt);
-  if (decodedEmail !== email) {
-    throw new Error("Email not found in JWT or did not match provided email");
-  }
-  return jwt;
 }
 
 /**
@@ -174,14 +155,14 @@ export async function register(
  * @param seed - The seed.
  * @param email - The user email.
  * @param [customOptions] - The custom login options.
- * @returns - The JWT token.
+ * @returns - An empty promise.
  */
 export async function login(
   client: SkynetClient,
   seed: Uint8Array,
   email: string,
   customOptions?: CustomLoginOptions
-): Promise<string> {
+): Promise<void> {
   const opts = { ...DEFAULT_LOGIN_OPTIONS, ...client.customOptions, ...customOptions };
 
   const { publicKey, privateKey } = genPortalLoginKeypair(seed, email);
@@ -198,21 +179,12 @@ export async function login(
   const challengeResponse = signChallenge(privateKey, challenge, CHALLENGE_TYPE_LOGIN, portalRecipient);
 
   const data = challengeResponse;
-  const loginResponse = await client.executeRequest({
+  await client.executeRequest({
     endpointPath: opts.endpointLogin,
     method: "POST",
     subdomain: "account",
     data,
   });
-
-  const jwt = loginResponse.headers[JWT_HEADER_NAME];
-  const decodedEmail = getEmailFromJWT(jwt);
-  if (decodedEmail !== email) {
-    throw new Error(
-      `Email not found in JWT or did not match provided email. Expected: '${email}', received: '${decodedEmail}'`
-    );
-  }
-  return jwt;
 }
 
 /**
@@ -234,17 +206,6 @@ export async function logout(client: SkynetClient, customOptions?: CustomLogoutO
 // =======
 // Helpers
 // =======
-
-/**
- * Decodes the given JWT and extracts the email, if found.
- *
- * @param jwt - The given JWT string.
- * @returns - The email in the JWT, or undefined.
- */
-export function getEmailFromJWT(jwt: string): string | undefined {
-  const decodedJWT = jwt_decode(jwt) as JWTResult;
-  return decodedJWT?.session?.identity?.traits?.email;
-}
 
 /**
  * Signs the given challenge.
@@ -300,11 +261,13 @@ function genPortalLoginKeypair(seed: Uint8Array, email: string): KeyPair {
  * siasky.net, dev1.siasky.dev => siasky.dev.
  *
  * @param portalUrl - The full portal URL.
- * @returns - The shortened portal recipient name.
+ * @returns - The shortened portal recipient URL.
  */
 function getPortalRecipient(portalUrl: string): string {
   const url = new URL(portalUrl);
 
   // Get last two portions of the hostname.
-  return url.hostname.split(".").slice(-2).join(".");
+  url.hostname = url.hostname.split(".").slice(-2).join(".");
+
+  return url.toString();
 }
