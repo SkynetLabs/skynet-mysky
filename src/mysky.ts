@@ -526,25 +526,52 @@ export class MySky {
       }
 
       if (storedEmail) {
-        // Register/login to ensure the email is valid and get the JWT (in case
-        // we don't redirect to a preferred portal).
-        await this.connectToPortalAccount(seed, storedEmail);
-
-        this.email = storedEmail;
-
-        // Set up auto re-login on JWT expiry.
-        this.setupAutoRelogin(seed, storedEmail);
-
-        // Save the email in user settings. Do this after we've connected to
-        // the portal account so we know that the email is valid.
-        if (isEmailProvidedByUser) {
-          await setUserSettings(this.client, seed, this.mySkyDomain, { portal: preferredPortal, email: storedEmail });
-        }
+        await this.loginHandleEmail(seed, storedEmail, isEmailProvidedByUser);
       }
     }
 
     // Launch the new permissions provider.
     this.permissionsProvider = launchPermissionsProvider(seed);
+  }
+
+  /**
+   * Handling for when the email is found or provided while logging in.
+   *
+   * @param seed - The user seed.
+   * @param storedEmail - The email, either found in user settings or set in browser storage.
+   * @param isEmailProvidedByUser - Indicates whether the user provided the email (it was found in browser storage).
+   */
+  protected async loginHandleEmail(
+    seed: Uint8Array,
+    storedEmail: string,
+    isEmailProvidedByUser: boolean
+  ): Promise<void> {
+    try {
+      // Register/login to ensure the email is valid and get the JWT (in case
+      // we don't redirect to a preferred portal).
+      await this.connectToPortalAccount(seed, storedEmail);
+    } catch (e) {
+      // We don't want to make MySky initialization fail just because the
+      // user entered an invalid email. He'd never be able to log in and
+      // change it again.
+      //
+      // TODO: Maybe this should return a warning to the skapp? We don't
+      // have the ifrastructure in place for that yet.
+      console.warn(e);
+
+      return;
+    }
+
+    this.email = storedEmail;
+
+    // Set up auto re-login on JWT expiry.
+    this.setupAutoRelogin(seed, storedEmail);
+
+    // Save the email in user settings. Do this after we've connected to
+    // the portal account so we know that the email is valid.
+    if (isEmailProvidedByUser) {
+      await setUserSettings(this.client, seed, this.mySkyDomain, { portal: this.preferredPortal, email: storedEmail });
+    }
   }
 
   /**
