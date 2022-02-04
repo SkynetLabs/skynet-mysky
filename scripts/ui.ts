@@ -66,7 +66,7 @@ window.addEventListener("beforeunload", function (event) {
 });
 
 window.onerror = function (error: any) {
-  console.log(error);
+  console.warn(error);
   if (parentConnection) {
     if (typeof error === "string") {
       void parentConnection.remoteHandle().call("catchError", error);
@@ -525,7 +525,7 @@ export function saveSeedAndEmail(seed: Uint8Array, email: string | null): void {
   log("Entered saveSeedAndEmail");
 
   if (!localStorage) {
-    console.log("WARNING: localStorage disabled, seed not stored");
+    console.warn("WARNING: localStorage disabled, seed not stored");
     return;
   }
 

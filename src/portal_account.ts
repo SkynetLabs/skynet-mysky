@@ -4,6 +4,7 @@ import { sign } from "tweetnacl";
 
 import { genKeyPairFromHash, hashWithSalt } from "./crypto";
 import { hexToUint8Array, stringToUint8ArrayUtf8, toHexString, validateHexString, validateUint8ArrayLen } from "./util";
+import { ensureUrl } from "skynet-mysky-utils";
 
 /**
  * The size of the expected signature.
@@ -262,7 +263,7 @@ function genPortalLoginKeypair(seed: Uint8Array, email: string): KeyPair {
  * @returns - The shortened portal recipient URL.
  */
 export function getPortalRecipient(portalUrl: string): string {
-  const url = new URL(portalUrl);
+  const url = new URL(ensureUrl(portalUrl));
 
   // Get last two portions of the hostname.
   url.hostname = url.hostname.split(".").slice(-2).join(".");

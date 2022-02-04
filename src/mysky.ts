@@ -460,14 +460,15 @@ export class MySky {
   protected async connectToPortalAccount(seed: Uint8Array, email: string): Promise<void> {
     log("Entered connectToPortalAccount");
 
-    // Register and get the JWT cookie.
+    // Try to connect to the portal account and set the JWT cookie.
     //
     // Make requests to login and register in parallel. At most one can succeed,
     // and this saves a lot of time.
     try {
       await Promise.any([register(this.client, seed, email), login(this.client, seed, email)]);
-    } catch (e) {
-      throw new Error(`Could not register or login: ${e}`);
+    } catch (err) {
+      const errors = (err as AggregateError).errors;
+      throw new Error(`Could not register or login: [${errors}]`);
     }
   }
 
@@ -526,6 +527,8 @@ export class MySky {
       }
 
       if (storedEmail) {
+        // If an email was found, try to connect to a portal account and save
+        // the email if it was valid.
         await this.loginHandleEmail(seed, storedEmail, isEmailProvidedByUser);
       }
     }

@@ -11,6 +11,7 @@ module.exports = {
     // Provide polyfill for Promise.any for Opera.
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/any#browser_compatibility
     "core-js/stable/promise/any",
+    "core-js/stable/aggregate-error",
     "./src/index.ts",
   ],
   mode: "production",

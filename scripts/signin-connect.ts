@@ -13,7 +13,7 @@ let parentConnection: Connection | null = null;
 // ======
 
 window.onerror = function (error: any) {
-  console.log(error);
+  console.warn(error);
   if (parentConnection) {
     if (typeof error === "string") {
       void parentConnection.remoteHandle().call("catchError", error);
