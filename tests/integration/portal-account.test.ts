@@ -11,8 +11,7 @@ const phrase = generatePhrase();
 const seed = phraseToSeed(phrase);
 const email = `${randomAsciiString(20)}@bar.com`;
 
-// TODO: Re-enable these tests.
-describe.skip("Integration tests for registration and login", () => {
+describe("Integration tests for registration and login", () => {
   it("should register a new user on the portal", async () => {
     await register(client, seed, email);
   });
