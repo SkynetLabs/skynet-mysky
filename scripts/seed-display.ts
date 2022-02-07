@@ -61,6 +61,7 @@ window.onload = async () => {
 };
 
 (window as any).signIn = (event: Event) => {
+  // Prevent making unnecessary request.
   event.preventDefault();
 
   const phraseValue = (<HTMLInputElement>document.getElementById("signin-passphrase-text")).value;
@@ -78,7 +79,10 @@ window.onload = async () => {
   handleSeed(seed);
 };
 
-(window as any).signUp = () => {
+(window as any).signUp = (event: Event) => {
+  // Prevent making unnecessary request.
+  event.preventDefault();
+
   if ((<HTMLInputElement>document.getElementById("seed-confirm")).checked === false) return;
 
   const phraseValue = (<HTMLInputElement>document.getElementById("signup-passphrase-text")).value;
