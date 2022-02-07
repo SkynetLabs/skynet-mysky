@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.0]
+
+### Changed
+
+- Add detection for lookalike unicode characters (possible phishing attempts)
+- Add check for browser support
+- UI improvements
+
+### Added
+
+- Expose `signMessage` and `verifyMessageSignature` methods.
+- Add `recover-phrase-from-seed.ts` utility
+
 ## [0.4.0]
 
 ### Changed
