@@ -1,8 +1,7 @@
-import sign from "jwt-encode";
 import { DEFAULT_SKYNET_PORTAL_URL, SkynetClient } from "skynet-js";
 
 import { phraseToSeed } from "../../src/seed";
-import { login, register, JWT_HEADER_NAME, JWTData } from "../../src/portal-account";
+import { login, register } from "../../src/portal-account";
 
 const portalUrl = DEFAULT_SKYNET_PORTAL_URL;
 const client = new SkynetClient(portalUrl);
@@ -12,12 +11,7 @@ const pubKey = "0fce18836a7f730ad8d0442c8f311530297ce2807456f1454a9a755cde5333a4
 
 const email = "foo@bar.com";
 const challenge = "490ccffbbbcc304652488903ca425d42490ccffbbbcc304652488903ca425d42";
-const jwtData: JWTData = {
-  session: { identity: { traits: { email } } },
-};
-const cookie = sign(jwtData, "");
 const headers: Record<string, unknown> = {};
-headers[JWT_HEADER_NAME] = cookie;
 
 client.executeRequest = jest.fn();
 
@@ -34,9 +28,7 @@ describe("Unit tests for registration and login", () => {
         headers,
       });
 
-    const receivedCookie = await register(client, seed, email);
-
-    expect(receivedCookie).toEqual(cookie);
+    await register(client, seed, email);
 
     expect(client.executeRequest).toHaveBeenCalledWith({
       endpointPath: "/api/register",
@@ -65,9 +57,7 @@ describe("Unit tests for registration and login", () => {
         headers,
       });
 
-    const receivedCookie = await login(client, seed, email);
-
-    expect(receivedCookie).toEqual(cookie);
+    await login(client, seed, email);
 
     expect(client.executeRequest).toHaveBeenCalledWith({
       endpointPath: "/api/login",
