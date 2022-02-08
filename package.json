@@ -18,7 +18,7 @@
     "lint:eslint": "eslint --ext .ts src scripts tests utilities",
     "lint:tsc": "tsc --noemit && tsc --project tsconfig.scripts.json --noemit",
     "serve": "npx http-server dist",
-    "test": "jest",
+    "test": "jest --testTimeout 30000",
     "prepare": "husky install"
   },
   "repository": {

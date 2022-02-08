@@ -18,10 +18,22 @@
     "@typescript-eslint/no-non-null-assertion": 0,
     "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
 
-    "jsdoc/require-description": 0,
+    "jsdoc/require-description": 1,
+    "jsdoc/require-jsdoc": [
+      "error",
+      {
+        "require": {
+          "FunctionDeclaration": true,
+          "MethodDefinition": true,
+          "ClassDeclaration": true,
+          "ArrowFunctionExpression": false,
+          "FunctionExpression": false
+        }
+      }
+    ],
     "jsdoc/require-param-type": 0,
     "jsdoc/require-property-type": 0,
     "jsdoc/require-returns-type": 0,
-    "jsdoc/require-throws": 0
+    "jsdoc/require-throws": 1
   }
 }
