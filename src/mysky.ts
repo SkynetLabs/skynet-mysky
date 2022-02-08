@@ -68,6 +68,7 @@ export class PermissionsProvider {
  * communicating with skapps and with the permissions provider.
  *
  * @property client - The associated SkynetClient.
+ * @property mySkyDomain - The current domain of this MySky instance.
  * @property referrerDomain - The domain of the parent skapp.
  * @property parentConnection - The handshake connection with the parent window.
  * @property permissionsProvider - The permissions provider, if it has been loaded.
@@ -84,6 +85,11 @@ export class MySky {
 
   /**
    * Creates the `MySky` instance.
+   *
+   * @param client - The Skynet client.
+   * @param mySkyDomain - The current domain of this MySky instance.
+   * @param referrerDomain - The domain that referred us here (i.e. of the host skapp).
+   * @param permissionsProvider - The permissions provider, if it has been loaded.
    */
   constructor(
     protected client: SkynetClient,
@@ -101,11 +107,6 @@ export class MySky {
    *
    * For the preferred portal flow, see "Load MySky redirect flow" on
    * `redirectIfNotOnPreferredPortal` in the SDK.
-   *
-   * @returns - The MySky instance.
-
-  /**
-   * Initializes MySky and returns a handle to the `MySky` instance.
    *
    * @returns - The `MySky` instance.
    * @throws - Will throw if the browser does not support web strorage.
@@ -250,6 +251,11 @@ export class MySky {
     return deriveEncryptedPathSeedForRoot(rootPathSeedBytes, path, isDirectory);
   }
 
+  /**
+   * Gets the user's preferred portal, if set.
+   *
+   * @returns - The preferred portal, if set.
+   */
   async getPreferredPortal(): Promise<string | null> {
     log("Entered getPreferredPortal");
 
@@ -302,6 +308,10 @@ export class MySky {
     }
   }
 
+  /**
+   * Tries to log in to the portal through MySky. Should be called by the SDK
+   * whenever it detects an expired JWT.
+   */
   async portalLogin(): Promise<void> {
     // Get the seed.
     const seed = checkStoredSeed();
@@ -651,6 +661,7 @@ export class MySky {
    *
    * @param seed - The user seed.
    * @param email - The user email.
+   * @throws - Will throw if auto-login is already set up.
    */
   protected setupAutoRelogin(seed: Uint8Array, email: string): void {
     log("Entered setupAutoRelogin");
