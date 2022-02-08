@@ -50,6 +50,7 @@ export function generatePhrase(): string {
  *
  * @param phrase - The input seed phrase.
  * @returns - The seed bytes.
+ * @throws - Will throw if the phrase fails to validate, with the reason that the seed is invalid.
  */
 export function phraseToSeed(phrase: string): Uint8Array {
   phrase = sanitizePhrase(phrase);
@@ -147,6 +148,7 @@ export function validatePhrase(phrase: string): [boolean, string, Uint8Array | n
  *
  * @param seedWords - The array of 10-bit seed words.
  * @returns - The 2 10-bit checksum words.
+ * @throws - Will throw if the seed words are of the wrong length.
  */
 function generateChecksumWordsFromSeedWords(seedWords: Uint16Array): Uint16Array {
   if (seedWords.length != SEED_WORDS_LENGTH) {
@@ -210,6 +212,7 @@ export function sanitizePhrase(phrase: string): string {
  *
  * @param seed - The given seed bytes.
  * @returns - The 10-bit seed words.
+ * @throws - Will throw if the seed is of the wrong length.
  */
 export function seedToSeedWords(seed: Uint8Array): Uint16Array {
   if (seed.length !== SEED_LENGTH) {
@@ -252,6 +255,7 @@ export function seedToSeedWords(seed: Uint8Array): Uint16Array {
  *
  * @param seedWords - The seed words.
  * @returns - The full phrase.
+ * @throws - Will throw if the seed word are of the wrong length.
  */
 function seedWordsToPhrase(seedWords: Uint16Array): string {
   if (seedWords.length !== SEED_WORDS_LENGTH) {
@@ -295,6 +299,7 @@ function seedWordsToPhrase(seedWords: Uint16Array): string {
  *
  * @param seedWords - The array of 10-bit seed words.
  * @returns - The seed bytes.
+ * @throws - Will throw if the seed words are of the wrong length.
  */
 export function seedWordsToSeed(seedWords: Uint16Array): Uint8Array {
   if (seedWords.length !== SEED_WORDS_LENGTH) {
