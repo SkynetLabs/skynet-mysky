@@ -26,6 +26,7 @@ export const PORTAL_STORAGE_KEY = "portal";
 export const SEED_STORAGE_KEY = "seed";
 
 export const PORTAL_LOGIN_COMPLETE_SENTINEL_KEY = "portal-login-complete";
+const PORTAL_LOGIN_COMPLETE_SUCCESS_VALUE = "1";
 
 export const INITIAL_PORTAL = "https://siasky.net";
 
@@ -717,7 +718,7 @@ export class MySky {
         await this.loginFromUi(seed);
 
         // Signal to MySky UI that we are done.
-        localStorage.setItem(PORTAL_LOGIN_COMPLETE_SENTINEL_KEY, "1");
+        localStorage.setItem(PORTAL_LOGIN_COMPLETE_SENTINEL_KEY, PORTAL_LOGIN_COMPLETE_SUCCESS_VALUE);
       } catch (e) {
         log(`Error in storage event listener: ${e}`);
 
@@ -888,7 +889,7 @@ export async function getCurrentAndReferrerDomains(): Promise<{
   // anywhere else for now.
   let currentDomain;
   if (ALPHA_ENABLED && DEV_ENABLED) {
-    throw new Error("Alpha and dev modes cannot both be enbaled");
+    throw new Error("Alpha and dev modes cannot both be enabled");
   } else if (ALPHA_ENABLED) {
     currentDomain = "sandbridge.hns";
   } else if (DEV_ENABLED) {

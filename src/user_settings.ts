@@ -16,7 +16,7 @@ type UserSettings = { portal: string | null; email: string | null };
  * them if found.
  *
  * @param client - The Skynet client.
- * @param seed - The user seed.
+ * @param seed - The root MySky user seed.
  * @param mySkyDomain - The domain of the current MySky instance.
  * @returns - The portal and email, if found.
  */
@@ -47,7 +47,7 @@ export async function getUserSettings(
  * Sets the user settings.
  *
  * @param client - The Skynet client.
- * @param seed - The user seed.
+ * @param seed - The root MySky user seed.
  * @param mySkyDomain - The domain of the current MySky instance.
  * @param settings - The given user settings.
  */

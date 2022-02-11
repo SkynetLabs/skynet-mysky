@@ -21,7 +21,7 @@ import { log, validateObject, validateString } from "./util";
  * Gets Encrypted JSON at the given path through MySky.
  *
  * @param client - The Skynet client.
- * @param seed - The user seed.
+ * @param seed - The root MySky user seed.
  * @param path - The data path.
  * @returns - An object containing the decrypted json data.
  * @throws - Will throw if the user does not have Hidden Read permission on the path.
@@ -57,7 +57,7 @@ export async function getJSONEncryptedInternal(
  * Sets Encrypted JSON at the given path through MySky.
  *
  * @param client - The Skynet client.
- * @param seed - The user seed.
+ * @param seed - The root MySky user seed.
  * @param path - The data path.
  * @param json - The json to encrypt and set.
  * @returns - An object containing the original json data.
@@ -80,36 +80,40 @@ export async function setJSONEncryptedInternal(
   const opts = { hashedDataKeyHex: true };
 
   // Immediately fail if the mutex is not available.
-  return await client.db.revisionNumberCache.withCachedEntryLock(publicKey, dataKey, async (cachedRevisionEntry) => {
-    // Get the cached revision number before doing anything else.
-    const newRevision = incrementRevision(cachedRevisionEntry.revision);
+  return await client.db.revisionNumberCache.withCachedEntryLock(
+    publicKey,
+    dataKey,
+    async (cachedRevisionEntry: { revision: bigint }) => {
+      // Get the cached revision number before doing anything else.
+      const newRevision = incrementRevision(cachedRevisionEntry.revision);
 
-    // Derive the key.
-    const encryptionKey = deriveEncryptedFileKeyEntropy(pathSeed);
+      // Derive the key.
+      const encryptionKey = deriveEncryptedFileKeyEntropy(pathSeed);
 
-    // Pad and encrypt json file.
-    log("Calling encryptJSONFile");
-    const data = encryptJSONFile(json, { version: ENCRYPTED_JSON_RESPONSE_VERSION }, encryptionKey);
+      // Pad and encrypt json file.
+      log("Calling encryptJSONFile");
+      const data = encryptJSONFile(json, { version: ENCRYPTED_JSON_RESPONSE_VERSION }, encryptionKey);
 
-    log("Calling getOrCreateSkyDBRegistryEntry");
-    const [entry] = await getOrCreateSkyDBRegistryEntry(client, dataKey, data, newRevision, opts);
+      log("Calling getOrCreateSkyDBRegistryEntry");
+      const [entry] = await getOrCreateSkyDBRegistryEntry(client, dataKey, data, newRevision, opts);
 
-    // Sign the entry.
-    log("Calling signEncryptedRegistryEntryInternal");
-    const signature = await signEncryptedRegistryEntryInternal(seed, entry, path);
+      // Sign the entry.
+      log("Calling signEncryptedRegistryEntryInternal");
+      const signature = await signEncryptedRegistryEntryInternal(seed, entry, path);
 
-    log("Calling postSignedEntry");
-    await client.registry.postSignedEntry(publicKey, entry, signature, opts);
+      log("Calling postSignedEntry");
+      await client.registry.postSignedEntry(publicKey, entry, signature, opts);
 
-    return { data: json };
-  });
+      return { data: json };
+    }
+  );
 }
 
 /**
  * Gets the encrypted path seed for the given path without requiring
  * permissions. This should NOT be exported - for internal use only.
  *
- * @param seed - The user seed.
+ * @param seed - The root MySky user seed.
  * @param path - The given file or directory path.
  * @param isDirectory - Whether the path corresponds to a directory.
  * @returns - The hex-encoded encrypted path seed.
@@ -147,7 +151,7 @@ function incrementRevision(revision: bigint): bigint {
  * Signs the encrypted registry entry without requiring permissions. For
  * internal use only.
  *
- * @param seed - The user seed.
+ * @param seed - The root MySky user seed.
  * @param entry - The encrypted registry entry.
  * @param path - The MySky path.
  * @returns - The signature.
@@ -175,7 +179,7 @@ async function signEncryptedRegistryEntryInternal(
  * Internal version of `signRegistryEntryHelper` that does not check for
  * permissions.
  *
- * @param seed - The user seed.
+ * @param seed - The root MySky user seed.
  * @param entry - The registry entry.
  * @returns - The signature.
  */
@@ -186,7 +190,5 @@ async function signRegistryEntryHelperInternal(seed: Uint8Array, entry: Registry
   const { privateKey } = genKeyPairFromSeed(seed);
 
   // Sign the entry.
-  const signature = await signEntry(privateKey, entry, true);
-
-  return signature;
+  return await signEntry(privateKey, entry, true);
 }
