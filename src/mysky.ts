@@ -26,7 +26,7 @@ export const PORTAL_STORAGE_KEY = "portal";
 export const SEED_STORAGE_KEY = "seed";
 
 export const PORTAL_LOGIN_COMPLETE_SENTINEL_KEY = "portal-login-complete";
-const PORTAL_LOGIN_COMPLETE_SUCCESS_VALUE = "1";
+export const PORTAL_LOGIN_COMPLETE_SUCCESS_VALUE = "1";
 
 export const INITIAL_PORTAL = "https://siasky.net";
 

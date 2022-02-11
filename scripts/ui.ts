@@ -19,6 +19,7 @@ import {
   getCurrentAndReferrerDomains,
   INITIAL_PORTAL,
   PORTAL_LOGIN_COMPLETE_SENTINEL_KEY,
+  PORTAL_LOGIN_COMPLETE_SUCCESS_VALUE,
   SEED_STORAGE_KEY,
 } from "../src/mysky";
 import {
@@ -465,35 +466,58 @@ async function setupAndRunDisplay<T>(displayUrl: string, methodName: string, ...
 }
 
 /**
- * Resolves when portal login on Main MySky completes.
+ * Resolves when portal login on Main MySky completes successfully.
+ *
+ * We register a storage event listener inside a promise that resolves the
+ * promise when we detect a successful portal login. The successful login is
+ * signaled via local storage. Any value other than "1" is considered to be an
+ * error message. If a successful login is not detected within a given timeout,
+ * then we reject the promise.
  *
  * @returns - An empty promise.
  */
 async function resolveOnMySkyPortalLogin(): Promise<void> {
   log("Entered resolveOnMySkyPortalLogin");
 
-  return Promise.race([
-    new Promise<void>((resolve, reject) =>
-      window.addEventListener("storage", async ({ key, newValue }: StorageEvent) => {
-        if (key !== PORTAL_LOGIN_COMPLETE_SENTINEL_KEY) {
-          return;
-        }
+  const abortController = new AbortController();
 
-        if (!newValue) {
-          // Key was removed.
-          return;
-        }
+  // Set up a promise that succeeds on successful login in main MySky, and fails
+  // when the login attempt returns an error.
+  const promise1 = new Promise<void>((resolve, reject) => {
+    const handleEvent = async ({ key, newValue }: StorageEvent) => {
+      if (key !== PORTAL_LOGIN_COMPLETE_SENTINEL_KEY) {
+        return;
+      }
+      if (!newValue) {
+        // Key was removed.
+        return;
+      }
 
-        // Check for errors from Main MySky.
-        if (newValue !== "1") {
-          reject(newValue);
-        }
+      // Check for errors from Main MySky.
+      if (newValue !== PORTAL_LOGIN_COMPLETE_SUCCESS_VALUE) {
+        reject(newValue);
+      }
 
-        resolve();
-      })
-    ),
-    new Promise<void>((_, reject) => setTimeout(reject, MYSKY_PORTAL_LOGIN_TIMEOUT)),
-  ]);
+      // We got the value signaling a successful login, resolve the promise.
+      resolve();
+    };
+
+    // Set up a storage event listener.
+    window.addEventListener("storage", handleEvent, {
+      signal: abortController.signal,
+    });
+  });
+
+  // Set up promise that rejects on timeout.
+  const promise2 = new Promise<void>((_, reject) => setTimeout(reject, MYSKY_PORTAL_LOGIN_TIMEOUT));
+
+  // Return when either promise finishes. Promise 1 returns when a login either
+  // fails or succeeds. Promise 2 returns when the execution time surpasses the
+  // timeout window.
+  return Promise.race([promise1, promise2]).finally(() => {
+    // Unregister the event listener.
+    abortController.abort();
+  });
 }
 
 // =======
