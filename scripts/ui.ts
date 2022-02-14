@@ -485,9 +485,16 @@ async function resolveOnMySkyPortalLogin(): Promise<void> {
   // when the login attempt returns an error.
   const promise1 = new Promise<void>((resolve, reject) => {
     const handleEvent = async ({ key, newValue }: StorageEvent) => {
+      // We only want the promise to resolve or reject when the right storage
+      // key is encountered. Any other storage key shouldn't trigger a `resolve`.
       if (key !== PORTAL_LOGIN_COMPLETE_SENTINEL_KEY) {
         return;
       }
+      // We only want the promise to resolve or reject when the right storage
+      // key is set, and not removed.
+      //
+      // NOTE: We do remove the storage key before setting it in Main MySky,
+      // because otherwise, setting an already-set key has no effect.
       if (!newValue) {
         // Key was removed.
         return;
