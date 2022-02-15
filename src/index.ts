@@ -13,8 +13,8 @@ import { log } from "./util";
   try {
     await MySky.initialize();
   } catch (err) {
-    console.log(err);
+    console.warn(err);
   }
 })().catch((err) => {
-  console.log(err);
+  console.warn(err);
 });

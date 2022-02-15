@@ -111,7 +111,7 @@
       <!-- Signup form -->
       <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form class="space-y-6" action="#" onsubmit="window.signUp()">
+          <form class="space-y-6" action="#" onsubmit="window.signUp(event)">
             <!-- Passphrase container -->
             <div>
               <!-- Passphrase label -->
@@ -231,7 +231,7 @@
      }
 
      function showPassword() {
-         if (seedInput.type === "password") {
+         if (uiSigninPassphraseText.type === "password") {
              uiSigninPassphraseText.type = "text";
              uiShowSeedText.textContent = "Hide passphrase";
              uiShowSeedOn.classList.add("hidden");
@@ -245,7 +245,7 @@
      }
 
      function confirmStoredPassphrase() {
-         if (seedConfirm.checked) {
+         if (uiSeedConfirm.checked) {
              uiSignupSubmit.removeAttribute("disabled")
          } else {
              uiSignupSubmit.setAttribute("disabled", "disabled")

@@ -1,6 +1,7 @@
 import { Connection, ParentHandshake, WorkerMessenger } from "post-me";
 import { defaultHandshakeAttemptsInterval, defaultHandshakeMaxAttempts, ensureUrl } from "skynet-mysky-utils";
 import { PermissionsProvider } from "./mysky";
+import { log } from "./util";
 
 export const relativePermissionsWorkerUrl = "permissions.js";
 export const relativePermissionsDisplayUrl = "permissions-display.html";
@@ -23,6 +24,10 @@ export type SeedProviderResponse = {
   action: SeedProviderAction;
 };
 
+// TODO: Either remove, or fully implement if we still want to have custom
+// permissions providers. This is from when we decided that users can choose
+// their own permissions providers, but we didn't yet have a way to access/save
+// user settings.
 /**
  * Tries to get the saved permissions provider preference, returning the default provider if not found.
  *
@@ -48,7 +53,7 @@ export async function getPermissionsProviderUrl(_seed: Uint8Array): Promise<stri
  * @returns - The handshake connection with the provider.
  */
 export async function launchPermissionsProvider(seed: Uint8Array): Promise<PermissionsProvider> {
-  console.log("Entered launchPermissionsProvider");
+  log("Entered launchPermissionsProvider");
 
   const permissionsProviderUrl = await getPermissionsProviderUrl(seed);
 

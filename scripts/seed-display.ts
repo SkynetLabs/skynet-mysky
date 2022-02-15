@@ -30,7 +30,7 @@ let parentConnection: Connection | null = null;
 // ======
 
 window.onerror = function (error: any) {
-  console.log(error);
+  console.warn(error);
   if (parentConnection) {
     if (typeof error === "string") {
       void parentConnection.remoteHandle().call("catchError", error);
@@ -71,6 +71,7 @@ window.onload = async () => {
 };
 
 (window as any).signIn = (event: Event) => {
+  // Prevent making unnecessary request.
   event.preventDefault();
 
   const phraseValue = uiSigninPassphraseText.value;
@@ -86,7 +87,10 @@ window.onload = async () => {
   handleResponse({ seed, email: null, action: "signin" });
 };
 
-(window as any).signUp = () => {
+(window as any).signUp = (event: Event) => {
+  // Prevent making unnecessary request.
+  event.preventDefault();
+
   if (uiSeedConfirm.checked === false) return;
 
   const seed = phraseToSeed(uiSignupPassphraseText.value);

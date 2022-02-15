@@ -1,5 +1,7 @@
 import { ChildHandshake, Connection, WindowMessenger } from "post-me";
 
+import { log } from "../src/util";
+
 const uiConnectEmailText = <HTMLInputElement>document.getElementById("connect-email-text")!;
 
 let readyEmail: string | null = null;
@@ -11,7 +13,7 @@ let parentConnection: Connection | null = null;
 // ======
 
 window.onerror = function (error: any) {
-  console.log(error);
+  console.warn(error);
   if (parentConnection) {
     if (typeof error === "string") {
       void parentConnection.remoteHandle().call("catchError", error);
@@ -37,7 +39,7 @@ window.onload = async () => {
 };
 
 (window as any).continue = () => {
-  handleEmail(null);
+  handleEmail("");
 };
 
 // ==========
@@ -48,6 +50,8 @@ window.onload = async () => {
  * Initialize the communication with the UI.
  */
 async function init(): Promise<void> {
+  log("Entered init");
+
   // Establish handshake with parent window.
 
   const messenger = new WindowMessenger({
@@ -67,11 +71,13 @@ async function init(): Promise<void> {
  * @returns - The email, if set.
  */
 async function getEmail(): Promise<string | null> {
+  log("Entered getEmail");
+
   const checkInterval = 100;
 
   return new Promise((resolve) => {
     const checkFunc = () => {
-      if (readyEmail) {
+      if (readyEmail !== null) {
         resolve(readyEmail);
       }
     };
@@ -85,7 +91,7 @@ async function getEmail(): Promise<string | null> {
  *
  * @param email - The email.
  */
-function handleEmail(email: string | null): void {
+function handleEmail(email: string): void {
   // Set `readyEmail`, triggering `getEmail`.
   readyEmail = email;
 }

@@ -1,7 +1,7 @@
 import { DEFAULT_SKYNET_PORTAL_URL, SkynetClient } from "skynet-js";
 
 import { phraseToSeed } from "../../src/seed";
-import { login, register } from "../../src/portal-account";
+import { getPortalRecipient, login, register } from "../../src/portal_account";
 
 const portalUrl = DEFAULT_SKYNET_PORTAL_URL;
 const client = new SkynetClient(portalUrl);
@@ -72,5 +72,17 @@ describe("Unit tests for registration and login", () => {
         subdomain: "account",
       })
     );
+  });
+});
+
+describe("getPortalRecipient", () => {
+  const cases = [
+    ["https://siasky.net", "https://siasky.net"],
+    ["https://dev1.siasky.dev", "https://siasky.dev"],
+  ];
+
+  it.each(cases)("(%s) should return '%s'", (portalUrl, expectedRecipient) => {
+    const recipient = getPortalRecipient(portalUrl);
+    expect(recipient).toEqual(expectedRecipient);
   });
 });

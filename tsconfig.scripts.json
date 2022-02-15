@@ -6,7 +6,9 @@
     "strict": true,
     "skipLibCheck": true,
 
-    "lib": ["dom", "esnext", "webworker"],
+    "lib": ["dom", "es2021", "webworker"],
+    "target": "es6",
+    "moduleResolution": "node",
     "outDir": "dist",
     "types": ["node"],
     "typeRoots": ["./types", "./node_modules/@types"]

@@ -4,11 +4,7 @@ import { sign } from "tweetnacl";
 
 import { genKeyPairFromHash, hashWithSalt } from "./crypto";
 import { hexToUint8Array, stringToUint8ArrayUtf8, toHexString, validateHexString, validateUint8ArrayLen } from "./util";
-
-/**
- * The name of the response header containing the JWT token.
- */
-export const JWT_HEADER_NAME = "skynet-token";
+import { ensureUrl } from "skynet-mysky-utils";
 
 /**
  * The size of the expected signature.
@@ -53,6 +49,7 @@ export type CustomLoginOptions = CustomClientOptions & {
  * Custom logout options.
  *
  * @property [endpointLogout] - The relative URL path of the portal endpoint to contact for large uploads.
+ * @property [executeRequest] - A function to override the client's existing `executeRequest`.
  */
 export type CustomLogoutOptions = CustomClientOptions & {
   endpointLogout?: string;
@@ -87,6 +84,8 @@ export const DEFAULT_LOGOUT_OPTIONS = {
   ...DEFAULT_CUSTOM_CLIENT_OPTIONS,
 
   endpointLogout: "/api/logout",
+
+  executeRequest: undefined,
 };
 
 /**
@@ -257,14 +256,14 @@ function genPortalLoginKeypair(seed: Uint8Array, email: string): KeyPair {
 }
 
 /**
- * Gets the portal recipient string from the portal URL, e.g. siasky.net =>
- * siasky.net, dev1.siasky.dev => siasky.dev.
+ * Gets the portal recipient string from the portal URL, e.g. https://siasky.net
+ * => https://siasky.net, https://dev1.siasky.dev => https://siasky.dev.
  *
  * @param portalUrl - The full portal URL.
  * @returns - The shortened portal recipient URL.
  */
-function getPortalRecipient(portalUrl: string): string {
-  const url = new URL(portalUrl);
+export function getPortalRecipient(portalUrl: string): string {
+  const url = new URL(ensureUrl(portalUrl));
 
   // Get last two portions of the hostname.
   url.hostname = url.hostname.split(".").slice(-2).join(".");
