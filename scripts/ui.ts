@@ -31,7 +31,7 @@ import {
   SeedProviderResponse,
 } from "../src/provider";
 import { log } from "../src/util";
-import { getUserSettings } from "../src/user_settings";
+import { getUserSettings } from "../src/user_data";
 
 const RELATIVE_SEED_SELECTION_DISPLAY_URL = "seed-selection.html";
 const RELATIVE_SIGNIN_CONNECT_DISPLAY_URL = "signin-connect.html";
@@ -125,8 +125,8 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
   // Get the seed and email.
   const [seed, email] = await getSeedAndEmail();
 
-  // Save the seed and email in local storage.
-  saveSeedAndEmail(seed, email);
+  // Save the seed in local storage.
+  saveSeedInStorage(seed);
 
   // Wait for Main MySky to login successfully.
   await resolveOnMySkyPortalLogin();

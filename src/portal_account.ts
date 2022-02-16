@@ -1,10 +1,10 @@
 import { KeyPair, SkynetClient } from "skynet-js";
 import type { CustomClientOptions } from "skynet-js";
+import { ensureUrl } from "skynet-mysky-utils";
 import { sign } from "tweetnacl";
 
 import { genKeyPairFromHash, hashWithSalt } from "./crypto";
 import { hexToUint8Array, stringToUint8ArrayUtf8, toHexString, validateHexString, validateUint8ArrayLen } from "./util";
-import { ensureUrl } from "skynet-mysky-utils";
 
 /**
  * The size of the expected signature.
@@ -105,23 +105,23 @@ type ChallengeResponse = {
 // ===
 
 /**
- * Registers a user for the given seed and email.
+ * Registers a user for the given seed and tweak.
  *
  * @param client - The Skynet client.
  * @param seed - The seed.
- * @param email - The user email.
+ * @param tweak - The portal account tweak.
  * @param [customOptions] - The custom register options.
  * @returns - An empty promise.
  */
 export async function register(
   client: SkynetClient,
   seed: Uint8Array,
-  email: string,
+  tweak: string,
   customOptions?: CustomRegisterOptions
 ): Promise<void> {
   const opts = { ...DEFAULT_REGISTER_OPTIONS, ...client.customOptions, ...customOptions };
 
-  const { publicKey, privateKey } = genPortalLoginKeypair(seed, email);
+  const { publicKey, privateKey } = genPortalLoginKeypair(seed, tweak);
 
   const registerRequestResponse = await client.executeRequest({
     endpointPath: opts.endpointRegisterRequest,
@@ -137,7 +137,7 @@ export async function register(
   const data = {
     response: challengeResponse.response,
     signature: challengeResponse.signature,
-    email,
+    tweak,
   };
   await client.executeRequest({
     endpointPath: opts.endpointRegister,
@@ -148,23 +148,23 @@ export async function register(
 }
 
 /**
- * Logs in a user for the given seed and email.
+ * Logs in a user for the given seed and tweak.
  *
  * @param client - The Skynet client.
  * @param seed - The seed.
- * @param email - The user email.
+ * @param tweak - The user tweak.
  * @param [customOptions] - The custom login options.
  * @returns - An empty promise.
  */
 export async function login(
   client: SkynetClient,
   seed: Uint8Array,
-  email: string,
+  tweak: string,
   customOptions?: CustomLoginOptions
 ): Promise<void> {
   const opts = { ...DEFAULT_LOGIN_OPTIONS, ...client.customOptions, ...customOptions };
 
-  const { publicKey, privateKey } = genPortalLoginKeypair(seed, email);
+  const { publicKey, privateKey } = genPortalLoginKeypair(seed, tweak);
 
   const loginRequestResponse = await client.executeRequest({
     endpointPath: opts.endpointLoginRequest,
@@ -246,11 +246,11 @@ function signChallenge(
  * Generates a portal login keypair.
  *
  * @param seed - The user seed.
- * @param email - The email.
+ * @param tweak - The portal account tweak.
  * @returns - The login keypair.
  */
-function genPortalLoginKeypair(seed: Uint8Array, email: string): KeyPair {
-  const hash = hashWithSalt(seed, email);
+function genPortalLoginKeypair(seed: Uint8Array, tweak: string): KeyPair {
+  const hash = hashWithSalt(seed, tweak);
 
   return genKeyPairFromHash(hash);
 }
