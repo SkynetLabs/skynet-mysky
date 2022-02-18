@@ -25,13 +25,13 @@ type UserSettings = {
   activePortalAccounts: ActivePortalAccounts | null;
 };
 
-type ActivePortalAccounts = {
+export type ActivePortalAccounts = {
   [portal: string]: {
     activeAccountNickname: string | null;
   };
 };
 
-type PortalAccounts = {
+export type PortalAccounts = {
   [portal: string]: {
     [accountNickname: string]: { tweak: string };
   };

@@ -15,11 +15,15 @@ import { MySky, SkynetClient } from "skynet-js";
 import { hashWithSalt } from "../src/crypto";
 import {
   checkStoredSeed,
-  EMAIL_STORAGE_KEY,
   getCurrentAndReferrerDomains,
   INITIAL_PORTAL,
-  PORTAL_LOGIN_COMPLETE_SENTINEL_KEY,
-  PORTAL_LOGIN_COMPLETE_SUCCESS_VALUE,
+  LoginResponse,
+  LOGIN_RESPONSE_KEY,
+  PortalAccountLoginResponse,
+  PortalLoginResponse,
+  PORTAL_ACCOUNT_LOGIN_RESPONSE_KEY,
+  PORTAL_ACCOUNT_NICKNAME_STORAGE_KEY,
+  PORTAL_LOGIN_RESPONSE_KEY,
   SEED_STORAGE_KEY,
 } from "../src/mysky";
 import {
@@ -27,14 +31,14 @@ import {
   relativePermissionsDisplayUrl,
   defaultSeedDisplayProvider,
   launchPermissionsProvider,
-  SeedProviderAction,
   SeedProviderResponse,
+  PortalConnectProviderResponse,
 } from "../src/provider";
 import { log } from "../src/util";
 import { getUserSettings } from "../src/user_data";
 
 const RELATIVE_SEED_SELECTION_DISPLAY_URL = "seed-selection.html";
-const RELATIVE_SIGNIN_CONNECT_DISPLAY_URL = "signin-connect.html";
+const RELATIVE_PORTAL_CONNECT_DISPLAY_URL = "portal-connect.html";
 
 const MYSKY_PORTAL_LOGIN_TIMEOUT = 30000;
 
@@ -116,22 +120,36 @@ async function init(): Promise<void> {
  * Requests login access with the given permissions.
  *
  * @param permissions - The requested permissions.
- * @returns - Whether the user was logged in and the granted and rejected permissions.
+ * @returns - Whether the user was logged in, and the granted and rejected permissions.
  */
 async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, CheckPermissionsResponse]> {
   // Before doing anything, check if the browser is supported.
   await checkBrowserSupported();
 
-  // Get the seed and email.
-  const [seed, email] = await getSeedAndEmail();
+  // Get the seed.
+  const seed = await getSeed();
 
-  // Save the seed in local storage.
+  // Save the seed in local storage, triggering a login in Main MySky.
   saveSeedInStorage(seed);
 
   // Wait for Main MySky to login successfully.
-  await resolveOnMySkyPortalLogin();
+  const portalAccountFound = await resolveOnMySkyLogin();
 
-  // Pass in any request permissions and get a permissions response.
+  if (!portalAccountFound) {
+    // Ask the user to connect to a portal account.
+    const { nickname } = await getNicknameFromProvider();
+
+    if (nickname) {
+      // Save the seed in local storage, triggering a portal account login in
+      // Main MySky.
+      saveNicknameInStorage(nickname);
+    }
+
+    // Wait for Main MySky to login to the portal account successfully.
+    await resolveOnMySkyPortalAccountLogin();
+  }
+
+  // Pass in requested permissions and get a permissions response.
   const permissionsResponse = await getPermissions(seed, permissions);
 
   // Return remaining failed permissions to skapp.
@@ -157,84 +175,47 @@ async function checkBrowserSupported(): Promise<void> {
 }
 
 /**
- * Gets the seed and email. The flow is:
+ * Gets the user seed. The flow is:
  *
  * 1. Check for the seed in local storage.
  *
- * 2. If the seed is not found, get it and maybe the email from a seed provider.
+ * 2. If the seed is not found, get it from a seed provider.
  *
- * 3. If we did not open the provider, or it did not provide the email, then
- * check for an email in the saved user settings.
+ * (3. We return the seed and save it in storage in another function, which
+ * triggers Main MySky's storage listener.)
  *
- * 4. If we still didn't get an email, and the seed provider action was signin,
- * then we display the signin-connect page where the user may connect his email
- * on signin.
- *
- * (5. We return the seed and email and save them in storage in another
- * function, which triggers Main MySky's storage listener.)
- *
- * @returns - The seed and email.
+ * @returns - The seed.
  */
-async function getSeedAndEmail(): Promise<[Uint8Array, string | null]> {
+async function getSeed(): Promise<Uint8Array> {
   let seed = checkStoredSeed();
-  let email: string | null = null;
-  let action: SeedProviderAction | null = null;
-  let emailProvidedByUser = null;
 
   // If we don't have a seed, get it from the seed provider. We may also get
   // the email if the user is signing up for the first time.
   if (!seed) {
-    const resp = await getSeedAndEmailFromProvider();
-    [seed, email, action] = [resp.seed, resp.email, resp.action];
-    emailProvidedByUser = email !== null;
+    const resp = await getSeedFromProvider();
+    seed = resp.seed;
   }
 
-  if (action === "signin") {
-    // Assert that we did not get an email from the signin page. (This would
-    // indicate a developer error in the flow -- we only expect an email from
-    // signup.)
-    if (emailProvidedByUser) {
-      throw new Error("Assertion failed: Got email from signin page (developer error)");
-    }
-
-    // We're signing in, try to get the email from saved settings.
-    let savedEmailFound = false;
-    if (!email) {
-      const siaskyClient = new SkynetClient(INITIAL_PORTAL);
-      const { currentDomain } = await getCurrentAndReferrerDomains();
-      const { email: receivedEmail } = await getUserSettings(siaskyClient, seed, currentDomain);
-      email = receivedEmail;
-      savedEmailFound = email !== null;
-    }
-
-    // If the user signed in above and we don't have an email, open the signin
-    // connect display.
-    if (!savedEmailFound) {
-      email = await runSigninConnectDisplay();
-
-      // Update `emailProvided` if we got the email.
-      //
-      // If the email is provided we save it later, once registration/login has
-      // succeeded.
-      emailProvidedByUser = email !== null;
-    }
-  }
-
-  return [seed, email];
+  return seed;
 }
 
 /**
- * Tries to get a seed and email from a seed provider.
+ * Tries to get a seed from a seed provider.
  *
  * @returns - The full seed provider response.
  */
-async function getSeedAndEmailFromProvider(): Promise<SeedProviderResponse> {
+async function getSeedFromProvider(): Promise<SeedProviderResponse> {
   // Show seed provider chooser.
   const seedProviderDisplayUrl = ensureUrl(await getSeedProviderDisplayUrl());
 
   // User has chosen seed provider, open seed provider display.
   log("Calling runSeedProviderDisplay");
   return await runSeedProviderDisplay(seedProviderDisplayUrl);
+}
+
+async function getNicknameFromProvider(): Promise<PortalConnectProviderResponse> {
+  log("Calling runSeedProviderDisplay");
+  return await runPortalConnectProviderDisplay();
 }
 
 /**
@@ -299,8 +280,8 @@ async function getSeedProviderDisplayUrl(): Promise<string> {
  *
  * @returns - The URL.
  */
-async function getSigninConnectDisplayUrl(): Promise<string> {
-  return ensureUrl(`${window.location.hostname}/${RELATIVE_SIGNIN_CONNECT_DISPLAY_URL}`);
+async function getPortalConnectProviderDisplayUrl(): Promise<string> {
+  return ensureUrl(`${window.location.hostname}/${RELATIVE_PORTAL_CONNECT_DISPLAY_URL}`);
 }
 
 /**
@@ -344,20 +325,14 @@ async function _runSeedSelectionDisplay(): Promise<string> {
 }
 
 /**
- * Runs the signin connect display and returns with the email, if provided.
+ * Runs the portal connect display and returns with the nickname, if provided.
  *
  * @returns - The seed provider.
  */
-async function runSigninConnectDisplay(): Promise<string | null> {
-  const signinConnectDisplayUrl = await getSigninConnectDisplayUrl();
+async function runPortalConnectProviderDisplay(): Promise<PortalConnectProviderResponse> {
+  const portalConnectDisplayUrl = ensureUrl(await getPortalConnectProviderDisplayUrl());
 
-  return setupAndRunDisplay<string>(signinConnectDisplayUrl, "getEmail").then(
-    // Convert "" to null. In signin-connect.ts we use "" to signify no email
-    // was given.
-    (email: string) => {
-      return email === "" ? null : email;
-    }
-  );
+  return setupAndRunDisplay<PortalConnectProviderResponse>(portalConnectDisplayUrl, "getNickname");
 }
 
 /**
@@ -466,47 +441,86 @@ async function setupAndRunDisplay<T>(displayUrl: string, methodName: string, ...
 }
 
 /**
- * Resolves when portal login on Main MySky completes successfully.
+ * Resolves when login on Main MySky completes successfully.
  *
  * We register a storage event listener inside a promise that resolves the
  * promise when we detect a successful portal login. The successful login is
- * signaled via local storage. Any value other than "1" is considered to be an
- * error message. If a successful login is not detected within a given timeout,
- * then we reject the promise.
+ * signaled via local storage. If a successful login is not detected within a
+ * given timeout, then we reject the promise.
  *
- * @returns - An empty promise.
+ * @returns - Whether a portal account was found.
  */
-async function resolveOnMySkyPortalLogin(): Promise<void> {
-  log("Entered resolveOnMySkyPortalLogin");
+async function resolveOnMySkyLogin(): Promise<boolean> {
+  log("Entered resolveOnMySkyLogin");
 
+  return resolveOnMySkyResponse(LOGIN_RESPONSE_KEY, (resolve, reject, newValue) => {
+    const response: LoginResponse | null = JSON.parse(newValue);
+    if (!response) {
+      reject(`Could not parse '${newValue}' as JSON`);
+      return;
+    }
+    const { succeeded, portalAccountFound, error } = response;
+
+    // Check for errors from Main MySky.
+    if (!succeeded) {
+      reject(error);
+      return;
+    }
+
+    // We got the value signaling a successful login, resolve the promise.
+    resolve(portalAccountFound);
+  });
+}
+
+async function resolveOnMySkyPortalAccountLogin(): Promise<void> {
+  log("Entered resolveOnMySkyPortalAccountLogin");
+
+  return resolveOnMySkyResponse(PORTAL_ACCOUNT_LOGIN_RESPONSE_KEY, (resolve, reject, newValue) => {
+    const response: PortalAccountLoginResponse | null = JSON.parse(newValue);
+    if (!response) {
+      reject(`Could not parse '${newValue}' as JSON`);
+      return;
+    }
+    const { succeeded, error } = response;
+
+    // Check for errors from Main MySky.
+    if (!succeeded) {
+      reject(error);
+      return;
+    }
+
+    // We got the value signaling a successful login, resolve the promise.
+    resolve();
+  });
+}
+
+async function resolveOnMySkyResponse<T>(
+  expectedKey: string,
+  responseFn: (resolve: Function, reject: Function, newValue: string) => void
+): Promise<T> {
   const abortController = new AbortController();
 
-  // Set up a promise that succeeds on successful login in main MySky, and fails
-  // when the login attempt returns an error.
-  const promise1 = new Promise<void>((resolve, reject) => {
+  // Set up a promise that succeeds on successful response from Main MySky, and
+  // fails when Main MySky returns an error.
+  const promise1 = new Promise<T>((resolve, reject) => {
     const handleEvent = async ({ key, newValue }: StorageEvent) => {
       // We only want the promise to resolve or reject when the right storage
       // key is encountered. Any other storage key shouldn't trigger a `resolve`.
-      if (key !== PORTAL_LOGIN_COMPLETE_SENTINEL_KEY) {
+      if (key !== expectedKey) {
         return;
       }
       // We only want the promise to resolve or reject when the right storage
       // key is set, and not removed.
       //
-      // NOTE: We do remove the storage key before setting it in Main MySky,
-      // because otherwise, setting an already-set key has no effect.
+      // NOTE: We make sure to remove the storage key in Main MySky before
+      // setting it in there, because otherwise, setting an already-set key has
+      // no effect.
       if (!newValue) {
         // Key was removed.
         return;
       }
 
-      // Check for errors from Main MySky.
-      if (newValue !== PORTAL_LOGIN_COMPLETE_SUCCESS_VALUE) {
-        reject(newValue);
-      }
-
-      // We got the value signaling a successful login, resolve the promise.
-      resolve();
+      responseFn(resolve, reject, newValue);
     };
 
     // Set up a storage event listener.
@@ -518,13 +532,15 @@ async function resolveOnMySkyPortalLogin(): Promise<void> {
   // Set up promise that rejects on timeout.
   const promise2 = new Promise<void>((_, reject) => setTimeout(reject, MYSKY_PORTAL_LOGIN_TIMEOUT));
 
-  // Return when either promise finishes. Promise 1 returns when a login either
-  // fails or succeeds. Promise 2 returns when the execution time surpasses the
-  // timeout window.
-  return Promise.race([promise1, promise2]).finally(() => {
+  // Return when either promise finishes. Promise 1 returns when a response
+  // either fails or succeeds. Promise 2 returns when the execution time
+  // surpasses the timeout window.
+  const response = (await Promise.race([promise1, promise2]).finally(() => {
     // Unregister the event listener.
     abortController.abort();
-  });
+  })) as T;
+
+  return response;
 }
 
 // =======
@@ -541,19 +557,34 @@ async function catchError(errorMsg: string): Promise<void> {
   window.dispatchEvent(event);
 }
 
+function saveNicknameInStorage(nickname: string): void {
+  log("Entered saveNicknameInStorage");
+
+  if (!localStorage) {
+    console.warn("WARNING: localStorage disabled, seed not stored");
+    return;
+  }
+
+  // Clear the key, or if we set it to a value that's already set it will not
+  // trigger the event listener.
+  localStorage.removeItem(PORTAL_ACCOUNT_NICKNAME_STORAGE_KEY);
+
+  // Set the nickname, triggering the storage event.
+  localStorage.setItem(PORTAL_ACCOUNT_NICKNAME_STORAGE_KEY, nickname);
+}
+
 /**
- * Stores the root seed and email in local storage. This triggers the storage
- * event listener in the main invisible MySky frame. This switches to the
- * preferred portal, registers or logs in to the portal account and sets up
- * login again when the JWT cookie expires. See `setUpStorageEventListener`.
+ * Stores the root seed in local storage. This triggers the storage event
+ * listener in the main invisible MySky frame. This switches to the preferred
+ * portal, registers or logs in to the portal account and sets up login again
+ * when the JWT cookie expires. See `handleSeedStorageKey`.
  *
  * NOTE: If ENV == 'dev' the seed is salted before storage.
  *
  * @param seed - The root seed.
- * @param email - The email.
  */
-export function saveSeedAndEmail(seed: Uint8Array, email: string | null): void {
-  log("Entered saveSeedAndEmail");
+function saveSeedInStorage(seed: Uint8Array): void {
+  log("Entered saveSeedInStorage");
 
   if (!localStorage) {
     console.warn("WARNING: localStorage disabled, seed not stored");
@@ -565,13 +596,8 @@ export function saveSeedAndEmail(seed: Uint8Array, email: string | null): void {
     seed = saltSeedDevMode(seed);
   }
 
-  // Set the email first.
-  if (email) {
-    localStorage.setItem(EMAIL_STORAGE_KEY, email);
-  }
-
-  // Clear the seed, or if we set it to a value that's already set it will not
-  // trigger the even listener.
+  // Clear the key, or if we set it to a value that's already set it will not
+  // trigger the event listener.
   localStorage.removeItem(SEED_STORAGE_KEY);
 
   // Set the seed, triggering the storage event.

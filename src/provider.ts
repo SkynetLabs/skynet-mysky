@@ -15,13 +15,20 @@ export type SeedProviderAction = "signin" | "signup";
  * The response returned by the seed provider to the UI.
  *
  * @property seed - The user seed.
- * @property email - The user email.
  * @property action - The user action.
  */
 export type SeedProviderResponse = {
   seed: Uint8Array;
-  email: string | null;
   action: SeedProviderAction;
+};
+
+/**
+ * The response returned by the portal connect provider to the UI.
+ *
+ * @property nickname - The nickname, if provided.
+ */
+export type PortalConnectProviderResponse = {
+  nickname: string | null;
 };
 
 // TODO: Either remove, or fully implement if we still want to have custom
