@@ -1,3 +1,13 @@
+/**
+ * @file Contains logic for the MySky UI window. The UI calls into sub-screens,
+ * like the seed selection screen, as full-screen iframes and gets the response.
+ *
+ * The MySky UI is launched by the skapp when it calls
+ * `mySky.requestLoginAccess`. This method launches a new window, navigates to
+ * the MySky UI URL, and waits for a response from `requestLoginAccess` defined
+ * in this file.
+ */
+
 import { ChildHandshake, Connection, ParentHandshake, WindowMessenger } from "post-me";
 import {
   CheckPermissionsResponse,
@@ -119,6 +129,29 @@ async function init(): Promise<void> {
 /**
  * Requests login access with the given permissions.
  *
+ * Flow:
+ *
+ * 0. Check if the browser supports MySky and throw an error if not.
+ *
+ * 1. Get the seed, first checking local storage and then querying the user if
+ * it wasn't found.
+ *
+ * 2. Save the seed in local storage, triggering a login in Main MySky.
+ *
+ * 3. Waits for Main MySky to login successfully. At this point, Main MySky has
+ * the user seed and has loaded the permission provider.
+ *
+ * 4. If a portal account was not found, asks the user to connect to a portal
+ * account.
+ *
+ * 5. Saves the nickname in local storage, triggering a portal account login in
+ * Main MySky.
+ *
+ * 6. If there are permissions that haven't been granted, asks the user to grant
+ * them. Saves the new permissions in MySky's IndexedDB.
+ *
+ * 7. Returns the remaining failed permissions to the skapp.
+ *
  * @param permissions - The requested permissions.
  * @returns - Whether the user was logged in, and the granted and rejected permissions.
  */
@@ -140,8 +173,8 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
     const { nickname } = await getNicknameFromProvider();
 
     if (nickname) {
-      // Save the seed in local storage, triggering a portal account login in
-      // Main MySky.
+      // Save the nickname in local storage, triggering a portal account login
+      // in Main MySky.
       saveNicknameInStorage(nickname);
     }
 
@@ -175,7 +208,9 @@ async function checkBrowserSupported(): Promise<void> {
 }
 
 /**
- * Gets the user seed. The flow is:
+ * Gets the user seed.
+ *
+ * Flow:
  *
  * 1. Check for the seed in local storage.
  *
@@ -472,6 +507,16 @@ async function resolveOnMySkyLogin(): Promise<boolean> {
   });
 }
 
+/**
+ * Resolves when portal account login on Main MySky completes successfully.
+ *
+ * We register a storage event listener inside a promise that resolves the
+ * promise when we detect a successful portal account login login. The
+ * successful login is signaled via local storage. If a successful login is not
+ * detected within a given timeout, then we reject the promise.
+ *
+ * @returns - An empty promise.
+ */
 async function resolveOnMySkyPortalAccountLogin(): Promise<void> {
   log("Entered resolveOnMySkyPortalAccountLogin");
 

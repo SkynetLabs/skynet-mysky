@@ -1,6 +1,16 @@
+/**
+ * @file Contains the interface for Main MySky, the MySky component that lives
+ * in an invisible iframe on skapps.
+ *
+ * TODO: Document when Main MySky is launched and what the entrypoint in this
+ * file is.
+ *
+ * TODO: Document the full interface for this file.
+ */
+
 import type { Connection } from "post-me";
 import { ChildHandshake, WindowMessenger } from "post-me";
-import { RequestConfig } from "skynet-js";
+import type { RequestConfig } from "skynet-js";
 import {
   deriveDiscoverableFileTweak,
   deriveEncryptedFileTweak,
@@ -681,6 +691,8 @@ export class MySky {
    *
    * For the preferred portal flow, see "Load MySky redirect flow" on
    * `redirectIfNotOnPreferredPortal` in the SDK.
+   *
+   * @param newValue - The local storage value from the storage event handler.
    */
   protected async handleSeedStorageKey(newValue: string | null): Promise<void> {
     if (this.permissionsProvider) {
@@ -701,6 +713,7 @@ export class MySky {
     localStorage.removeItem(LOGIN_RESPONSE_KEY);
 
     let response: LoginResponse = { succeeded: false, portalAccountFound: false, error: null };
+
     try {
       // Parse the seed.
       const seed = new Uint8Array(JSON.parse(newValue));
@@ -729,6 +742,21 @@ export class MySky {
     localStorage.setItem(LOGIN_RESPONSE_KEY, JSON.stringify(response));
   }
 
+  /**
+   * Logs in to a portal account using the nickname sent from the UI through
+   * local storage.
+   *
+   * Flow:
+   *
+   * TODO: UPDATE
+   * 1. If we got an active portal account, then we login to set the JWT cookie.
+   *
+   * TODO: UPDATE
+   * 2. If the active portal account is set, it should set up automatic re-login
+   * on JWT cookie expiry.
+   *
+   * @param newValue - The local storage value from the storage event handler.
+   */
   protected async handlePortalAccountNicknameStorageKey(newValue: string | null): Promise<void> {
     if (!newValue) {
       // Nickname was removed.
