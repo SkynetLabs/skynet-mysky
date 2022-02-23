@@ -9,7 +9,20 @@ export const defaultSeedDisplayProvider = "seed-display.html";
 
 const _permissionsProviderPreferencePath = "permissions-provider.json";
 
+export type PortalConnectAction = "signin" | "register" | "notnow";
+
 export type SeedProviderAction = "signin" | "signup";
+
+/**
+ * The response returned by the portal connect page to the UI.
+ *
+ * @property nickname - The portal account nickname.
+ * @property action - The user action.
+ */
+export type PortalConnectResponse = {
+  nickname: string | null;
+  action: PortalConnectAction;
+};
 
 /**
  * The response returned by the seed provider to the UI.

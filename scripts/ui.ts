@@ -27,13 +27,11 @@ import {
   checkStoredSeed,
   getCurrentAndReferrerDomains,
   INITIAL_PORTAL,
-  LoginResponse,
   LOGIN_RESPONSE_KEY,
   PortalAccountLoginResponse,
-  PortalLoginResponse,
+  LoginResponse,
   PORTAL_ACCOUNT_LOGIN_RESPONSE_KEY,
   PORTAL_ACCOUNT_NICKNAME_STORAGE_KEY,
-  PORTAL_LOGIN_RESPONSE_KEY,
   SEED_STORAGE_KEY,
 } from "../src/mysky";
 import {

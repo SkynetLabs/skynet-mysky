@@ -7,7 +7,8 @@
   </head>
 
   <body class="bg-palette-100 min-h-screen">
-    <div class="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <!-- Initial page -->
+    <div id="initial-page" class="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <!-- Header -->
       <div class="sm:mx-auto sm:w-full sm:max-w-md">
         <svg class="mx-auto h-12 w-auto fill-current text-primary" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Skynet</title><path d="m-.0004 6.4602 21.3893 11.297c.561.2935.6633 1.0532.1999 1.4846h-.011a10.0399 10.0399 0 0 1-2.2335 1.5307c-6.912 3.4734-14.9917-1.838-14.5438-9.5605l2.8601 1.9752c.856 4.508 5.6187 7.1094 9.8742 5.3932zm8.6477 3.1509 14.3661 5.6785a.8704.8704 0 0 1 .5197 1.0466v.0182c-.1537.5377-.7668.7938-1.2575.5252zm5.2896-7.4375c2.7093-.2325 6.0946.7869 8.1116 3.3871 1.699 2.1951 2.0497 4.8772 1.9298 7.6465v-.007c-.0478.5874-.6494.9616-1.1975.745l-9.7652-3.8596 9.0656 2.4313a7.296 7.296 0 0 0-1.0677-4.5631c-2.9683-4.7678-9.9847-4.5344-12.6297.4201a7.5048 7.5048 0 0 0-.398.8831L5.5546 7.9614c.069-.1017.1417-.198.2144-.2962.1163-.2416.2417-.487.3798-.7268 1.6118-2.7911 4.3102-4.4338 7.1558-4.6973.2108-.0182.4215-.049.6323-.0672z"/></svg>
@@ -15,37 +16,34 @@
           Connect to a Portal Account
         </h2>
         <p class="mt-2 text-center text-sm text-gray-600">
-          Your MySky account isn't connected<br>
-          TODO: Replace portal<br>
-          to any portal accounts for 'siasky.net'.<br>
-          Let's connect to one!
+          Associate a portal account <br/> with an identifying nickname.
         </p>
       </div>
 
-      <!-- Connect email form -->
       <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form class="space-y-6" action="#" onsubmit="window.connect()">
-            <!-- Email input -->
-            <div>
-              <!-- Email label -->
-              <div class="flex flex-row justify-between">
-                <label for="connect-email-text" class="block text-sm font-medium text-gray-700">
-                  Email
-                </label>
-              </div>
-              <div class="mt-1">
-                <input id="connect-email-text" name="email" type="email" autocomplete="email" required placeholder="Enter an email to connect to a portal account" class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-palette-300 focus:outline-none focus:ring-primary focus:border-primary text-xs sm:text-sm">
-              </div>
+          <div class="space-y-6">
+
+            <!-- Not connected notice -->
+            <div class="space-y-2 text-palette-600">
+              <p class="text-center text-sm">
+                Your MySky account isn't connected to any portal accounts for <b>'siasky.net'</b>. Let's connect to one!
+              </p>
             </div>
 
-            <!-- Connect button -->
-            <div>
-              <button id="connect-submit" type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-palette-100 bg-primary hover:bg-primary-light transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
-                Connect
+            <!-- Buttons -->
+            <div class="flex justify-center gap-x-4">
+              <!-- Sign in button -->
+              <button id="goto-signin-button" type="submit" class="display:inline-block w-1/3 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-palette-100 bg-primary hover:bg-primary-light transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary" onclick="window.goToSignIn();">
+                Sign In
+              </button>
+
+              <!-- Register button -->
+              <button id="goto-register-button" type="submit" class="display:inline-block w-1/3 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-palette-100 bg-primary hover:bg-primary-light transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary" onclick="window.goToRegister();">
+                Register
               </button>
             </div>
-          </form>
+          </div>
 
           <!-- "not now" link -->
           <div class="mt-6 relative">
@@ -54,7 +52,7 @@
             </div>
             <div class="relative flex justify-center text-sm">
               <span class="px-2 bg-white">
-                <a href="#" class="text-primary inline-flex items-center" onclick="window.continue()">
+                <a href="#" class="text-primary inline-flex items-center" onclick="window.notNow(event);">
                   <span id="connect-not-now" class="ml-1">not now</span>
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="currentColor" class="bi bi-arrow-right-short" viewBox="0 0 16 16">
                     <path fill-rule="evenodd" d="M4 8a.5.5 0 0 1 .5-.5h5.793L8.146 5.354a.5.5 0 1 1 .708-.708l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L10.293 8.5H4.5A.5.5 0 0 1 4 8z"/>
@@ -66,6 +64,148 @@
         </div>
       </div>
     </div>
+
+    <!-- Sign in page -->
+    <div id="signin-page" class="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <!-- Header -->
+      <div class="sm:mx-auto sm:w-full sm:max-w-md">
+        <svg class="mx-auto h-12 w-auto fill-current text-primary" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Skynet</title><path d="m-.0004 6.4602 21.3893 11.297c.561.2935.6633 1.0532.1999 1.4846h-.011a10.0399 10.0399 0 0 1-2.2335 1.5307c-6.912 3.4734-14.9917-1.838-14.5438-9.5605l2.8601 1.9752c.856 4.508 5.6187 7.1094 9.8742 5.3932zm8.6477 3.1509 14.3661 5.6785a.8704.8704 0 0 1 .5197 1.0466v.0182c-.1537.5377-.7668.7938-1.2575.5252zm5.2896-7.4375c2.7093-.2325 6.0946.7869 8.1116 3.3871 1.699 2.1951 2.0497 4.8772 1.9298 7.6465v-.007c-.0478.5874-.6494.9616-1.1975.745l-9.7652-3.8596 9.0656 2.4313a7.296 7.296 0 0 0-1.0677-4.5631c-2.9683-4.7678-9.9847-4.5344-12.6297.4201a7.5048 7.5048 0 0 0-.398.8831L5.5546 7.9614c.069-.1017.1417-.198.2144-.2962.1163-.2416.2417-.487.3798-.7268 1.6118-2.7911 4.3102-4.4338 7.1558-4.6973.2108-.0182.4215-.049.6323-.0672z"/></svg>
+        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          Sign In To a Portal Account
+        </h2>
+      </div>
+
+      <!-- Signin nickname form -->
+      <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          <form class="space-y-6" action="#" onsubmit="window.signIn(event);">
+
+            <!-- Portal account signin notice -->
+            <div class="space-y-2 text-palette-600">
+              <p class="text-sm font-semibold">
+                First, please go to
+                <a class="text-primary" href="https://account.siasky.net" target="_blank">account.siasky.net</a>
+                and make sure you are signed in to your portal account.
+              </p>
+
+              <div class="flex items-center">
+                <input id="signin-confirm" name="signin-confirm" type="checkbox" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded cursor-pointer" onchange="confirmPortalAccountSignin()">
+                <label for="signin-confirm" class="ml-2 block text-sm">
+                  I have done the above
+                </label>
+              </div>
+            </div>
+
+            <!-- Nickname input -->
+            <div>
+              <!-- Nickname label -->
+              <div class="flex flex-row justify-between">
+                <label for="signin-nickname-text" class="block text-sm font-medium text-gray-700">
+                  Nickname
+                </label>
+              </div>
+              <div class="mt-1">
+                <input id="signin-nickname-text" name="nickname" type="text" autocomplete="nickname" required placeholder="Enter a nickname to connect to a portal account" class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-palette-300 focus:outline-none focus:ring-primary focus:border-primary text-xs sm:text-sm">
+              </div>
+            </div>
+
+            <!-- Signin button -->
+            <div>
+              <button id="signin-submit" type="submit" disabled="disabled" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-palette-100 bg-primary hover:bg-primary-light transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50">
+                Sign In
+              </button>
+            </div>
+          </form>
+
+          <!-- "back" link -->
+          <div class="mt-6 relative">
+            <div class="absolute inset-0 flex items-center">
+              <div class="w-full border-t border-gray-300"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+              <span class="px-2 bg-white">
+                <a href="#" class="text-primary inline-flex items-center" onclick="window.back();">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="currentColor" class="bi bi-arrow-left-short" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M12 8a.5.5 0 0 1-.5.5H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H11.5a.5.5 0 0 1 .5.5z"/>
+                  </svg>
+                  <span id="signin-back" class="ml-1">back</span>
+                </a>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Register page -->
+    <div id="register-page" class="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <!-- Header -->
+      <div class="sm:mx-auto sm:w-full sm:max-w-md">
+        <svg class="mx-auto h-12 w-auto fill-current text-primary" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><title>Skynet</title><path d="m-.0004 6.4602 21.3893 11.297c.561.2935.6633 1.0532.1999 1.4846h-.011a10.0399 10.0399 0 0 1-2.2335 1.5307c-6.912 3.4734-14.9917-1.838-14.5438-9.5605l2.8601 1.9752c.856 4.508 5.6187 7.1094 9.8742 5.3932zm8.6477 3.1509 14.3661 5.6785a.8704.8704 0 0 1 .5197 1.0466v.0182c-.1537.5377-.7668.7938-1.2575.5252zm5.2896-7.4375c2.7093-.2325 6.0946.7869 8.1116 3.3871 1.699 2.1951 2.0497 4.8772 1.9298 7.6465v-.007c-.0478.5874-.6494.9616-1.1975.745l-9.7652-3.8596 9.0656 2.4313a7.296 7.296 0 0 0-1.0677-4.5631c-2.9683-4.7678-9.9847-4.5344-12.6297.4201a7.5048 7.5048 0 0 0-.398.8831L5.5546 7.9614c.069-.1017.1417-.198.2144-.2962.1163-.2416.2417-.487.3798-.7268 1.6118-2.7911 4.3102-4.4338 7.1558-4.6973.2108-.0182.4215-.049.6323-.0672z"/></svg>
+        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          Register a New Portal Account
+        </h2>
+
+        <!-- Register nickname form -->
+        <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+          <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+            <form class="space-y-6" action="#" onsubmit="window.register(event);">
+
+              <!-- Nickname input -->
+              <div>
+                <!-- Nickname label -->
+                <div class="flex flex-row justify-between">
+                  <label for="register-nickname-text" class="block text-sm font-medium text-gray-700">
+                    Nickname
+                  </label>
+                </div>
+                <div class="mt-1">
+                  <input id="register-nickname-text" name="nickname" type="text" autocomplete="nickname" required placeholder="Enter a nickname to register a portal account" class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-palette-300 focus:outline-none focus:ring-primary focus:border-primary text-xs sm:text-sm">
+                </div>
+              </div>
+
+              <!-- Register button -->
+              <div>
+                <button id="registere-submit" type="submit" disabled="disabled" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-palette-100 bg-primary hover:bg-primary-light transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50">
+                  Register
+                </button>
+              </div>
+            </form>
+
+            <!-- "back" link -->
+            <div class="mt-6 relative">
+              <div class="absolute inset-0 flex items-center">
+                <div class="w-full border-t border-gray-300"></div>
+              </div>
+              <div class="relative flex justify-center text-sm">
+                <span class="px-2 bg-white">
+                  <a href="#" class="text-primary inline-flex items-center" onclick="window.back();">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="currentColor" class="bi bi-arrow-left-short" viewBox="0 0 16 16">
+                      <path fill-rule="evenodd" d="M12 8a.5.5 0 0 1-.5.5H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H11.5a.5.5 0 0 1 .5.5z"/>
+                    </svg>
+                    <span id="register-back" class="ml-1">back</span>
+                  </a>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+     const uiSigninConfirm = document.getElementById("signin-confirm");
+     const uiSigninSubmit = document.getElementById("signin-submit");
+
+     function confirmPortalAccountSignin() {
+       if (uiSigninConfirm.checked) {
+         uiSigninSubmit.removeAttribute("disabled")
+       } else {
+         uiSigninSubmit.setAttribute("disabled", "disabled")
+       }
+     }
+    </script>
 
     <script async src="portal-connect.js"></script>
   </body>

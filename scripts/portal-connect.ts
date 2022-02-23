@@ -1,10 +1,17 @@
 import { ChildHandshake, Connection, WindowMessenger } from "post-me";
 
+import { PortalConnectResponse } from "../src/provider";
 import { log } from "../src/util";
 
-const uiConnectEmailText = <HTMLInputElement>document.getElementById("connect-email-text")!;
+const uiRegisterNicknameText = <HTMLInputElement>document.getElementById("register-nickname-text")!;
+const uiSigninConfirm = <HTMLInputElement>document.getElementById("signin-confirm")!;
+const uiSigninNicknameText = <HTMLInputElement>document.getElementById("signin-nickname-text")!;
 
-let readyEmail: string | null = null;
+const uiInitialPage = document.getElementById("initial-page")!;
+const uiRegisterPage = document.getElementById("register-page")!;
+const uiSigninPage = document.getElementById("signin-page")!;
+
+let readyNickname: string | null | undefined = null;
 
 let parentConnection: Connection | null = null;
 
@@ -30,16 +37,51 @@ window.onload = async () => {
 
 // ============
 // User Actions
-// ============
+// ===========
 
-(window as any).connect = () => {
-  const email = uiConnectEmailText.value;
-
-  handleEmail(email);
+(window as any).back = () => {
+  setAllSeedContainersInvisible();
+  uiInitialPage.style.removeProperty("display");
 };
 
-(window as any).continue = () => {
-  handleEmail("");
+(window as any).goToRegister = () => {
+  setAllSeedContainersInvisible();
+  uiRegisterPage.style.removeProperty("display");
+};
+
+(window as any).goToSignIn = () => {
+  setAllSeedContainersInvisible();
+  uiSigninPage.style.removeProperty("display");
+};
+
+(window as any).notNow = (event: Event) => {
+  // Prevent making unnecessary request.
+  event.preventDefault();
+
+  // TODO
+  handleNickname(null);
+};
+
+(window as any).window.register = (event: Event) => {
+  // Prevent making unnecessary request.
+  event.preventDefault();
+
+  if (uiRegisterNicknameText.value === "") return;
+
+  const nickname = uiRegisterNicknameText.value;
+
+  handleNickname(nickname);
+};
+
+(window as any).window.signIn = (event: Event) => {
+  // Prevent making unnecessary request.
+  event.preventDefault();
+
+  if (uiSigninConfirm.checked === false || uiSigninNicknameText.value === "") return;
+
+  const nickname = uiSigninNicknameText.value;
+
+  handleNickname(nickname);
 };
 
 // ==========
@@ -60,25 +102,25 @@ async function init(): Promise<void> {
     remoteOrigin: "*",
   });
   const methods = {
-    getEmail,
+    getNickname,
   };
   parentConnection = await ChildHandshake(messenger, methods);
 }
 
 /**
- * Called by MySky UI. Checks for the email at an interval.
+ * Called by MySky UI. Checks for the ready response at an interval.
  *
- * @returns - The email, if set.
+ * @returns - The portal connect response, if set.
  */
-async function getEmail(): Promise<string | null> {
-  log("Entered getEmail");
+async function getNickname(): Promise<PortalConnectResponse> {
+  log("Entered getNickname");
 
   const checkInterval = 100;
 
   return new Promise((resolve) => {
     const checkFunc = () => {
-      if (readyEmail !== null) {
-        resolve(readyEmail);
+      if (readyNickname !== undefined) {
+        resolve(readyNickname);
       }
     };
 
@@ -87,11 +129,24 @@ async function getEmail(): Promise<string | null> {
 }
 
 /**
- * Handles the email selected by the user.
+ * Handles the nickname selected by the user.
  *
- * @param email - The email.
+ * @param nickname - The nickname.
  */
-function handleEmail(email: string): void {
-  // Set `readyEmail`, triggering `getEmail`.
-  readyEmail = email;
+function handleNickname(nickname: string | null): void {
+  // Set `readyNickname`, triggering `getNickname`.
+  readyNickname = nickname;
+}
+
+// ================
+// Helper Functions
+// ================
+
+/**
+ * Sets all the div containers to be invisible.
+ */
+function setAllSeedContainersInvisible(): void {
+  uiInitialPage.style.display = "none";
+  uiSigninPage.style.display = "none";
+  uiRegisterPage.style.display = "none";
 }

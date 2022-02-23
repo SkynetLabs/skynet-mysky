@@ -771,7 +771,7 @@ export class MySky {
 
     // TODO: Try to login to the portal account.
     try {
-      await this.connectToPortalAccount(newValue);
+      // await this.connectToPortalAccount(newValue);
 
       // Signal to MySky UI that we are done.
       response.succeeded = true;
