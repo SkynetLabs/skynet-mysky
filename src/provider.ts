@@ -35,15 +35,6 @@ export type SeedProviderResponse = {
   action: SeedProviderAction;
 };
 
-/**
- * The response returned by the portal connect provider to the UI.
- *
- * @property nickname - The nickname, if provided.
- */
-export type PortalConnectProviderResponse = {
-  nickname: string | null;
-};
-
 // TODO: Either remove, or fully implement if we still want to have custom
 // permissions providers. This is from when we decided that users can choose
 // their own permissions providers, but we didn't yet have a way to access/save

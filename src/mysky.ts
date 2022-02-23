@@ -27,13 +27,13 @@ import { sign } from "tweetnacl";
 import { deriveRootPathSeed, genKeyPairFromSeed, hashWithSalt, sha512 } from "./crypto";
 import { deriveEncryptedPathSeedForRoot } from "./encrypted_files";
 import { login, logout, register } from "./portal_account";
-import { launchPermissionsProvider } from "./provider";
+import { launchPermissionsProvider, PortalConnectResponse } from "./provider";
 import { SEED_LENGTH } from "./seed";
 import { ActivePortalAccounts, getPortalAccounts, getUserSettings, PortalAccounts, setUserSettings } from "./user_data";
 import { ALPHA_ENABLED, DEV_ENABLED, hexToUint8Array, log, readablePermission } from "./util";
 
 export const SEED_STORAGE_KEY = "seed";
-export const PORTAL_ACCOUNT_NICKNAME_STORAGE_KEY = "portal-account-nickname";
+export const PORTAL_CONNECT_RESPONSE_STORAGE_KEY = "portal-connect-response";
 
 export const LOGIN_RESPONSE_KEY = "login-response";
 export const PORTAL_ACCOUNT_LOGIN_RESPONSE_KEY = "portal-account-login-response";
@@ -660,8 +660,8 @@ export class MySky {
 
       if (key === SEED_STORAGE_KEY) {
         await this.handleSeedStorageKey(newValue);
-      } else if (key === PORTAL_ACCOUNT_NICKNAME_STORAGE_KEY) {
-        await this.handlePortalAccountNicknameStorageKey(newValue);
+      } else if (key === PORTAL_CONNECT_RESPONSE_STORAGE_KEY) {
+        await this.handlePortalConnectResponseStorageKey(newValue);
       }
     });
   }
@@ -712,7 +712,7 @@ export class MySky {
     // when we set the key.
     localStorage.removeItem(LOGIN_RESPONSE_KEY);
 
-    let response: LoginResponse = { succeeded: false, portalAccountFound: false, error: null };
+    const response: LoginResponse = { succeeded: false, portalAccountFound: false, error: null };
 
     try {
       // Parse the seed.
@@ -757,7 +757,7 @@ export class MySky {
    *
    * @param newValue - The local storage value from the storage event handler.
    */
-  protected async handlePortalAccountNicknameStorageKey(newValue: string | null): Promise<void> {
+  protected async handlePortalConnectResponseStorageKey(newValue: string | null): Promise<void> {
     if (!newValue) {
       // Nickname was removed.
       return;
@@ -767,11 +767,13 @@ export class MySky {
     // when we set the key.
     localStorage.removeItem(LOGIN_RESPONSE_KEY);
 
-    let response: PortalAccountLoginResponse = { succeeded: false, error: null };
+    const response: PortalAccountLoginResponse = { succeeded: false, error: null };
 
     // TODO: Try to login to the portal account.
     try {
-      // await this.connectToPortalAccount(newValue);
+      const portalConnectResponse: PortalConnectResponse = JSON.parse(newValue);
+
+      // await this.connectToPortalAccount(portalConnectResponse);
 
       // Signal to MySky UI that we are done.
       response.succeeded = true;
@@ -946,7 +948,6 @@ export async function getCurrentAndReferrerDomains(): Promise<{
  * portal.
  *
  * @param seed - The user seed, if given.
- * @param preferredPortal - The user's preferred portal, if found.
  * @returns - The Skynet client to be used for logging in to the portal.
  */
 function getLoginClient(seed: Uint8Array | null): SkynetClient {

@@ -11,7 +11,7 @@ const uiInitialPage = document.getElementById("initial-page")!;
 const uiRegisterPage = document.getElementById("register-page")!;
 const uiSigninPage = document.getElementById("signin-page")!;
 
-let readyNickname: string | null | undefined = null;
+let readyResponse: PortalConnectResponse | null = null;
 
 let parentConnection: Connection | null = null;
 
@@ -58,8 +58,7 @@ window.onload = async () => {
   // Prevent making unnecessary request.
   event.preventDefault();
 
-  // TODO
-  handleNickname(null);
+  handleResponse({ nickname: null, action: "notnow" });
 };
 
 (window as any).window.register = (event: Event) => {
@@ -70,7 +69,7 @@ window.onload = async () => {
 
   const nickname = uiRegisterNicknameText.value;
 
-  handleNickname(nickname);
+  handleResponse({ nickname, action: "register" });
 };
 
 (window as any).window.signIn = (event: Event) => {
@@ -81,7 +80,7 @@ window.onload = async () => {
 
   const nickname = uiSigninNicknameText.value;
 
-  handleNickname(nickname);
+  handleResponse({ nickname, action: "signin" });
 };
 
 // ==========
@@ -102,7 +101,7 @@ async function init(): Promise<void> {
     remoteOrigin: "*",
   });
   const methods = {
-    getNickname,
+    getPortalConnectResponse,
   };
   parentConnection = await ChildHandshake(messenger, methods);
 }
@@ -112,15 +111,15 @@ async function init(): Promise<void> {
  *
  * @returns - The portal connect response, if set.
  */
-async function getNickname(): Promise<PortalConnectResponse> {
-  log("Entered getNickname");
+async function getPortalConnectResponse(): Promise<PortalConnectResponse> {
+  log("Entered getPortalConnectResponse");
 
   const checkInterval = 100;
 
   return new Promise((resolve) => {
     const checkFunc = () => {
-      if (readyNickname !== undefined) {
-        resolve(readyNickname);
+      if (readyResponse) {
+        resolve(readyResponse);
       }
     };
 
@@ -129,13 +128,13 @@ async function getNickname(): Promise<PortalConnectResponse> {
 }
 
 /**
- * Handles the nickname selected by the user.
+ * Handles the response selected by the user and the user action.
  *
- * @param nickname - The nickname.
+ * @param response - The response.
  */
-function handleNickname(nickname: string | null): void {
-  // Set `readyNickname`, triggering `getNickname`.
-  readyNickname = nickname;
+function handleResponse(response: PortalConnectResponse): void {
+  // Set `readyResponse`, triggering `getResponse`.
+  readyResponse = response;
 }
 
 // ================

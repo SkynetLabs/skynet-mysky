@@ -31,8 +31,8 @@ import {
   PortalAccountLoginResponse,
   LoginResponse,
   PORTAL_ACCOUNT_LOGIN_RESPONSE_KEY,
-  PORTAL_ACCOUNT_NICKNAME_STORAGE_KEY,
   SEED_STORAGE_KEY,
+  PORTAL_CONNECT_RESPONSE_STORAGE_KEY,
 } from "../src/mysky";
 import {
   getPermissionsProviderUrl,
@@ -40,7 +40,7 @@ import {
   defaultSeedDisplayProvider,
   launchPermissionsProvider,
   SeedProviderResponse,
-  PortalConnectProviderResponse,
+  PortalConnectResponse,
 } from "../src/provider";
 import { log } from "../src/util";
 import { getUserSettings } from "../src/user_data";
@@ -168,12 +168,12 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
 
   if (!portalAccountFound) {
     // Ask the user to connect to a portal account.
-    const { nickname } = await getNicknameFromProvider();
+    const portalConnectResponse = await getPortalConnectResponseFromProvider();
 
-    if (nickname) {
+    if (portalConnectResponse.nickname) {
       // Save the nickname in local storage, triggering a portal account login
       // in Main MySky.
-      saveNicknameInStorage(nickname);
+      savePortalConnectResponseInStorage(portalConnectResponse);
     }
 
     // Wait for Main MySky to login to the portal account successfully.
@@ -246,8 +246,13 @@ async function getSeedFromProvider(): Promise<SeedProviderResponse> {
   return await runSeedProviderDisplay(seedProviderDisplayUrl);
 }
 
-async function getNicknameFromProvider(): Promise<PortalConnectProviderResponse> {
-  log("Calling runSeedProviderDisplay");
+/**
+ * Tries to get a portal connect response from a portal connect provider.
+ *
+ * @returns - the full portal connect response.
+ */
+async function getPortalConnectResponseFromProvider(): Promise<PortalConnectResponse> {
+  log("Calling runPortalConnectProviderDisplay");
   return await runPortalConnectProviderDisplay();
 }
 
@@ -362,10 +367,10 @@ async function _runSeedSelectionDisplay(): Promise<string> {
  *
  * @returns - The seed provider.
  */
-async function runPortalConnectProviderDisplay(): Promise<PortalConnectProviderResponse> {
+async function runPortalConnectProviderDisplay(): Promise<PortalConnectResponse> {
   const portalConnectDisplayUrl = ensureUrl(await getPortalConnectProviderDisplayUrl());
 
-  return setupAndRunDisplay<PortalConnectProviderResponse>(portalConnectDisplayUrl, "getNickname");
+  return setupAndRunDisplay<PortalConnectResponse>(portalConnectDisplayUrl, "getPortalConnectResponse");
 }
 
 /**
@@ -496,7 +501,7 @@ async function resolveOnMySkyLogin(): Promise<boolean> {
 
     // Check for errors from Main MySky.
     if (!succeeded) {
-      reject(error);
+      reject(error || "Missing error message (likely developer error)");
       return;
     }
 
@@ -528,7 +533,7 @@ async function resolveOnMySkyPortalAccountLogin(): Promise<void> {
 
     // Check for errors from Main MySky.
     if (!succeeded) {
-      reject(error);
+      reject(error || "Missing error message (likely developer error)");
       return;
     }
 
@@ -537,9 +542,21 @@ async function resolveOnMySkyPortalAccountLogin(): Promise<void> {
   });
 }
 
+/**
+ * Resolves when an expected response is returned from Main MySky.
+ *
+ * We register a storage event listener inside a promise that resolves the
+ * promise when we detect a successful response. The response is signaled via
+ * local storage. If a successful response is not detected within a given
+ * timeout, then we reject the promise.
+ *
+ * @param expectedKey - The expected local storage key that we should listen for.
+ * @param responseFn - The function to call when a response from Main MySky is found.
+ * @returns - The response from Main MySky, if successful.
+ */
 async function resolveOnMySkyResponse<T>(
   expectedKey: string,
-  responseFn: (resolve: Function, reject: Function, newValue: string) => void
+  responseFn: (resolve: (value: T) => void, reject: (reason: string) => void, newValue: string) => void
 ): Promise<T> {
   const abortController = new AbortController();
 
@@ -600,8 +617,16 @@ async function catchError(errorMsg: string): Promise<void> {
   window.dispatchEvent(event);
 }
 
-function saveNicknameInStorage(nickname: string): void {
-  log("Entered saveNicknameInStorage");
+/**
+ * Stores the portal connect response containing the nickname in local storage.
+ * This triggers the storage event listener in the main invisible MySky frame.
+ * This registers or connects to a portal account and sets up login again when
+ * the JWT cookie expires. See `handlePortalConnectResponseStorageKey`.
+ *
+ * @param response - The portal connect response with the user's nickname.
+ */
+function savePortalConnectResponseInStorage(response: PortalConnectResponse): void {
+  log("Entered savePortalConnectResponseInStorage");
 
   if (!localStorage) {
     console.warn("WARNING: localStorage disabled, seed not stored");
@@ -610,10 +635,10 @@ function saveNicknameInStorage(nickname: string): void {
 
   // Clear the key, or if we set it to a value that's already set it will not
   // trigger the event listener.
-  localStorage.removeItem(PORTAL_ACCOUNT_NICKNAME_STORAGE_KEY);
+  localStorage.removeItem(PORTAL_CONNECT_RESPONSE_STORAGE_KEY);
 
   // Set the nickname, triggering the storage event.
-  localStorage.setItem(PORTAL_ACCOUNT_NICKNAME_STORAGE_KEY, nickname);
+  localStorage.setItem(PORTAL_CONNECT_RESPONSE_STORAGE_KEY, JSON.stringify(response));
 }
 
 /**
