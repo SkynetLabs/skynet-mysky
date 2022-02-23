@@ -1,6 +1,6 @@
 const path = require("path");
 
-const name = "signin-connect";
+const name = "portal-connect";
 
 // define preprocessor variables
 const opts = {
