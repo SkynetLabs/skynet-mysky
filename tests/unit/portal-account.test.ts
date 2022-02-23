@@ -9,7 +9,7 @@ const phrase = "topic gambit bumper lyrics etched dime going mocked abbey scrub 
 const seed = phraseToSeed(phrase);
 const pubKey = "0fce18836a7f730ad8d0442c8f311530297ce2807456f1454a9a755cde5333a4";
 
-const email = "foo@bar.com";
+const tweak = "foo@bar.com";
 const challenge = "490ccffbbbcc304652488903ca425d42490ccffbbbcc304652488903ca425d42";
 const headers: Record<string, unknown> = {};
 
@@ -28,7 +28,7 @@ describe("Unit tests for registration and login", () => {
         headers,
       });
 
-    await register(client, seed, email);
+    await register(client, seed, tweak);
 
     expect(client.executeRequest).toHaveBeenCalledWith({
       endpointPath: "/api/register",
@@ -57,7 +57,7 @@ describe("Unit tests for registration and login", () => {
         headers,
       });
 
-    await login(client, seed, email);
+    await login(client, seed, tweak);
 
     expect(client.executeRequest).toHaveBeenCalledWith({
       endpointPath: "/api/login",

@@ -223,7 +223,7 @@ export class MySky {
    * Checks whether the user can be automatically logged in to the portal (the
    * portal account tweak was found).
    *
-   * @returns - Whether the email was found.
+   * @returns - Whether the tweak was found.
    */
   async checkPortalLogin(): Promise<boolean> {
     log("Entered checkPortalLogin");
@@ -507,9 +507,9 @@ export class MySky {
   //  * NOTE: We will register "auto re-login" in a separate function.
   //  *
   //  * @param seed - The user seed.
-  //  * @param email - The user email.
+  //  * @param tweak - The user tweak.
   //  */
-  // protected async connectToPortalAccount(seed: Uint8Array, email: string): Promise<void> {
+  // protected async connectToPortalAccount(seed: Uint8Array, tweak: string): Promise<void> {
   //   log("Entered connectToPortalAccount");
 
   //   // Try to connect to the portal account and set the JWT cookie.
@@ -517,7 +517,7 @@ export class MySky {
   //   // Make requests to login and register in parallel. At most one can succeed,
   //   // and this saves a lot of time.
   //   try {
-  //     await Promise.any([register(this.client, seed, email), login(this.client, seed, email)]);
+  //     await Promise.any([register(this.client, seed, tweak), login(this.client, seed, tweak)]);
   //   } catch (err) {
   //     const errors = (err as AggregateError).errors;
   //     throw new Error(`Could not register or login: [${errors}]`);
@@ -633,10 +633,10 @@ export class MySky {
    * NOTE: We remove the registered login function on logout.
    *
    * @param seed - The user seed.
-   * @param email - The user email.
+   * @param tweak - The tweak for the corresponding user nickname.
    * @throws - Will throw if auto-login is already set up.
    */
-  protected setupAutoRelogin(seed: Uint8Array, email: string): void {
+  protected setupAutoRelogin(seed: Uint8Array, tweak: string): void {
     log("Entered setupAutoRelogin");
 
     if (this.client.customOptions.loginFn) {
@@ -644,7 +644,7 @@ export class MySky {
     }
 
     this.client.customOptions.loginFn = async (_: RequestConfig) => {
-      await login(this.client, seed, email);
+      await login(this.client, seed, tweak);
     };
   }
 

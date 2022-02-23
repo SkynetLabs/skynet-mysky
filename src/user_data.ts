@@ -86,7 +86,7 @@ export async function setUserSettings(
   // Get the settings path for the MySky domain.
   const path = getUserSettingsPath(mySkyDomain);
 
-  // Set preferred portal and email in user settings.
+  // Set user settings.
   await setJSONEncryptedInternal(client, seed, path, settings);
 }
 

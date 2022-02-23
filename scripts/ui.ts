@@ -222,8 +222,7 @@ async function checkBrowserSupported(): Promise<void> {
 async function getSeed(): Promise<Uint8Array> {
   let seed = checkStoredSeed();
 
-  // If we don't have a seed, get it from the seed provider. We may also get
-  // the email if the user is signing up for the first time.
+  // If we don't have a seed, get it from the seed provider.
   if (!seed) {
     const resp = await getSeedFromProvider();
     seed = resp.seed;
@@ -343,7 +342,7 @@ async function runPermissionsProviderDisplay(
  * Runs the seed provider display and returns with the user seed.
  *
  * @param seedProviderDisplayUrl - The seed provider display URL.
- * @returns - The user seed as bytes and the email.
+ * @returns - The user seed as bytes and the user action.
  */
 async function runSeedProviderDisplay(seedProviderDisplayUrl: string): Promise<SeedProviderResponse> {
   return setupAndRunDisplay(seedProviderDisplayUrl, "getSeedProviderResponse");
