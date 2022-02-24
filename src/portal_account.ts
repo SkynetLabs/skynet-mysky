@@ -6,6 +6,8 @@ import { sign } from "tweetnacl";
 import { genKeyPairFromHash, hashWithSalt } from "./crypto";
 import { hexToUint8Array, stringToUint8ArrayUtf8, toHexString, validateHexString, validateUint8ArrayLen } from "./util";
 
+export const PORTAL_ACCOUNT_PAGE_SUBDOMAIN = "account";
+
 /**
  * The size of the expected signature.
  */
@@ -126,7 +128,7 @@ export async function register(
   const registerRequestResponse = await client.executeRequest({
     endpointPath: opts.endpointRegisterRequest,
     method: "GET",
-    subdomain: "account",
+    subdomain: PORTAL_ACCOUNT_PAGE_SUBDOMAIN,
     query: { pubKey: publicKey },
   });
 
@@ -142,7 +144,7 @@ export async function register(
   await client.executeRequest({
     endpointPath: opts.endpointRegister,
     method: "POST",
-    subdomain: "account",
+    subdomain: PORTAL_ACCOUNT_PAGE_SUBDOMAIN,
     data,
   });
 }
@@ -169,7 +171,7 @@ export async function login(
   const loginRequestResponse = await client.executeRequest({
     endpointPath: opts.endpointLoginRequest,
     method: "GET",
-    subdomain: "account",
+    subdomain: PORTAL_ACCOUNT_PAGE_SUBDOMAIN,
     query: { pubKey: publicKey },
   });
 
@@ -181,7 +183,7 @@ export async function login(
   await client.executeRequest({
     endpointPath: opts.endpointLogin,
     method: "POST",
-    subdomain: "account",
+    subdomain: PORTAL_ACCOUNT_PAGE_SUBDOMAIN,
     data,
   });
 }
@@ -198,7 +200,7 @@ export async function logout(client: SkynetClient, customOptions?: CustomLogoutO
   await client.executeRequest({
     endpointPath: opts.endpointLogout,
     method: "POST",
-    subdomain: "account",
+    subdomain: PORTAL_ACCOUNT_PAGE_SUBDOMAIN,
   });
 }
 

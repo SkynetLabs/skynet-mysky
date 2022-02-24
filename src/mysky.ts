@@ -51,13 +51,12 @@ dev = true;
 /// #endif
 
 export type LoginResponse = {
-  succeeded: boolean;
+  portalDomain: string | null;
   portalAccountFound: boolean;
   error: string | null;
 };
 
 export type PortalAccountLoginResponse = {
-  succeeded: boolean;
   error: string | null;
 };
 
@@ -531,7 +530,9 @@ export class MySky {
    * @param seed - The user seed.
    * @returns - Whether we found and logged in with a tweak.
    */
-  protected async setPreferredPortalAndLogin(seed: Uint8Array): Promise<boolean> {
+  protected async setPreferredPortalAndLogin(
+    seed: Uint8Array
+  ): Promise<{ portalDomain: string; portalAccountFound: boolean }> {
     log("Entered loginFromUi");
 
     // Get user data.
@@ -543,6 +544,8 @@ export class MySky {
     // Set the portal. Will use the current portal if a preferred one was not
     // found.
     this.setPortal(preferredPortal);
+    const portalUrl = await this.client.portalUrl();
+    const portalDomain = new URL(portalUrl).hostname;
 
     const portalAccountTweak = await this.getPortalAccountTweak(activePortalAccounts, portalAccounts);
 
@@ -550,10 +553,10 @@ export class MySky {
       // If a tweak was found, try to connect to a portal account.
       await this.loginWithTweak(seed, portalAccountTweak);
 
-      return true;
+      return { portalDomain, portalAccountFound: true };
     }
 
-    return false;
+    return { portalDomain, portalAccountFound: false };
   }
 
   /**
@@ -613,11 +616,11 @@ export class MySky {
     if (preferredPortal) {
       // Connect to the preferred portal if it was found.
       this.client = new SkynetClient(preferredPortal);
-      this.preferredPortal = preferredPortal;
     } else {
       // Else, connect to the current portal as opposed to siasky.net.
       this.client = new SkynetClient();
     }
+    this.preferredPortal = preferredPortal;
   }
 
   /**
@@ -712,8 +715,7 @@ export class MySky {
     // when we set the key.
     localStorage.removeItem(LOGIN_RESPONSE_KEY);
 
-    const response: LoginResponse = { succeeded: false, portalAccountFound: false, error: null };
-
+    let response: LoginResponse;
     try {
       // Parse the seed.
       const seed = new Uint8Array(JSON.parse(newValue));
@@ -724,19 +726,18 @@ export class MySky {
       // portal (siasky.net).
       this.client = getLoginClient(seed);
 
-      const portalAccountFound = await this.setPreferredPortalAndLogin(seed);
-      response.portalAccountFound = portalAccountFound;
+      const { portalDomain, portalAccountFound } = await this.setPreferredPortalAndLogin(seed);
 
       // Launch the new permissions provider.
       this.permissionsProvider = launchPermissionsProvider(seed);
 
       // Signal to MySky UI that we are done.
-      response.succeeded = true;
+      response = { portalAccountFound, portalDomain, error: null };
     } catch (e) {
       log(`Error in storage event listener: ${e}`);
 
       // Send error to MySky UI.
-      response.error = (e as Error).message;
+      response = { portalAccountFound: false, portalDomain: null, error: (e as Error).message };
     }
 
     localStorage.setItem(LOGIN_RESPONSE_KEY, JSON.stringify(response));
@@ -767,7 +768,7 @@ export class MySky {
     // when we set the key.
     localStorage.removeItem(LOGIN_RESPONSE_KEY);
 
-    const response: PortalAccountLoginResponse = { succeeded: false, error: null };
+    let response: PortalAccountLoginResponse;
 
     // TODO: Try to login to the portal account.
     try {
@@ -776,12 +777,12 @@ export class MySky {
       // await this.connectToPortalAccount(portalConnectResponse);
 
       // Signal to MySky UI that we are done.
-      response.succeeded = true;
+      response = { error: null };
     } catch (e) {
       log(`Error in storage event listener: ${e}`);
 
       // Send error to MySky UI.
-      response.error = (e as Error).message;
+      response = { error: (e as Error).message };
     }
 
     localStorage.setItem(LOGIN_RESPONSE_KEY, JSON.stringify(response));

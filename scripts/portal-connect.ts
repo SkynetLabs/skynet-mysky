@@ -1,5 +1,7 @@
 import { ChildHandshake, Connection, WindowMessenger } from "post-me";
+import { ensureUrl } from "skynet-mysky-utils";
 
+import { PORTAL_ACCOUNT_PAGE_SUBDOMAIN } from "../src/portal_account";
 import { PortalConnectResponse } from "../src/provider";
 import { log } from "../src/util";
 
@@ -39,7 +41,7 @@ window.onload = async () => {
 // User Actions
 // ===========
 
-(window as any).back = () => {
+(window as any).goToInitialPage = () => {
   setAllSeedContainersInvisible();
   uiInitialPage.style.removeProperty("display");
 };
@@ -94,7 +96,6 @@ async function init(): Promise<void> {
   log("Entered init");
 
   // Establish handshake with parent window.
-
   const messenger = new WindowMessenger({
     localWindow: window,
     remoteWindow: window.parent,
@@ -109,10 +110,32 @@ async function init(): Promise<void> {
 /**
  * Called by MySky UI. Checks for the ready response at an interval.
  *
+ * @param portalDomain - The domain of the portal we are connecting to.
  * @returns - The portal connect response, if set.
  */
-async function getPortalConnectResponse(): Promise<PortalConnectResponse> {
+async function getPortalConnectResponse(portalDomain: string): Promise<PortalConnectResponse> {
   log("Entered getPortalConnectResponse");
+
+  // Encode the input to prevent HTML injection attacks.
+  portalDomain = encodeURI(portalDomain);
+
+  // Fill in values for the portal and account domains.
+  const accountDomain = `${PORTAL_ACCOUNT_PAGE_SUBDOMAIN}.${portalDomain}`;
+  const accountUrl = ensureUrl(accountDomain);
+  let node: HTMLParagraphElement;
+  node = <HTMLParagraphElement>document.getElementById("not-connected-notice")!;
+  node.innerHTML = node.innerHTML!.replace("{portalDomain}", portalDomain);
+  node = <HTMLParagraphElement>document.getElementById("signin-portal-notice")!;
+  node.innerHTML = node.innerHTML!.replace("{portalDomain}", portalDomain);
+  node = <HTMLParagraphElement>document.getElementById("register-portal-notice")!;
+  node.innerHTML = node.innerHTML!.replace("{portalDomain}", portalDomain);
+  const anchorNode = <HTMLAnchorElement>document.getElementById("signin-account-link")!;
+  // Set href attribute.
+  anchorNode.setAttribute("href", accountUrl);
+  anchorNode.innerHTML = anchorNode.innerHTML!.replace("{accountDomain}", accountDomain);
+
+  // Go to initial page.
+  (window as any).goToInitialPage();
 
   const checkInterval = 100;
 

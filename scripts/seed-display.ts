@@ -42,10 +42,6 @@ window.onerror = function (error: any) {
 // Code that runs on page load.
 window.onload = async () => {
   await init();
-
-  // Go to Logged Out page.
-
-  (window as any).goToSignIn();
 };
 
 // ============
@@ -106,7 +102,6 @@ window.onload = async () => {
  */
 async function init(): Promise<void> {
   // Establish handshake with parent window.
-
   const messenger = new WindowMessenger({
     localWindow: window,
     remoteWindow: window.parent,
@@ -124,6 +119,9 @@ async function init(): Promise<void> {
  * @returns - The full seed provider response.
  */
 async function getSeedProviderResponse(): Promise<SeedProviderResponse> {
+  // Go to Logged Out page.
+  (window as any).goToSignIn();
+
   const checkInterval = 100;
 
   return new Promise((resolve) => {

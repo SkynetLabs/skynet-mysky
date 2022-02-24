@@ -96,7 +96,6 @@ async function init() {
   setAllPermissionsContainersInvisible();
 
   // Establish handshake with parent window.
-
   const messenger = new WindowMessenger({
     localWindow: window,
     remoteWindow: window.parent,

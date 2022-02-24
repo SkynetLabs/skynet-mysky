@@ -164,11 +164,11 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
   saveSeedInStorage(seed);
 
   // Wait for Main MySky to login successfully.
-  const portalAccountFound = await resolveOnMySkyLogin();
+  const { portalDomain, portalAccountFound } = await resolveOnMySkyLogin();
 
   if (!portalAccountFound) {
     // Ask the user to connect to a portal account.
-    const portalConnectResponse = await getPortalConnectResponseFromProvider();
+    const portalConnectResponse = await getPortalConnectResponseFromProvider(portalDomain);
 
     if (portalConnectResponse.nickname) {
       // Save the nickname in local storage, triggering a portal account login
@@ -248,11 +248,12 @@ async function getSeedFromProvider(): Promise<SeedProviderResponse> {
 /**
  * Tries to get a portal connect response from a portal connect provider.
  *
+ * @param portalDomain - The domain of the portal we are connecting to.
  * @returns - the full portal connect response.
  */
-async function getPortalConnectResponseFromProvider(): Promise<PortalConnectResponse> {
+async function getPortalConnectResponseFromProvider(portalDomain: string): Promise<PortalConnectResponse> {
   log("Calling runPortalConnectProviderDisplay");
-  return await runPortalConnectProviderDisplay();
+  return await runPortalConnectProviderDisplay(portalDomain);
 }
 
 /**
@@ -364,12 +365,13 @@ async function _runSeedSelectionDisplay(): Promise<string> {
 /**
  * Runs the portal connect display and returns with the nickname, if provided.
  *
+ * @param portalDomain - The domain of the portal we are connecting to.
  * @returns - The seed provider.
  */
-async function runPortalConnectProviderDisplay(): Promise<PortalConnectResponse> {
+async function runPortalConnectProviderDisplay(portalDomain: string): Promise<PortalConnectResponse> {
   const portalConnectDisplayUrl = ensureUrl(await getPortalConnectProviderDisplayUrl());
 
-  return setupAndRunDisplay<PortalConnectResponse>(portalConnectDisplayUrl, "getPortalConnectResponse");
+  return setupAndRunDisplay<PortalConnectResponse>(portalConnectDisplayUrl, "getPortalConnectResponse", portalDomain);
 }
 
 /**
@@ -487,7 +489,7 @@ async function setupAndRunDisplay<T>(displayUrl: string, methodName: string, ...
  *
  * @returns - Whether a portal account was found.
  */
-async function resolveOnMySkyLogin(): Promise<boolean> {
+async function resolveOnMySkyLogin(): Promise<{ portalDomain: string; portalAccountFound: boolean }> {
   log("Entered resolveOnMySkyLogin");
 
   return resolveOnMySkyResponse(LOGIN_RESPONSE_KEY, (resolve, reject, newValue) => {
@@ -496,16 +498,19 @@ async function resolveOnMySkyLogin(): Promise<boolean> {
       reject(`Could not parse '${newValue}' as JSON`);
       return;
     }
-    const { succeeded, portalAccountFound, error } = response;
+    const { portalDomain, portalAccountFound, error } = response;
 
     // Check for errors from Main MySky.
-    if (!succeeded) {
-      reject(error || "Missing error message (likely developer error)");
+    if (error) {
+      reject(error);
+      return;
+    } else if (!portalDomain) {
+      reject("Missing portal domain (likely developer error)");
       return;
     }
 
     // We got the value signaling a successful login, resolve the promise.
-    resolve(portalAccountFound);
+    resolve({ portalDomain, portalAccountFound });
   });
 }
 
@@ -528,11 +533,11 @@ async function resolveOnMySkyPortalAccountLogin(): Promise<void> {
       reject(`Could not parse '${newValue}' as JSON`);
       return;
     }
-    const { succeeded, error } = response;
+    const { error } = response;
 
     // Check for errors from Main MySky.
-    if (!succeeded) {
-      reject(error || "Missing error message (likely developer error)");
+    if (error) {
+      reject(error);
       return;
     }
 
