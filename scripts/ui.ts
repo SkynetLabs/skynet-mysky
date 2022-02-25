@@ -594,7 +594,9 @@ async function resolveOnMySkyResponse<T>(
   });
 
   // Set up promise that rejects on timeout.
-  const promise2 = new Promise<void>((_, reject) => setTimeout(reject, MYSKY_PORTAL_LOGIN_TIMEOUT));
+  const promise2 = new Promise<void>((_, reject) =>
+    setTimeout(() => reject("Successful response from MySky not found within given time"), MYSKY_PORTAL_LOGIN_TIMEOUT)
+  );
 
   // Return when either promise finishes. Promise 1 returns when a response
   // either fails or succeeds. Promise 2 returns when the execution time

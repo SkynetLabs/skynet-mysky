@@ -659,6 +659,8 @@ export class MySky {
     log("Entered setupStorageEventListener");
 
     window.addEventListener("storage", async ({ key, newValue }: StorageEvent) => {
+      // NOTE: We do not print the value here so as not to expose the seed in
+      // the console.
       log(`Entered storage event listener with key '${key}'`);
 
       if (key === SEED_STORAGE_KEY) {
@@ -759,6 +761,8 @@ export class MySky {
    * @param newValue - The local storage value from the storage event handler.
    */
   protected async handlePortalConnectResponseStorageKey(newValue: string | null): Promise<void> {
+    log("Entered handlePortalConnectResponseStorageKey");
+
     if (!newValue) {
       // Nickname was removed.
       return;
@@ -785,7 +789,7 @@ export class MySky {
       response = { error: (e as Error).message };
     }
 
-    localStorage.setItem(LOGIN_RESPONSE_KEY, JSON.stringify(response));
+    localStorage.setItem(PORTAL_ACCOUNT_LOGIN_RESPONSE_KEY, JSON.stringify(response));
   }
 
   /**
