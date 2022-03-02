@@ -516,7 +516,7 @@ export class MySky {
   //   // Make requests to login and register in parallel. At most one can succeed,
   //   // and this saves a lot of time.
   //   try {
-  //     await Promise.any([register(this.client, seed, tweak), login(this.client, seed, tweak)]);
+  //     await Promise.any([register(this.client, seed, email, tweak), login(this.client, seed, tweak)]);
   //   } catch (err) {
   //     const errors = (err as AggregateError).errors;
   //     throw new Error(`Could not register or login: [${errors}]`);

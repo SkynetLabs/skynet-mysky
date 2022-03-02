@@ -5,15 +5,16 @@ import { generatePhrase, phraseToSeed } from "../../src/seed";
 import { login, register } from "../../src/portal_account";
 
 // const portalUrl = DEFAULT_SKYNET_PORTAL_URL;
-const portalUrl = "https://siasky.xyz";
+const portalUrl = "https://skynetpro.net";
 const client = new SkynetClient(portalUrl);
 const phrase = generatePhrase();
 const seed = phraseToSeed(phrase);
-const tweak = `${randomAsciiString(20)}@bar.com`;
+const email = `${randomAsciiString(20)}@bar.com`;
+const tweak = randomAsciiString(20);
 
 describe("Integration tests for registration and login", () => {
   it("should register a new user on the portal", async () => {
-    await register(client, seed, tweak);
+    await register(client, seed, email, tweak);
   });
 
   it("should login to an existing user on the portal", async () => {

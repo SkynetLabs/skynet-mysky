@@ -5,6 +5,7 @@ import { PORTAL_ACCOUNT_PAGE_SUBDOMAIN } from "../src/portal_account";
 import { PortalConnectResponse } from "../src/provider";
 import { log } from "../src/util";
 
+const uiRegisterEmailText = <HTMLInputElement>document.getElementById("register-email-text")!;
 const uiRegisterNicknameText = <HTMLInputElement>document.getElementById("register-nickname-text")!;
 const uiSigninConfirm = <HTMLInputElement>document.getElementById("signin-confirm")!;
 const uiSigninNicknameText = <HTMLInputElement>document.getElementById("signin-nickname-text")!;
@@ -60,18 +61,19 @@ window.onload = async () => {
   // Prevent making unnecessary request.
   event.preventDefault();
 
-  handleResponse({ nickname: null, action: "notnow" });
+  handleResponse({ action: "notnow" });
 };
 
 (window as any).window.register = (event: Event) => {
   // Prevent making unnecessary request.
   event.preventDefault();
 
-  if (uiRegisterNicknameText.value === "") return;
+  if (uiRegisterEmailText.value === "" || uiRegisterNicknameText.value === "") return;
 
+  const email = uiRegisterEmailText.value;
   const nickname = uiRegisterNicknameText.value;
 
-  handleResponse({ nickname, action: "register" });
+  handleResponse({ email, nickname, action: "register" });
 };
 
 (window as any).window.signIn = (event: Event) => {

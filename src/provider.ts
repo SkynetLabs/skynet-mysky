@@ -16,11 +16,13 @@ export type SeedProviderAction = "signin" | "signup";
 /**
  * The response returned by the portal connect page to the UI.
  *
+ * @property email - The portal account email, only used for registration.
  * @property nickname - The portal account nickname.
  * @property action - The user action.
  */
 export type PortalConnectResponse = {
-  nickname: string | null;
+  email?: string;
+  nickname?: string;
   action: PortalConnectAction;
 };
 

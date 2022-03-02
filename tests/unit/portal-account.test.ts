@@ -7,9 +7,10 @@ const portalUrl = DEFAULT_SKYNET_PORTAL_URL;
 const client = new SkynetClient(portalUrl);
 const phrase = "topic gambit bumper lyrics etched dime going mocked abbey scrub irate depth absorb bias awful";
 const seed = phraseToSeed(phrase);
-const pubKey = "0fce18836a7f730ad8d0442c8f311530297ce2807456f1454a9a755cde5333a4";
+const pubKey = "f4def115f11f70b90832e1c25d8b99258b346f241dc61fdf74aedb7003a980af";
 
-const tweak = "foo@bar.com";
+const email = "foo@bar.com";
+const tweak = "foobar";
 const challenge = "490ccffbbbcc304652488903ca425d42490ccffbbbcc304652488903ca425d42";
 const headers: Record<string, unknown> = {};
 
@@ -28,7 +29,7 @@ describe("Unit tests for registration and login", () => {
         headers,
       });
 
-    await register(client, seed, tweak);
+    await register(client, seed, email, tweak);
 
     expect(client.executeRequest).toHaveBeenCalledWith({
       endpointPath: "/api/register",

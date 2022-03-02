@@ -1,6 +1,6 @@
 import { KeyPair, SkynetClient } from "skynet-js";
 import type { CustomClientOptions } from "skynet-js";
-import { ensureUrl } from "skynet-mysky-utils";
+import { ensureUrl, trimSuffix } from "skynet-mysky-utils";
 import { sign } from "tweetnacl";
 
 import { genKeyPairFromHash, hashWithSalt } from "./crypto";
@@ -111,6 +111,7 @@ type ChallengeResponse = {
  *
  * @param client - The Skynet client.
  * @param seed - The seed.
+ * @param email - The user email.
  * @param tweak - The portal account tweak.
  * @param [customOptions] - The custom register options.
  * @returns - An empty promise.
@@ -118,6 +119,7 @@ type ChallengeResponse = {
 export async function register(
   client: SkynetClient,
   seed: Uint8Array,
+  email: string,
   tweak: string,
   customOptions?: CustomRegisterOptions
 ): Promise<void> {
@@ -139,7 +141,7 @@ export async function register(
   const data = {
     response: challengeResponse.response,
     signature: challengeResponse.signature,
-    tweak,
+    email,
   };
   await client.executeRequest({
     endpointPath: opts.endpointRegister,
@@ -270,5 +272,5 @@ export function getPortalRecipient(portalUrl: string): string {
   // Get last two portions of the hostname.
   url.hostname = url.hostname.split(".").slice(-2).join(".");
 
-  return url.toString();
+  return trimSuffix(url.toString(), "/");
 }
