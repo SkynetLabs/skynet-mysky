@@ -30,7 +30,7 @@ import { login, logout, register } from "./portal_account";
 import { launchPermissionsProvider, PortalConnectResponse } from "./provider";
 import { SEED_LENGTH } from "./seed";
 import { getPortalAccounts, getUserSettings, PortalAccounts, setPortalAccounts } from "./user_data";
-import { ALPHA_ENABLED, DEV_ENABLED, hexToUint8Array, log, readablePermission } from "./util";
+import { ALPHA_ENABLED, DEV_ENABLED, extractNormalizedDomain, hexToUint8Array, log, readablePermission } from "./util";
 
 export const SEED_STORAGE_KEY = "seed";
 export const PORTAL_CONNECT_RESPONSE_STORAGE_KEY = "portal-connect-response";
@@ -519,8 +519,7 @@ export class MySky {
     // Set the portal. Will use the current portal if a preferred one was not
     // found.
     this.setPortal(preferredPortal);
-    const portalUrl = await this.client.portalUrl();
-    const portalDomain = new URL(portalUrl).hostname;
+    const portalDomain = extractNormalizedDomain(await this.client.portalUrl());
 
     const portalAccountTweak = await this.getPortalAccountTweakFromAccounts(portalAccounts);
 
@@ -545,19 +544,20 @@ export class MySky {
    * @returns - The tweak for the active portal account for the current portal.
    */
   protected async getPortalAccountTweakFromAccounts(portalAccounts: PortalAccounts): Promise<string | null> {
-    // Get the active portal account.
-    const currentPortalUrl = await this.client.portalUrl();
+    const currentPortalDomain = extractNormalizedDomain(await this.client.portalUrl());
 
-    const currentPortalAccounts = portalAccounts[currentPortalUrl];
+    // Get the account settings for the current portal.
+    const currentPortalAccounts = portalAccounts[currentPortalDomain];
     if (!currentPortalAccounts) {
       return null;
     }
 
+    // Get the active portal account.
     const activeAccountNickname: string | null = currentPortalAccounts.activeAccountNickname;
 
     // Return tweak if a portal account was found.
     if (activeAccountNickname) {
-      return portalAccounts[currentPortalUrl].accountNicknames[activeAccountNickname].tweak;
+      return portalAccounts[currentPortalDomain].accountNicknames[activeAccountNickname].tweak;
     }
 
     return null;
@@ -878,7 +878,7 @@ export class MySky {
     this.setupAutoRelogin(seed, portalAccountTweak);
 
     // Save the nickname and tweak as the active account for the portal.
-    const currentPortal = await this.client.portalUrl(); // TODO: sanitize all portals?
+    const currentPortal = extractNormalizedDomain(await this.client.portalUrl());
     const portalAccounts = await getPortalAccounts(this.client, seed, this.mySkyDomain);
     await this.saveActivePortalAccount(seed, currentPortal, portalAccounts, nickname, portalAccountTweak);
   }

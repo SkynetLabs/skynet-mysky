@@ -27,7 +27,7 @@ type UserSettings = {
  * The account nicknames and associated tweaks for each portal.
  */
 export type PortalAccounts = {
-  [portal: string]: {
+  [portalDomain: string]: {
     activeAccountNickname: string | null;
     accountNicknames: {
       [accountNickname: string]: { tweak: string };

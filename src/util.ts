@@ -2,12 +2,37 @@
 // `skynet-utils` library.
 
 import { Buffer } from "buffer";
-import { permCategoryToString, Permission, permTypeToString } from "skynet-mysky-utils";
+import { permCategoryToString, Permission, permTypeToString, trimSuffix } from "skynet-mysky-utils";
 
 const urlParams = new URLSearchParams(window.location.search);
 export const ALPHA_ENABLED = urlParams.get("alpha") === "true";
 export const DEBUG_ENABLED = urlParams.get("debug") === "true";
 export const DEV_ENABLED = urlParams.get("dev") === "true";
+
+/**
+ * Extracts a normalized domain from the input domain or URL.
+ *
+ * Examples:
+ *
+ * ("siasky.net/") => "siasky.net"
+ * ("https://siasky.net") => "siasky.net"
+ *
+ * @param domainOrUrl - A domain or URL.
+ * @returns - The normalized domain.
+ */
+export function extractNormalizedDomain(domainOrUrl: string): string {
+  let portalServerDomain;
+  try {
+    // Try to get the domain from a full URL.
+    const portalServerUrlObj = new URL(domainOrUrl);
+    portalServerDomain = portalServerUrlObj.hostname;
+  } catch (_) {
+    // If not a full URL, assume it is already a domain.
+    portalServerDomain = domainOrUrl;
+  }
+
+  return trimSuffix(portalServerDomain, "/");
+}
 
 /**
  * Converts a hex encoded string to a uint8 array.
