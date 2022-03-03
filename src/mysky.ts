@@ -541,8 +541,7 @@ export class MySky {
    * Gets the tweak for the active portal account for the current portal, if one
    * is found.
    *
-   * @param activePortalAccounts - The active portal accounts, for each known portal.
-   * @param portalAccounts - The map of portal accounts to tweaks, for each known portal.
+   * @param portalAccounts - The map of portals to active accounts and account tweaks.
    * @returns - The tweak for the active portal account for the current portal.
    */
   protected async getPortalAccountTweakFromAccounts(portalAccounts: PortalAccounts): Promise<string | null> {
@@ -564,6 +563,15 @@ export class MySky {
     return null;
   }
 
+  /**
+   * Saves the active portal account on user registration/connection.
+   *
+   * @param seed - The user seed.
+   * @param currentPortal - The current portal.
+   * @param portalAccounts - The map of portals to active accounts and account tweaks.
+   * @param nickname - The user nickname.
+   * @param tweak - The portal account tweak.
+   */
   protected async saveActivePortalAccount(
     seed: Uint8Array,
     currentPortal: string,
@@ -608,6 +616,8 @@ export class MySky {
    *
    * NOTE: We register "auto re-login" in a separate function.
    *
+   * @param seed - The user seed.
+   * @param portalAccountTweak - The portal account tweak.
    * @param portalConnectResponse - The response from MySky UI.
    */
   protected async registerOrSigninToPortalAccount(

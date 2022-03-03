@@ -25,8 +25,6 @@ import { MySky, SkynetClient } from "skynet-js";
 import { hashWithSalt } from "../src/crypto";
 import {
   checkStoredSeed,
-  getCurrentAndReferrerDomains,
-  INITIAL_PORTAL,
   LOGIN_RESPONSE_KEY,
   PortalAccountLoginResponse,
   LoginResponse,
@@ -43,7 +41,6 @@ import {
   PortalConnectResponse,
 } from "../src/provider";
 import { log } from "../src/util";
-import { getUserSettings } from "../src/user_data";
 
 const RELATIVE_SEED_SELECTION_DISPLAY_URL = "seed-selection.html";
 const RELATIVE_PORTAL_CONNECT_DISPLAY_URL = "portal-connect.html";
