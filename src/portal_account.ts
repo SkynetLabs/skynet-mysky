@@ -26,32 +26,36 @@ const CHALLENGE_TYPE_LOGIN = "skynet-portal-login";
 const CHALLENGE_TYPE_REGISTER = "skynet-portal-register";
 
 /**
+ * Custom register user pubkey options.
+ *
+ * @property [endpointRegisterUserPubkey] - The relative URL path of the portal endpoint to contact.
+ */
+export type CustomRegisterUserPubkeyOptions = CustomClientOptions & {
+  endpointRegisterUserPubkey?: string;
+};
+
+/**
  * Custom register options.
  *
- * @property [endpointRegister] - The relative URL path of the portal endpoint to contact for large uploads.
- * @property [endpointRegisterRequest] - The relative URL path of the portal endpoint to contact.
+ * @property [endpointRegister] - The relative URL path of the portal endpoint to contact.
  */
 export type CustomRegisterOptions = CustomClientOptions & {
   endpointRegister?: string;
-  endpointRegisterRequest?: string;
 };
 
 /**
  * Custom login options.
  *
- * @property [endpointLogin] - The relative URL path of the portal endpoint to contact for large uploads.
- * @property [endpointLoginRequest] - The relative URL path of the portal endpoint to contact.
+ * @property [endpointLogin] - The relative URL path of the portal endpoint to contact.
  */
 export type CustomLoginOptions = CustomClientOptions & {
   endpointLogin?: string;
-  endpointLoginRequest?: string;
 };
 
 /**
  * Custom logout options.
  *
- * @property [endpointLogout] - The relative URL path of the portal endpoint to contact for large uploads.
- * @property [executeRequest] - A function to override the client's existing `executeRequest`.
+ * @property [endpointLogout] - The relative URL path of the portal endpoint to contact.
  */
 export type CustomLogoutOptions = CustomClientOptions & {
   endpointLogout?: string;
@@ -68,26 +72,28 @@ const DEFAULT_CUSTOM_CLIENT_OPTIONS = {
   onUploadProgress: undefined,
 };
 
+export const DEFAULT_REGISTER_USER_PUBKEY_OPTIONS = {
+  ...DEFAULT_CUSTOM_CLIENT_OPTIONS,
+
+  endpointRegisterUserPubkey: "/api/user/pubkey/register",
+};
+
 export const DEFAULT_REGISTER_OPTIONS = {
   ...DEFAULT_CUSTOM_CLIENT_OPTIONS,
 
   endpointRegister: "/api/register",
-  endpointRegisterRequest: "/api/register",
 };
 
 export const DEFAULT_LOGIN_OPTIONS = {
   ...DEFAULT_CUSTOM_CLIENT_OPTIONS,
 
   endpointLogin: "/api/login",
-  endpointLoginRequest: "/api/login",
 };
 
 export const DEFAULT_LOGOUT_OPTIONS = {
   ...DEFAULT_CUSTOM_CLIENT_OPTIONS,
 
   endpointLogout: "/api/logout",
-
-  executeRequest: undefined,
 };
 
 /**
@@ -105,6 +111,48 @@ type ChallengeResponse = {
 // ===
 // API
 // ===
+
+/**
+ * Registers a pubkey for the user for the given seed and tweak.
+ *
+ * @param client - The Skynet client.
+ * @param seed - The seed.
+ * @param tweak - The portal account tweak.
+ * @param [customOptions] - The custom register options.
+ * @returns - An empty promise.
+ */
+export async function registerUserPubkey(
+  client: SkynetClient,
+  seed: Uint8Array,
+  tweak: string,
+  customOptions?: CustomRegisterUserPubkeyOptions
+): Promise<void> {
+  const opts = { ...DEFAULT_REGISTER_USER_PUBKEY_OPTIONS, ...client.customOptions, ...customOptions };
+
+  const { publicKey, privateKey } = genPortalLoginKeypair(seed, tweak);
+
+  const registerRequestResponse = await client.executeRequest({
+    endpointPath: opts.endpointRegisterUserPubkey,
+    method: "GET",
+    subdomain: PORTAL_ACCOUNT_PAGE_SUBDOMAIN,
+    query: { pubKey: publicKey },
+  });
+
+  const challenge = registerRequestResponse.data.challenge;
+  const portalRecipient = getPortalRecipient(await client.portalUrl());
+  const challengeResponse = signChallenge(privateKey, challenge, CHALLENGE_TYPE_REGISTER, portalRecipient);
+
+  const data = {
+    response: challengeResponse.response,
+    signature: challengeResponse.signature,
+  };
+  await client.executeRequest({
+    endpointPath: opts.endpointRegisterUserPubkey,
+    method: "POST",
+    subdomain: PORTAL_ACCOUNT_PAGE_SUBDOMAIN,
+    data,
+  });
+}
 
 /**
  * Registers a user for the given seed and tweak.
@@ -128,7 +176,7 @@ export async function register(
   const { publicKey, privateKey } = genPortalLoginKeypair(seed, tweak);
 
   const registerRequestResponse = await client.executeRequest({
-    endpointPath: opts.endpointRegisterRequest,
+    endpointPath: opts.endpointRegister,
     method: "GET",
     subdomain: PORTAL_ACCOUNT_PAGE_SUBDOMAIN,
     query: { pubKey: publicKey },
@@ -171,7 +219,7 @@ export async function login(
   const { publicKey, privateKey } = genPortalLoginKeypair(seed, tweak);
 
   const loginRequestResponse = await client.executeRequest({
-    endpointPath: opts.endpointLoginRequest,
+    endpointPath: opts.endpointLogin,
     method: "GET",
     subdomain: PORTAL_ACCOUNT_PAGE_SUBDOMAIN,
     query: { pubKey: publicKey },
