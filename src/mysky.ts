@@ -24,12 +24,12 @@ import {
 import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
 import { sign } from "tweetnacl";
 
-import { deriveRootPathSeed, genKeyPairFromSeed, hashWithSalt, sha512 } from "./crypto";
+import { deriveRootPathSeed, genKeyPairFromSeed, genRandomTweak, hashWithSalt, sha512 } from "./crypto";
 import { deriveEncryptedPathSeedForRoot } from "./encrypted_files";
 import { login, logout, register } from "./portal_account";
 import { launchPermissionsProvider, PortalConnectResponse } from "./provider";
 import { SEED_LENGTH } from "./seed";
-import { ActivePortalAccounts, getPortalAccounts, getUserSettings, PortalAccounts, setUserSettings } from "./user_data";
+import { getPortalAccounts, getUserSettings, PortalAccounts, setPortalAccounts } from "./user_data";
 import { ALPHA_ENABLED, DEV_ENABLED, hexToUint8Array, log, readablePermission } from "./util";
 
 export const SEED_STORAGE_KEY = "seed";
@@ -498,31 +498,6 @@ export class MySky {
     this.parentConnection = ChildHandshake(messenger, methods);
   }
 
-  // TODO: remove Promise.any polyfill.
-  // /**
-  //  * Connects to a portal account by either registering or logging in to an
-  //  * existing account. The resulting cookie will be set on the MySky domain.
-  //  *
-  //  * NOTE: We will register "auto re-login" in a separate function.
-  //  *
-  //  * @param seed - The user seed.
-  //  * @param tweak - The user tweak.
-  //  */
-  // protected async connectToPortalAccount(seed: Uint8Array, tweak: string): Promise<void> {
-  //   log("Entered connectToPortalAccount");
-
-  //   // Try to connect to the portal account and set the JWT cookie.
-  //   //
-  //   // Make requests to login and register in parallel. At most one can succeed,
-  //   // and this saves a lot of time.
-  //   try {
-  //     await Promise.any([register(this.client, seed, email, tweak), login(this.client, seed, tweak)]);
-  //   } catch (err) {
-  //     const errors = (err as AggregateError).errors;
-  //     throw new Error(`Could not register or login: [${errors}]`);
-  //   }
-  // }
-
   /**
    * Accesses user settings, sets the preferred portal if found, and tries to
    * log into a poral account on the current portal.
@@ -533,10 +508,10 @@ export class MySky {
   protected async setPreferredPortalAndLogin(
     seed: Uint8Array
   ): Promise<{ portalDomain: string; portalAccountFound: boolean }> {
-    log("Entered loginFromUi");
+    log("Entered setPreferredPortalAndLogin");
 
     // Get user data.
-    const [{ preferredPortal, activePortalAccounts }, portalAccounts] = await Promise.all([
+    const [{ preferredPortal }, portalAccounts] = await Promise.all([
       getUserSettings(this.client, seed, this.mySkyDomain),
       getPortalAccounts(this.client, seed, this.mySkyDomain),
     ]);
@@ -547,11 +522,14 @@ export class MySky {
     const portalUrl = await this.client.portalUrl();
     const portalDomain = new URL(portalUrl).hostname;
 
-    const portalAccountTweak = await this.getPortalAccountTweak(activePortalAccounts, portalAccounts);
+    const portalAccountTweak = await this.getPortalAccountTweakFromAccounts(portalAccounts);
 
     if (portalAccountTweak) {
       // If a tweak was found, try to connect to a portal account.
-      await this.loginWithTweak(seed, portalAccountTweak);
+      await this.loginToPortalAccount(seed, portalAccountTweak);
+
+      // Set up auto re-login on JWT expiry.
+      this.setupAutoRelogin(seed, portalAccountTweak);
 
       return { portalDomain, portalAccountFound: true };
     }
@@ -567,25 +545,47 @@ export class MySky {
    * @param portalAccounts - The map of portal accounts to tweaks, for each known portal.
    * @returns - The tweak for the active portal account for the current portal.
    */
-  protected async getPortalAccountTweak(
-    activePortalAccounts: ActivePortalAccounts | null,
-    portalAccounts: PortalAccounts
-  ): Promise<string | null> {
-    if (!activePortalAccounts) {
+  protected async getPortalAccountTweakFromAccounts(portalAccounts: PortalAccounts): Promise<string | null> {
+    // Get the active portal account.
+    const currentPortalUrl = await this.client.portalUrl();
+
+    const currentPortalAccounts = portalAccounts[currentPortalUrl];
+    if (!currentPortalAccounts) {
       return null;
     }
 
-    // Get the active portal account.
-    const currentPortalUrl = await this.client.portalUrl();
-    const portalAccountSettings = activePortalAccounts[currentPortalUrl];
-    const activeAccountNickname: string | null = portalAccountSettings.activeAccountNickname;
+    const activeAccountNickname: string | null = currentPortalAccounts.activeAccountNickname;
 
-    // Set up auto-relogin if a portal account was found.
+    // Return tweak if a portal account was found.
     if (activeAccountNickname) {
-      return portalAccounts[currentPortalUrl][activeAccountNickname].tweak;
+      return portalAccounts[currentPortalUrl].accountNicknames[activeAccountNickname].tweak;
     }
 
     return null;
+  }
+
+  protected async saveActivePortalAccount(
+    seed: Uint8Array,
+    currentPortal: string,
+    portalAccounts: PortalAccounts,
+    nickname: string,
+    tweak: string
+  ): Promise<void> {
+    // Get the portal account settings for the current portal.
+    let currentPortalAccounts = portalAccounts[currentPortal];
+    if (!currentPortalAccounts) {
+      currentPortalAccounts = { activeAccountNickname: null, accountNicknames: {} };
+      portalAccounts[currentPortal] = currentPortalAccounts;
+    }
+
+    // Set the current active account.
+    currentPortalAccounts.activeAccountNickname = nickname;
+
+    // Add the account to the portal accounts.
+    currentPortalAccounts.accountNicknames[nickname] = { tweak };
+
+    // Save portal accounts.
+    await setPortalAccounts(this.client, seed, this.mySkyDomain, portalAccounts);
   }
 
   /**
@@ -594,14 +594,42 @@ export class MySky {
    * @param seed - The user seed.
    * @param portalAccountTweak - The portal account tweak, found in user data.
    */
-  protected async loginWithTweak(seed: Uint8Array, portalAccountTweak: string): Promise<void> {
-    // TODO: If we are initializing MySky, then don't try to login?
+  protected async loginToPortalAccount(seed: Uint8Array, portalAccountTweak: string): Promise<void> {
+    log("Entered loginToPortalAccount");
+
     await login(this.client, seed, portalAccountTweak);
 
     this.portalAccountTweak = portalAccountTweak;
+  }
 
-    // Set up auto re-login on JWT expiry.
-    this.setupAutoRelogin(seed, portalAccountTweak);
+  /**
+   * Connects to a portal account by either registering or signing in to an
+   * existing account. The resulting cookie will be set on the MySky domain.
+   *
+   * NOTE: We register "auto re-login" in a separate function.
+   *
+   * @param portalConnectResponse - The response from MySky UI.
+   */
+  protected async registerOrSigninToPortalAccount(
+    seed: Uint8Array,
+    portalAccountTweak: string,
+    portalConnectResponse: PortalConnectResponse
+  ): Promise<void> {
+    log("Entered registerOrSigninToPortalAccount");
+
+    // Try to connect to the portal account and set the JWT cookie.
+    if (portalConnectResponse.action === "register") {
+      const email = portalConnectResponse.email;
+      if (!email) {
+        throw new Error("Trying to register but email was not provided");
+      }
+
+      await register(this.client, seed, email, portalAccountTweak);
+    } else if (portalConnectResponse.action === "signin") {
+      await login(this.client, seed, portalAccountTweak);
+    }
+
+    this.portalAccountTweak = portalAccountTweak;
   }
 
   /**
@@ -774,11 +802,11 @@ export class MySky {
 
     let response: PortalAccountLoginResponse;
 
-    // TODO: Try to login to the portal account.
     try {
       const portalConnectResponse: PortalConnectResponse = JSON.parse(newValue);
 
-      // await this.connectToPortalAccount(portalConnectResponse);
+      // Connect to the portal account.
+      await this.connectToPortalAccount(portalConnectResponse);
 
       // Signal to MySky UI that we are done.
       response = { error: null };
@@ -790,6 +818,59 @@ export class MySky {
     }
 
     localStorage.setItem(PORTAL_ACCOUNT_LOGIN_RESPONSE_KEY, JSON.stringify(response));
+  }
+
+  /**
+   * Connects to a portal account using the info we receive from MySky UI's
+   * portal-connect page.
+   *
+   * Flow:
+   *
+   * 1. Generate the new portal account tweak.
+   *
+   * 2. Try to login to the portal account.
+   *
+   * 3. Set up automatic relogin on JWT cookie expiry.
+   *
+   * 4. Save the nickname and portal account tweak as the active account for the portal.
+   *
+   * @param portalConnectResponse - The response from MySky UI.
+   */
+  protected async connectToPortalAccount(portalConnectResponse: PortalConnectResponse): Promise<void> {
+    log("Entered connectToPortalAccount");
+
+    if (portalConnectResponse.action === "notnow") {
+      // TODO: remove this possibility?
+      return;
+    }
+
+    const nickname = portalConnectResponse.nickname;
+    if (!nickname) {
+      throw new Error("Trying to connect to portal account but nickname was not provided");
+    }
+
+    // Get the seed.
+    const seed = checkStoredSeed();
+    if (!seed) {
+      throw new Error("User seed not found");
+    }
+
+    // Generate the portal account tweak.
+    //
+    // NOTE: Use a large amount of bytes just to prevent any collisions. It's
+    // fine if the tweak is a little long.
+    const portalAccountTweak = genRandomTweak(128);
+
+    // Try to login to the portal account before doing anything else.
+    await this.registerOrSigninToPortalAccount(seed, portalAccountTweak, portalConnectResponse);
+
+    // Set up auto re-login on JWT expiry.
+    this.setupAutoRelogin(seed, portalAccountTweak);
+
+    // Save the nickname and tweak as the active account for the portal.
+    const currentPortal = await this.client.portalUrl(); // TODO: sanitize all portals?
+    const portalAccounts = await getPortalAccounts(this.client, seed, this.mySkyDomain);
+    await this.saveActivePortalAccount(seed, currentPortal, portalAccounts, nickname, portalAccountTweak);
   }
 
   /**

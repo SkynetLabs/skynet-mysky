@@ -1,3 +1,4 @@
+import randomBytes from "randombytes";
 import { hash, sign } from "tweetnacl";
 import { KeyPair, stringToUint8ArrayUtf8 } from "skynet-js";
 
@@ -57,6 +58,19 @@ export function genKeyPairFromHash(hash: Uint8Array): KeyPair {
   const { publicKey, secretKey } = sign.keyPair.fromSeed(hashBytes);
 
   return { publicKey: toHexString(publicKey), privateKey: toHexString(secretKey) };
+}
+
+/**
+ * Generates a random tweak of the given length in bytes.
+ *
+ * @param length - The number of random bytes for the tweak. Note that the final string will be in to hex representation, making it twice this length.
+ * @returns - The generated tweak.
+ */
+export function genRandomTweak(length: number): string {
+  // Cryptographically-secure random number generator. It should use the
+  // built-in crypto.getRandomValues in the browser.
+  const array = randomBytes(length);
+  return toHexString(array);
 }
 
 /**

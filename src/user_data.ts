@@ -18,22 +18,20 @@ import { log } from "./util";
  * Settings associated with a user's MySky account.
  *
  * @property preferredPortal - The user's preferred portal. We redirect a skapp to this portal, if it is set.
- * @property portalAccounts - For each known portal, stores the active nickname.
  */
 type UserSettings = {
   preferredPortal: string | null;
-  activePortalAccounts: ActivePortalAccounts | null;
 };
 
-export type ActivePortalAccounts = {
-  [portal: string]: {
-    activeAccountNickname: string | null;
-  };
-};
-
+/**
+ * The account nicknames and associated tweaks for each portal.
+ */
 export type PortalAccounts = {
   [portal: string]: {
-    [accountNickname: string]: { tweak: string };
+    activeAccountNickname: string | null;
+    accountNicknames: {
+      [accountNickname: string]: { tweak: string };
+    };
   };
 };
 
@@ -63,7 +61,6 @@ export async function getUserSettings(
   const { data } = await getJSONEncryptedInternal(client, seed, path);
   return {
     preferredPortal: (data?.preferredPortal || null) as string | null,
-    activePortalAccounts: (data?.portalAccounts || null) as ActivePortalAccounts | null,
   };
 }
 
