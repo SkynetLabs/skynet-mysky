@@ -52,7 +52,7 @@
     "post-me": "^0.4.5",
     "punycode": "^2.1.1",
     "randombytes": "^2.1.0",
-    "skynet-js": "^4.0.22-beta",
+    "skynet-js": "^4.0.26-beta",
     "skynet-mysky-utils": "^0.3.0",
     "stream-browserify": "^3.0.0",
     "tweetnacl": "^1.0.3",
