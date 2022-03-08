@@ -10,6 +10,15 @@ import { SkynetClient } from "skynet-js";
 import { getJSONEncryptedInternal, setJSONEncryptedInternal } from "./skydb_internal";
 import { log } from "./util";
 
+// =========
+// Constants
+// =========
+
+// TODO: Move to skynet-mysky-utils?
+
+export const userPortalAccountsFile = "portal-accounts.json";
+export const userSettingsFile = "settings.json";
+
 // ================
 // Type Definitions
 // ================
@@ -26,7 +35,7 @@ type UserSettings = {
 /**
  * The account nicknames and associated tweaks for each portal.
  */
-export type PortalAccounts = {
+export type UserPortalAccounts = {
   [portalDomain: string]: {
     activeAccountNickname: string | null;
     accountNicknames: {
@@ -103,7 +112,7 @@ export async function getPortalAccounts(
   client: SkynetClient,
   seed: Uint8Array,
   mySkyDomain: string
-): Promise<PortalAccounts> {
+): Promise<UserPortalAccounts> {
   log("Entered getPortalAccounts");
 
   // Get the portal accounts path for the MySky domain.
@@ -111,7 +120,7 @@ export async function getPortalAccounts(
 
   // Check for stored portal accounts.
   const { data } = await getJSONEncryptedInternal(client, seed, path);
-  return (data || {}) as PortalAccounts;
+  return (data || {}) as UserPortalAccounts;
 }
 
 /**
@@ -126,7 +135,7 @@ export async function setPortalAccounts(
   client: SkynetClient,
   seed: Uint8Array,
   mySkyDomain: string,
-  portalAccounts: PortalAccounts
+  portalAccounts: UserPortalAccounts
 ): Promise<void> {
   log("Entered setPortalAccounts");
 
@@ -149,7 +158,7 @@ export async function setPortalAccounts(
  * @returns - The portal accounts path.
  */
 function getPortalAccountsPath(mySkyDomain: string): string {
-  return `${mySkyDomain}/portal-accounts.json`;
+  return `${mySkyDomain}/${userPortalAccountsFile}`;
 }
 
 /**
@@ -159,5 +168,5 @@ function getPortalAccountsPath(mySkyDomain: string): string {
  * @returns - The user settings path.
  */
 function getUserSettingsPath(mySkyDomain: string): string {
-  return `${mySkyDomain}/settings.json`;
+  return `${mySkyDomain}/${userSettingsFile}`;
 }

@@ -29,7 +29,7 @@ import { deriveEncryptedPathSeedForRoot } from "./encrypted_files";
 import { login, logout, register } from "./portal_account";
 import { launchPermissionsProvider, PortalConnectResponse } from "./provider";
 import { SEED_LENGTH } from "./seed";
-import { getPortalAccounts, getUserSettings, PortalAccounts, setPortalAccounts } from "./user_data";
+import { getPortalAccounts, getUserSettings, UserPortalAccounts, setPortalAccounts } from "./user_data";
 import { ALPHA_ENABLED, DEV_ENABLED, extractNormalizedDomain, hexToUint8Array, log, readablePermission } from "./util";
 
 export const SEED_STORAGE_KEY = "seed";
@@ -543,7 +543,7 @@ export class MySky {
    * @param portalAccounts - The map of portals to active accounts and account tweaks.
    * @returns - The tweak for the active portal account for the current portal.
    */
-  protected async getPortalAccountTweakFromAccounts(portalAccounts: PortalAccounts): Promise<string | null> {
+  protected async getPortalAccountTweakFromAccounts(portalAccounts: UserPortalAccounts): Promise<string | null> {
     const currentPortalDomain = extractNormalizedDomain(await this.client.portalUrl());
 
     // Get the account settings for the current portal.
@@ -575,7 +575,7 @@ export class MySky {
   protected async saveActivePortalAccount(
     seed: Uint8Array,
     currentPortal: string,
-    portalAccounts: PortalAccounts,
+    portalAccounts: UserPortalAccounts,
     nickname: string,
     tweak: string
   ): Promise<void> {

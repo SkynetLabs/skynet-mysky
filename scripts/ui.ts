@@ -167,14 +167,15 @@ async function requestLoginAccess(permissions: Permission[]): Promise<[boolean, 
     // Ask the user to connect to a portal account.
     const portalConnectResponse = await getPortalConnectResponseFromProvider(portalDomain);
 
+    // TODO: remove "notnow" possibility?
     if (portalConnectResponse.nickname) {
       // Save the nickname in local storage, triggering a portal account login
       // in Main MySky.
       savePortalConnectResponseInStorage(portalConnectResponse);
-    }
 
-    // Wait for Main MySky to login to the portal account successfully.
-    await resolveOnMySkyPortalAccountLogin();
+      // Wait for Main MySky to login to the portal account successfully.
+      await resolveOnMySkyPortalAccountLogin();
+    }
   }
 
   // Pass in requested permissions and get a permissions response.
