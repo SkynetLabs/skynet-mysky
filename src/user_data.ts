@@ -3,6 +3,8 @@
  *
  * User data is comprised of:
  *   - User settings
+ *
+ * TODO: Move to skynet-mysky-utils?
  */
 
 import { SkynetClient } from "skynet-js";
