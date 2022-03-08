@@ -26,6 +26,15 @@ const CHALLENGE_TYPE_LOGIN = "skynet-portal-login";
 const CHALLENGE_TYPE_REGISTER = "skynet-portal-register";
 
 /**
+ * Custom get user options.
+ *
+ * @property [endpointGetUser] - The relative URL path of the portal endpoint to contact.
+ */
+export type CustomGetUserOptions = CustomClientOptions & {
+  endpointGetUser?: string;
+};
+
+/**
  * Custom register user pubkey options.
  *
  * @property [endpointRegisterUserPubkey] - The relative URL path of the portal endpoint to contact.
@@ -72,6 +81,12 @@ const DEFAULT_CUSTOM_CLIENT_OPTIONS = {
   onUploadProgress: undefined,
 };
 
+export const DEFAULT_GET_USER_OPTIONS = {
+  ...DEFAULT_CUSTOM_CLIENT_OPTIONS,
+
+  endpointGetUser: "/api/user",
+};
+
 export const DEFAULT_REGISTER_USER_PUBKEY_OPTIONS = {
   ...DEFAULT_CUSTOM_CLIENT_OPTIONS,
 
@@ -113,12 +128,30 @@ type ChallengeResponse = {
 // ===
 
 /**
+ * Gets information about the user.
+ *
+ * @param client - The Skynet client.
+ * @param [customOptions] - The custom get user options.
+ */
+export async function getUser(client: SkynetClient, customOptions?: CustomGetUserOptions): Promise<void> {
+  const opts = { ...DEFAULT_GET_USER_OPTIONS, ...client.customOptions, ...customOptions };
+
+  const response = await client.executeRequest({
+    endpointPath: opts.endpointGetUser,
+    method: "GET",
+    subdomain: PORTAL_ACCOUNT_PAGE_SUBDOMAIN,
+  });
+
+  console.log(response);
+}
+
+/**
  * Registers a pubkey for the user for the given seed and tweak.
  *
  * @param client - The Skynet client.
  * @param seed - The seed.
  * @param tweak - The portal account tweak.
- * @param [customOptions] - The custom register options.
+ * @param [customOptions] - The custom register user options.
  * @returns - An empty promise.
  */
 export async function registerUserPubkey(
