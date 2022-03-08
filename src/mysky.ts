@@ -10,7 +10,6 @@
 
 import type { Connection } from "post-me";
 import { ChildHandshake, WindowMessenger } from "post-me";
-import type { RequestConfig } from "skynet-js";
 import {
   deriveDiscoverableFileTweak,
   deriveEncryptedFileTweak,
@@ -684,7 +683,7 @@ export class MySky {
       throw new Error("Tried to setup auto re-login with it already being set up");
     }
 
-    this.client.customOptions.loginFn = async (_: RequestConfig) => {
+    this.client.customOptions.loginFn = async () => {
       await login(this.client, seed, tweak);
     };
   }
