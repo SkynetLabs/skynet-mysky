@@ -19,8 +19,8 @@ printf "\nBuilding scripts/seed-display..." &&
 npx webpack --config webpack.config.seed-display.js &&
 printf "\nBuilding scripts/seed-selection..." &&
 npx webpack --config webpack.config.seed-selection.js &&
-printf "\nBuilding scripts/signin-connect..." &&
-npx webpack --config webpack.config.signin-connect.js &&
+printf "\nBuilding scripts/portal-connect..." &&
+npx webpack --config webpack.config.portal-connect.js &&
 
 # Minify the HTML files and inline assets.
 node utilities/minify-src.js dist/*.html &&

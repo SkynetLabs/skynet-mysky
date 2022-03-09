@@ -8,7 +8,6 @@ const uiErrorMessageText = document.getElementById("error-message-text")!;
 const uiSeedConfirm = <HTMLInputElement>document.getElementById("seed-confirm")!;
 const uiSigninPage = document.getElementById("signin-page")!;
 const uiSigninPassphraseText = <HTMLInputElement>document.getElementById("signin-passphrase-text")!;
-const uiSignupEmailText = <HTMLInputElement>document.getElementById("signup-email-text")!;
 const uiSignupPage = document.getElementById("signup-page")!;
 const uiSignupPassphraseText = <HTMLInputElement>document.getElementById("signup-passphrase-text")!;
 
@@ -43,10 +42,6 @@ window.onerror = function (error: any) {
 // Code that runs on page load.
 window.onload = async () => {
   await init();
-
-  // Go to Logged Out page.
-
-  (window as any).goToSignIn();
 };
 
 // ============
@@ -84,7 +79,7 @@ window.onload = async () => {
     return setErrorMessage(error);
   }
 
-  handleResponse({ seed, email: null, action: "signin" });
+  handleResponse({ seed, action: "signin" });
 };
 
 (window as any).signUp = (event: Event) => {
@@ -94,9 +89,8 @@ window.onload = async () => {
   if (uiSeedConfirm.checked === false) return;
 
   const seed = phraseToSeed(uiSignupPassphraseText.value);
-  const email = uiSignupEmailText.value;
 
-  handleResponse({ seed, email, action: "signup" });
+  handleResponse({ seed, action: "signup" });
 };
 
 // ==========
@@ -108,7 +102,6 @@ window.onload = async () => {
  */
 async function init(): Promise<void> {
   // Establish handshake with parent window.
-
   const messenger = new WindowMessenger({
     localWindow: window,
     remoteWindow: window.parent,
@@ -121,12 +114,14 @@ async function init(): Promise<void> {
 }
 
 /**
- * Called by MySky UI. Checks for the ready seed and an optional email at an
- * interval.
+ * Called by MySky UI. Checks for the ready seed at an interval.
  *
  * @returns - The full seed provider response.
  */
 async function getSeedProviderResponse(): Promise<SeedProviderResponse> {
+  // Go to Logged Out page.
+  (window as any).goToSignIn();
+
   const checkInterval = 100;
 
   return new Promise((resolve) => {

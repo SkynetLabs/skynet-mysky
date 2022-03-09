@@ -42,7 +42,7 @@ export async function getJSONEncryptedInternal(
   const dataKey = deriveEncryptedFileTweak(pathSeed);
   const opts = { hashedDataKeyHex: true };
   log("Calling getRawBytes");
-  const { data } = await client.db.getRawBytes(publicKey, dataKey, opts);
+  const { data } = await client.dbV2.getRawBytes(publicKey, dataKey, opts);
   if (data === null) {
     return { data: null };
   }
@@ -80,7 +80,7 @@ export async function setJSONEncryptedInternal(
   const opts = { hashedDataKeyHex: true };
 
   // Immediately fail if the mutex is not available.
-  return await client.db.revisionNumberCache.withCachedEntryLock(
+  return await client.dbV2.revisionNumberCache.withCachedEntryLock(
     publicKey,
     dataKey,
     async (cachedRevisionEntry: { revision: bigint }) => {
