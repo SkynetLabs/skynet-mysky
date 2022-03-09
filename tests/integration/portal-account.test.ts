@@ -2,7 +2,7 @@ import { SkynetClient } from "skynet-js";
 
 import { randomAsciiString } from "../utils";
 import { generatePhrase, phraseToSeed } from "../../src/seed";
-import { getUser, login, logout, register, registerUserPubkey } from "../../src/portal_account";
+import { getUserLoggedIn, login, logout, register, registerUserPubkey } from "../../src/portal_account";
 
 const portalUrl = "https://skynetfree.net";
 const client = new SkynetClient(portalUrl);
@@ -15,8 +15,8 @@ const newTweak = randomAsciiString(20);
 
 describe("Integration tests for registration and login", () => {
   // TODO: Move this into the other tests.
-  it("should not get a logged-in user before logging in", async () => {
-    await getUser(client);
+  it.skip("should not get a logged-in user before logging in", async () => {
+    expect(await getUserLoggedIn(client)).toBeTruthy();
   });
 
   it("should register and login to a new user on the portal", async () => {

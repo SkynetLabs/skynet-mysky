@@ -128,21 +128,26 @@ type ChallengeResponse = {
 // ===
 
 /**
- * Gets information about the user.
+ * Gets whether the user is logged in.
  *
  * @param client - The Skynet client.
  * @param [customOptions] - The custom get user options.
+ * @returns - Whether the user is logged in.
  */
-export async function getUser(client: SkynetClient, customOptions?: CustomGetUserOptions): Promise<void> {
+export async function getUserLoggedIn(client: SkynetClient, customOptions?: CustomGetUserOptions): Promise<boolean> {
   const opts = { ...DEFAULT_GET_USER_OPTIONS, ...client.customOptions, ...customOptions };
 
-  const response = await client.executeRequest({
-    endpointPath: opts.endpointGetUser,
-    method: "GET",
-    subdomain: PORTAL_ACCOUNT_PAGE_SUBDOMAIN,
-  });
+  try {
+    await client.executeRequest({
+      endpointPath: opts.endpointGetUser,
+      method: "GET",
+      subdomain: PORTAL_ACCOUNT_PAGE_SUBDOMAIN,
+    });
 
-  console.log(response);
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 /**
