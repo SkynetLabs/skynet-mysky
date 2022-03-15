@@ -62,7 +62,7 @@ export async function getUserSettings(
   client: SkynetClient,
   seed: Uint8Array,
   mySkyDomain: string
-): Promise<UserSettings> {
+): Promise<UserSettings | null> {
   log("Entered getUserSettings");
 
   // Get the settings path for the MySky domain.
@@ -71,7 +71,7 @@ export async function getUserSettings(
   // Check for stored user settings.
   const { data } = await getJSONEncryptedInternal(client, seed, path);
   return {
-    preferredPortal: (data?.preferredPortal || null) as string | null,
+    preferredPortal: (data?.preferredPortal as string) || null,
   };
 }
 
@@ -114,7 +114,7 @@ export async function getPortalAccounts(
   client: SkynetClient,
   seed: Uint8Array,
   mySkyDomain: string
-): Promise<UserPortalAccounts> {
+): Promise<UserPortalAccounts | null> {
   log("Entered getPortalAccounts");
 
   // Get the portal accounts path for the MySky domain.
@@ -122,7 +122,7 @@ export async function getPortalAccounts(
 
   // Check for stored portal accounts.
   const { data } = await getJSONEncryptedInternal(client, seed, path);
-  return (data || {}) as UserPortalAccounts;
+  return data as UserPortalAccounts | null;
 }
 
 /**

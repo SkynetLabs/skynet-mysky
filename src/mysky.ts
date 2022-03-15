@@ -2,10 +2,32 @@
  * @file Contains the interface for Main MySky, the MySky component that lives
  * in an invisible iframe on skapps.
  *
- * TODO: Document when Main MySky is launched and what the entrypoint in this
- * file is.
+ * # Launching Main MySky
  *
- * TODO: Document the full interface for this file.
+ * Main MySky is launched when a skapp calls `client.loadMySky`, which opens the
+ * invisible iframe pointing to the MySky URL. The entrypoint in this file is
+ * the static method `MainMySky.initialize`.
+ *
+ * # Calling Main MySky
+ *
+ * Main MySky tries to initialize a post-me handshake connection with the parent
+ * skapp. If this succeeds, then the handshake connection can be used to call
+ * certain methods in Main MySky.
+ *
+ * # Interface
+ *
+ * - checkLogin
+ * - checkPortalLogin
+ * - getEncryptedFileSeed (deprecated)
+ * - getEncryptedPathSeed
+ * - getPreferredPortal
+ * - logout
+ * - portalLogin
+ * - signMessage
+ * - signRegistryEntry
+ * - signEncryptedRegistryEntry
+ * - userID
+ * - verifyMessageSignature
  */
 
 import type { Connection } from "post-me";
@@ -82,7 +104,6 @@ export class PermissionsProvider {
   }
 }
 
-// TODO: Rename to differentiate from `MySky` in SDK? Perhaps `MainMySky`.
 /**
  * The class responsible for holding MySky-related data and connections and for
  * communicating with skapps and with the permissions provider.
@@ -93,7 +114,7 @@ export class PermissionsProvider {
  * @property parentConnection - The handshake connection with the parent window.
  * @property permissionsProvider - The permissions provider, if it has been loaded.
  */
-export class MySky {
+export class MainMySky {
   protected parentConnection: Promise<Connection> | null = null;
 
   protected preferredPortal: string | null = null;
@@ -131,7 +152,7 @@ export class MySky {
    * @returns - The `MySky` instance.
    * @throws - Will throw if the browser does not support web strorage.
    */
-  static async initialize(): Promise<MySky> {
+  static async initialize(): Promise<MainMySky> {
     log("Initializing...");
 
     if (typeof Storage === "undefined") {
@@ -162,7 +183,7 @@ export class MySky {
 
     // Create MySky object.
     log("Calling new MySky()");
-    const mySky = new MySky(initialClient, currentDomain, referrerDomain, permissionsProvider);
+    const mySky = new MainMySky(initialClient, currentDomain, referrerDomain, permissionsProvider);
 
     // Login to portal.
     if (seed) {
@@ -510,17 +531,21 @@ export class MySky {
     log("Entered setPreferredPortalAndLogin");
 
     // Get user data.
-    const [{ preferredPortal }, portalAccounts] = await Promise.all([
+    const [userSettings, portalAccounts] = await Promise.all([
       getUserSettings(this.client, seed, this.mySkyDomain),
       getPortalAccounts(this.client, seed, this.mySkyDomain),
     ]);
+    const preferredPortal = userSettings?.preferredPortal || null;
 
     // Set the portal. Will use the current portal if a preferred one was not
     // found.
     this.setPortal(preferredPortal);
     const portalDomain = extractNormalizedDomain(await this.client.portalUrl());
 
-    const portalAccountTweak = await this.getPortalAccountTweakFromAccounts(portalAccounts);
+    let portalAccountTweak = null;
+    if (portalAccounts) {
+      portalAccountTweak = await this.getPortalAccountTweakFromAccounts(portalAccounts);
+    }
 
     if (portalAccountTweak) {
       // If a tweak was found, try to connect to a portal account.
@@ -788,12 +813,13 @@ export class MySky {
    *
    * Flow:
    *
-   * TODO: UPDATE
-   * 1. If we got an active portal account, then we login to set the JWT cookie.
+   * 1. Generate the new portal account tweak.
    *
-   * TODO: UPDATE
-   * 2. If the active portal account is set, it should set up automatic re-login
-   * on JWT cookie expiry.
+   * 2. Register, or connect a new pubkey, to connect to a portal account.
+   *
+   * 3. Set up automatic relogin on JWT cookie expiry.
+   *
+   * 4. Save the nickname and portal account tweak as the active account for the portal.
    *
    * @param newValue - The local storage value from the storage event handler.
    */
@@ -833,16 +859,6 @@ export class MySky {
    * Connects to a portal account using the info we receive from MySky UI's
    * portal-connect page.
    *
-   * Flow:
-   *
-   * 1. Generate the new portal account tweak.
-   *
-   * 2. Try to login to the portal account.
-   *
-   * 3. Set up automatic relogin on JWT cookie expiry.
-   *
-   * 4. Save the nickname and portal account tweak as the active account for the portal.
-   *
    * @param portalConnectResponse - The response from MySky UI.
    */
   protected async connectToPortalAccount(portalConnectResponse: PortalConnectResponse): Promise<void> {
@@ -878,7 +894,10 @@ export class MySky {
 
     // Save the nickname and tweak as the active account for the portal.
     const currentPortal = extractNormalizedDomain(await this.client.portalUrl());
-    const portalAccounts = await getPortalAccounts(this.client, seed, this.mySkyDomain);
+    let portalAccounts = await getPortalAccounts(this.client, seed, this.mySkyDomain);
+    if (!portalAccounts) {
+      portalAccounts = {};
+    }
     await this.saveActivePortalAccount(seed, currentPortal, portalAccounts, nickname, portalAccountTweak);
   }
 

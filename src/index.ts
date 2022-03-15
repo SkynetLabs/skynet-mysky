@@ -1,6 +1,4 @@
-// TODO: Enable full eslint lints.
-
-import { MySky } from "./mysky";
+import { MainMySky } from "./mysky";
 import { log } from "./util";
 
 // ===============
@@ -11,7 +9,7 @@ import { log } from "./util";
 (async () => {
   log("Calling MySky.initialize");
   try {
-    await MySky.initialize();
+    await MainMySky.initialize();
   } catch (err) {
     console.warn(err);
   }

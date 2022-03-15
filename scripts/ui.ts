@@ -145,8 +145,6 @@ async function init(): Promise<void> {
  * 6. If there are permissions that haven't been granted, asks the user to grant
  * them. Saves the new permissions in MySky's IndexedDB.
  *
- * 7. Returns the remaining failed permissions to the skapp.
- *
  * @param permissions - The requested permissions.
  * @returns - Whether the user was logged in, and the granted and rejected permissions.
  */
