@@ -47,7 +47,7 @@ import { sign } from "tweetnacl";
 
 import { deriveRootPathSeed, genKeyPairFromSeed, genRandomTweak, hashWithSalt, sha512 } from "./crypto";
 import { deriveEncryptedPathSeedForRoot } from "./encrypted_files";
-import { login, logout, register } from "./portal_account";
+import { login, logout, register, registerUserPubkey } from "./portal_account";
 import { launchPermissionsProvider, PortalConnectResponse } from "./provider";
 import { SEED_LENGTH } from "./seed";
 import { getPortalAccounts, getUserSettings, UserPortalAccounts, setPortalAccounts } from "./user_data";
@@ -660,7 +660,7 @@ export class MainMySky {
 
       await register(this.client, seed, email, portalAccountTweak);
     } else if (portalConnectResponse.action === "signin") {
-      await login(this.client, seed, portalAccountTweak);
+      await registerUserPubkey(this.client, seed, portalAccountTweak);
     }
 
     this.portalAccountTweak = portalAccountTweak;
