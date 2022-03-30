@@ -24,6 +24,11 @@ const CHALLENGE_TYPE_LOGIN = "skynet-portal-login";
  * The type of the registration challenge.
  */
 const CHALLENGE_TYPE_REGISTER = "skynet-portal-register";
+/**
+ * The type of the update challenge which we use when we change the user's
+ * pubKey.
+ */
+const CHALLENGE_TYPE_UPDATE = "skynet-portal-update";
 
 /**
  * Custom get user options.
@@ -178,7 +183,7 @@ export async function registerUserPubkey(
 
   const challenge = registerRequestResponse.data.challenge;
   const portalRecipient = getPortalRecipient(await client.portalUrl());
-  const challengeResponse = signChallenge(privateKey, challenge, CHALLENGE_TYPE_REGISTER, portalRecipient);
+  const challengeResponse = signChallenge(privateKey, challenge, CHALLENGE_TYPE_UPDATE, portalRecipient);
 
   const data = {
     response: challengeResponse.response,
@@ -308,7 +313,7 @@ export async function logout(client: SkynetClient, customOptions?: CustomLogoutO
 function signChallenge(
   privateKey: string,
   challenge: string,
-  challengeType: "skynet-portal-login" | "skynet-portal-register",
+  challengeType: "skynet-portal-login" | "skynet-portal-register" | "skynet-portal-update",
   portalRecipient: string
 ): ChallengeResponse {
   validateHexString("challenge", challenge, "challenge from server");
