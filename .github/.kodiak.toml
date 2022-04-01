@@ -1,4 +1,6 @@
-# .kodiak.toml
+# Auto-merge Dependabot PRs. Requires also `.github/workflows/dependabot-auto-merge.yml`.
+# See https://hackmd.io/@SkynetLabs/ryFfInNXc.
+
 version = 1
 
 [approve]
