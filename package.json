@@ -65,7 +65,7 @@
     "@babel/preset-typescript": "^7.16.7",
     "@skynetlabs/skynet-nodejs": "^2.5.1",
     "@tailwindcss/forms": "^0.4.0",
-    "@types/jest": "^27.4.0",
+    "@types/jest": "^27.4.1",
     "@types/mustache": "^4.1.2",
     "@types/randombytes": "^2.0.0",
     "@types/url-join": "^4.0.1",
