@@ -57,7 +57,7 @@
     "skynet-mysky-utils": "^0.3.0",
     "stream-browserify": "^3.0.0",
     "tweetnacl": "^1.0.3",
-    "url-join": "^4.0.1"
+    "url-join": "^5.0.0"
   },
   "devDependencies": {
     "@babel/plugin-proposal-class-properties": "^7.16.7",
