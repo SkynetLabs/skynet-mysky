@@ -8,12 +8,12 @@ const opts = {
 
 module.exports = {
   entry: {
-    "permissions-display": path.resolve(__dirname, 'scripts/permissions-display.ts'),
-    "permissions": path.resolve(__dirname, 'scripts/permissions.ts'),
-    "portal-connect": path.resolve(__dirname, 'scripts/portal-connect.ts'),
-    "seed-display": path.resolve(__dirname, 'scripts/seed-display.ts'),
-    "seed-selection": path.resolve(__dirname, 'scripts/seed-selection.ts'),
-    "ui": path.resolve(__dirname, 'scripts/ui.ts'),
+    "permissions-display": path.resolve(__dirname, "scripts/permissions-display.ts"),
+    permissions: path.resolve(__dirname, "scripts/permissions.ts"),
+    "portal-connect": path.resolve(__dirname, "scripts/portal-connect.ts"),
+    "seed-display": path.resolve(__dirname, "scripts/seed-display.ts"),
+    "seed-selection": path.resolve(__dirname, "scripts/seed-selection.ts"),
+    ui: path.resolve(__dirname, "scripts/ui.ts"),
   },
   mode: "production",
 
