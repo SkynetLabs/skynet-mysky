@@ -1,6 +1,5 @@
 const path = require("path");
-
-const name = "permissions-display";
+const process = require("process");
 
 // define preprocessor variables
 const opts = {
@@ -8,7 +7,14 @@ const opts = {
 };
 
 module.exports = {
-  entry: `./scripts/${name}.ts`,
+  entry: {
+    "permissions-display": path.resolve(__dirname, "scripts/permissions-display.ts"),
+    permissions: path.resolve(__dirname, "scripts/permissions.ts"),
+    "portal-connect": path.resolve(__dirname, "scripts/portal-connect.ts"),
+    "seed-display": path.resolve(__dirname, "scripts/seed-display.ts"),
+    "seed-selection": path.resolve(__dirname, "scripts/seed-selection.ts"),
+    ui: path.resolve(__dirname, "scripts/ui.ts"),
+  },
   mode: "production",
 
   module: {
@@ -20,7 +26,6 @@ module.exports = {
           { loader: "ts-loader", options: { configFile: "tsconfig.scripts.json" } },
           { loader: "ifdef-loader", options: opts },
         ],
-        include: [path.resolve(__dirname, `scripts/${name}.ts`)],
       },
     ],
   },
@@ -33,7 +38,7 @@ module.exports = {
     },
   },
   output: {
-    filename: `${name}.js`,
     path: path.resolve(__dirname, "dist"),
+    filename: `[name].js`,
   },
 };
