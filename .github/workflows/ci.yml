@@ -1,12 +1,18 @@
-name: "CI Checks and Tests"
+name: "General CI Workflows"
 
 on:
   push:
     branches: [main]
   pull_request:
 
+# For auto-approving/merging PRs.
+permissions:
+  pull-requests: write
+  contents: write
+
 jobs:
-  build:
+  check:
+    name: "Checks and Tests"
     runs-on: ubuntu-latest
 
     strategy:
@@ -15,7 +21,21 @@ jobs:
         node-version: [12.x, 14.x, 16.x]
 
     steps:
-      - name: NPM Basic Checks
+      - name: "Run NPM Basic Checks"
         uses: SkynetLabs/.github/actions/npm-basic-checks@dependabot-and-npm-checks
         with:
           node-version: ${{ matrix.node-version }}
+
+  # Auto-merge Dependabot PRs. Requires also `.github/.kodiak.toml`.
+  # See https://hackmd.io/@SkynetLabs/ryFfInNXc.
+  dependabot:
+    name: "Approve and Merge Dependabot PRs"
+    # - Must be a PR.
+    # - The latest actor must be Dependabot. This prevents other users from
+    #   sneaking in changes into the PR.
+    if: ${{ github.event_name == 'pull_request' && github.actor == 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "Run Auto-Approval and Auto-Merge"
+        uses: SkynetLabs/.github/actions/dependabot-approve-merge@dependabot-and-npm-checks

@@ -1,4 +1,4 @@
-name: Deploy to Skynet - Sandbridge
+name: "Deploy to Skynet - Sandbridge"
 
 on:
   push:
