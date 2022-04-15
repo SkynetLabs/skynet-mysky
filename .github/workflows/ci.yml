@@ -1,15 +1,18 @@
-# This workflow will do a clean install of node dependencies, build the source code and run tests across different versions of node
-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
-
-name: CI
+name: "CI"
 
 on:
   push:
     branches: [main]
   pull_request:
 
+# For auto-approving/merging PRs.
+permissions:
+  pull-requests: write
+  contents: write
+
 jobs:
-  build:
+  check:
+    name: "Checks and Tests"
     runs-on: ubuntu-latest
 
     strategy:
@@ -18,12 +21,21 @@ jobs:
         node-version: [12.x, 14.x, 16.x]
 
     steps:
-      - uses: actions/checkout@v2
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v2
+      - name: "Run NPM Basic Checks"
+        uses: SkynetLabs/.github/actions/npm-basic-checks@master
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npm install
-      - run: npx prettier --check .
-      - run: npm run lint
-      - run: npm run test
+
+  # Auto-merge Dependabot PRs. Requires also `.github/.kodiak.toml`.
+  # See https://hackmd.io/@SkynetLabs/ryFfInNXc.
+  dependabot:
+    name: "Approve and Merge Dependabot PRs"
+    # - Must be a PR.
+    # - The latest actor must be Dependabot. This prevents other users from
+    #   sneaking in changes into the PR.
+    if: ${{ github.event_name == 'pull_request' && github.actor == 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "Run Auto-Approval and Auto-Merge"
+        uses: SkynetLabs/.github/actions/dependabot-approve-merge@master
