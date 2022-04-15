@@ -1,3 +1,5 @@
+[![CI](https://github.com/SkynetLabs/skynet-mysky/actions/workflows/ci.yml/badge.svg)](https://github.com/SkynetLabs/skynet-mysky/actions/workflows/ci.yml)
+
 # skynet-mysky
 
 This is the repo that contains the MySky invisible element, MySky UI, the default permissions provider, and the default seed provider.
