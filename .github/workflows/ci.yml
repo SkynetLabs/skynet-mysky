@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: "Run NPM Basic Checks"
-        uses: SkynetLabs/.github/actions/npm-basic-checks@master
+        uses: SkynetLabs/.github/.github/actions/npm-basic-checks@master
         with:
           node-version: ${{ matrix.node-version }}
 
@@ -38,4 +38,4 @@ jobs:
 
     steps:
       - name: "Run Auto-Approval and Auto-Merge"
-        uses: SkynetLabs/.github/actions/dependabot-approve-merge@master
+        uses: SkynetLabs/.github/.github/actions/dependabot-approve-merge@master
