@@ -1,23 +1,4 @@
-import { CheckPermissionsResponse, PermCategory, Permission, PermType } from "skynet-mysky-utils";
-
-import { checkPermissions, createPermissionKey } from "../../scripts/permissions";
-
-describe("default checkPermissions", () => {
-  const perm1 = new Permission("app.hns/", "app.hns", PermCategory.Discoverable, PermType.Read);
-  const perm2 = new Permission("app.hns", "app.hns/path", PermCategory.Discoverable, PermType.Read);
-  const perm3 = new Permission("app.hns", "dac.hns", PermCategory.Discoverable, PermType.Read);
-  const perm4 = new Permission("Sia:APP.hns", "app.hns/path", PermCategory.Discoverable, PermType.Read);
-  const perm5 = new Permission("app.hns", "APP.hns/path", PermCategory.Discoverable, PermType.Read);
-  const perm6 = new Permission("sia://app.hns", "sia://dac.hns", PermCategory.Discoverable, PermType.Read);
-  const perms = [perm1, perm2, perm3, perm4, perm5, perm6];
-
-  it("for dev, should grant all permissions", async () => {
-    const resp: CheckPermissionsResponse = await checkPermissions(perms, true);
-
-    expect(resp.grantedPermissions).toEqual(perms);
-    expect(resp.failedPermissions).toEqual([]);
-  });
-});
+import { createPermissionKey } from "../../src/permissions";
 
 describe("createPermissionsKey", () => {
   const perms = [
