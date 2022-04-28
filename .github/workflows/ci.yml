@@ -38,4 +38,4 @@ jobs:
 
     steps:
       - name: "Run Auto-Approval and Auto-Merge"
-        uses: SkynetLabs/.github/.github/actions/dependabot-approve-merge@master
+        uses: SkynetLabs/.github/.github/actions/dependabot-approve-and-merge@master
