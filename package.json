@@ -53,7 +53,7 @@
     "punycode": "^2.1.1",
     "randombytes": "^2.1.0",
     "skynet-js": "^4.1.0",
-    "skynet-mysky-utils": "^0.3.0",
+    "skynet-mysky-utils": "^0.3.1",
     "stream-browserify": "^3.0.0",
     "tweetnacl": "^1.0.3",
     "url-join": "^5.0.0"
