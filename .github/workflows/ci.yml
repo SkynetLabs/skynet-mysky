@@ -25,6 +25,7 @@ jobs:
         uses: SkynetLabs/.github/.github/actions/npm-basic-checks@master
         with:
           node-version: ${{ matrix.node-version }}
+          build: true
 
   # Auto-merge Dependabot PRs. Requires also `.github/.kodiak.toml`.
   # See https://hackmd.io/@SkynetLabs/ryFfInNXc.
