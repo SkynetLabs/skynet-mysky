@@ -68,7 +68,7 @@
     "@types/mustache": "^4.2.1",
     "@types/randombytes": "^2.0.0",
     "@types/url-join": "^4.0.1",
-    "@typescript-eslint/eslint-plugin": "^5.30.6",
+    "@typescript-eslint/eslint-plugin": "^5.30.7",
     "@typescript-eslint/parser": "^5.30.7",
     "autoprefixer": "^10.4.7",
     "eslint": "^8.20.0",
