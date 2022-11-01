@@ -71,7 +71,7 @@
     "@typescript-eslint/eslint-plugin": "^5.38.1",
     "@typescript-eslint/parser": "^5.42.0",
     "autoprefixer": "^10.4.12",
-    "eslint": "^8.24.0",
+    "eslint": "^8.26.0",
     "eslint-plugin-jsdoc": "^39.4.0",
     "husky": "^8.0.1",
     "ifdef-loader": "^2.3.2",
